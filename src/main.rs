@@ -1,13 +1,14 @@
-#[macro_use]
-extern crate slog;
-extern crate slog_async;
-extern crate slog_term;
-
 use anchor_client::solana_sdk::pubkey::Pubkey;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::Parser;
-use slog::{Drain, Logger};
-use std::{fs::File, str::FromStr};
+use std::{
+    fs::{File, OpenOptions},
+    path::PathBuf,
+    str::FromStr,
+};
+use tracing::subscriber::set_global_default;
+use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
+use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 
 use mpl_candy_machine::CandyMachineData;
 
@@ -41,37 +42,57 @@ pub fn default_candy_data() -> CandyMachineData {
     }
 }
 
-fn setup_logging() -> Logger {
-    // let log_path = "sugar.log";
-    // let file = OpenOptions::new()
-    //     .create(true)
-    //     .write(true)
-    //     .truncate(true)
-    //     .open(log_path)
-    //     .expect("Failed to create log file");
+fn setup_logging(level: Option<EnvFilter>) {
+    // Log path; change this to be dynamic for multiple OSes.
+    let log_path = PathBuf::from("/home/cilantro/.config/sugar/sugar.log");
 
-    // let decorator = slog_term::PlainDecorator::new(file);
-    let decorator = slog_term::TermDecorator::new().build();
+    let file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(&log_path)
+        .unwrap();
 
-    let drain = slog_term::FullFormat::new(decorator).build().fuse();
-    let drain = slog_async::Async::new(drain).build().fuse();
+    // Prioritize user-provided level, otherwise read from RUST_LOG env var for log level, fall back to "info" if not set.
+    let env_filter = if let Some(filter) = level {
+        filter
+    } else {
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"))
+    };
 
-    slog::Logger::root(drain, o!())
+    let formatting_layer = BunyanFormattingLayer::new("sugar".into(), file);
+
+    let subscriber = Registry::default()
+        .with(env_filter)
+        .with(formatting_layer)
+        .with(JsonStorageLayer);
+
+    set_global_default(subscriber).expect("Failed to set global default subscriber");
 }
 
 #[tokio::main(worker_threads = 4)]
 async fn main() -> Result<()> {
-    let logger = setup_logging();
-    info!(logger, "Lend me some sugar, I am your neighbor.");
-
     let cli = Cli::parse();
 
+    let log_level_error = Err(anyhow!(
+        "Invalid log level: {:?}.\n Valid levels are: trace, debug, info, warn, error.",
+        cli.log_level
+    ));
+
+    if let Some(env_filter) = cli.log_level {
+        match EnvFilter::try_new(env_filter) {
+            Ok(env_filter) => setup_logging(Some(env_filter)),
+            Err(_) => return log_level_error,
+        }
+    } else {
+        setup_logging(None);
+    }
+
+    tracing::info!("Lend me some sugar, I am your neighbor.");
+
     match cli.command {
-        Commands::MintOne { keypair, rpc_url } => process_mint_one(MintOneArgs {
-            logger,
-            keypair,
-            rpc_url,
-        })?,
+        Commands::MintOne { keypair, rpc_url } => {
+            process_mint_one(MintOneArgs { keypair, rpc_url })?
+        }
         Commands::Upload {
             assets_dir,
             arloader_manifest,
@@ -80,7 +101,6 @@ async fn main() -> Result<()> {
             rpc_url,
             cache,
         } => process_upload(UploadArgs {
-            logger,
             assets_dir,
             arloader_manifest,
             config,
@@ -96,7 +116,6 @@ async fn main() -> Result<()> {
             cache,
         } => {
             process_upload_assets(UploadAssetsArgs {
-                logger,
                 assets_dir,
                 config,
                 keypair,
@@ -105,18 +124,15 @@ async fn main() -> Result<()> {
             })
             .await?
         }
-        Commands::Test => process_test_command(logger),
-        Commands::Validate { assets_dir, strict } => process_validate(ValidateArgs {
-            logger,
-            assets_dir,
-            strict,
-        })?,
+        Commands::Test => process_test_command(),
+        Commands::Validate { assets_dir, strict } => {
+            process_validate(ValidateArgs { assets_dir, strict })?
+        }
         Commands::Withdraw {
             candy_machine,
             keypair,
             rpc_url,
         } => process_withdraw(WithdrawArgs {
-            logger,
             candy_machine,
             keypair,
             rpc_url,
@@ -126,7 +142,6 @@ async fn main() -> Result<()> {
             rpc_url,
             cache,
         } => process_verify(VerifyArgs {
-            logger,
             keypair,
             rpc_url,
             cache,
@@ -136,8 +151,8 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn process_test_command(logger: Logger) {
-    let sugar_config = sugar_setup(logger, None, None).unwrap();
+fn process_test_command() {
+    let sugar_config = sugar_setup(None, None).unwrap();
     let file = File::open("cache.json").unwrap();
     let cache: Cache = serde_json::from_reader(file).unwrap();
 
