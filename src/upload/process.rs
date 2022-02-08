@@ -38,9 +38,8 @@ pub fn process_upload(upload_args: UploadArgs) -> Result<()> {
     let cache_file_path = Path::new(&upload_args.cache);
 
     if !cache_file_path.exists() {
-        // error!(
-        //     sugar_config.logger,
-        //     "No cache file found at cache path: {cache_file_path:?}. Manually create one or run `sugar upload-assets`.");
+        error!(
+            "No cache file found at cache path: {cache_file_path:?}. Manually create one or run `sugar upload-assets`.");
         let cache_file_string = path_to_string(&cache_file_path)?;
         return Err(CacheError::CacheFileNotFound(cache_file_string).into());
     }
@@ -323,7 +322,7 @@ fn upload_config_lines(
             .progress_chars("##-"),
     );
 
-    println!("Config lines: {:?}", config_lines.len());
+    debug!("Num of config lines: {:?}", config_lines.len());
     info!("Uploading config lines in chunks...");
     config_lines
         .par_iter()
@@ -388,7 +387,6 @@ fn add_config_lines(
 
     // First index
     let index = chunk[0].0;
-    // let (index, config_line) = config_pair;
 
     for (_, line) in chunk {
         config_lines.push(ConfigLine {
@@ -396,10 +394,6 @@ fn add_config_lines(
             uri: line.uri.clone(),
         });
     }
-    // config_lines.push(ConfigLine {
-    //     name: config_line.name.clone(),
-    //     uri: config_line.uri.clone(),
-    // });
 
     let _sig = program
         .request()

@@ -8,9 +8,7 @@ use std::{
 };
 use tracing::subscriber::set_global_default;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
-use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
-
-use mpl_candy_machine::CandyMachineData;
+use tracing_subscriber::{self, filter::LevelFilter, prelude::*, EnvFilter};
 
 use sugar::cache::Cache;
 use sugar::candy_machine::{get_candy_machine_state, print_candy_machine_state};
@@ -23,28 +21,10 @@ use sugar::validate::{process_validate, ValidateArgs};
 use sugar::verify::{process_verify, VerifyArgs};
 use sugar::withdraw::{process_withdraw, WithdrawArgs};
 
-pub fn default_candy_data() -> CandyMachineData {
-    CandyMachineData {
-        uuid: String::default(),
-        price: u64::default(),
-        symbol: String::default(),
-        seller_fee_basis_points: u16::default(),
-        max_supply: u64::default(),
-        is_mutable: false,
-        retain_authority: false,
-        go_live_date: None,
-        end_settings: None,
-        creators: vec![],
-        hidden_settings: None,
-        whitelist_mint_settings: None,
-        items_available: 1000,
-        gatekeeper: None,
-    }
-}
-
-fn setup_logging(level: Option<EnvFilter>) {
+fn setup_logging(level: Option<EnvFilter>) -> Result<()> {
     // Log path; change this to be dynamic for multiple OSes.
-    let log_path = PathBuf::from("/home/cilantro/.config/sugar/sugar.log");
+    // Log in current directory for now.
+    let log_path = PathBuf::from("sugar.log");
 
     let file = OpenOptions::new()
         .write(true)
@@ -60,31 +40,38 @@ fn setup_logging(level: Option<EnvFilter>) {
     };
 
     let formatting_layer = BunyanFormattingLayer::new("sugar".into(), file);
+    // let debug_log = tracing_subscriber::fmt::layer().with_writer(Arc::new(file));
+    let stdout_layer = tracing_subscriber::fmt::layer().pretty();
 
-    let subscriber = Registry::default()
-        .with(env_filter)
+    let level_filter = LevelFilter::from_str(&env_filter.to_string())?;
+
+    let subscriber = tracing_subscriber::registry()
+        .with(stdout_layer.with_filter(level_filter))
         .with(formatting_layer)
         .with(JsonStorageLayer);
 
     set_global_default(subscriber).expect("Failed to set global default subscriber");
+
+    Ok(())
 }
 
 #[tokio::main(worker_threads = 4)]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    let log_level_error = Err(anyhow!(
+    let log_level_error: Result<()> = Err(anyhow!(
         "Invalid log level: {:?}.\n Valid levels are: trace, debug, info, warn, error.",
         cli.log_level
     ));
 
-    if let Some(env_filter) = cli.log_level {
-        match EnvFilter::try_new(env_filter) {
-            Ok(env_filter) => setup_logging(Some(env_filter)),
+    if let Some(user_filter) = cli.log_level {
+        let filter = match EnvFilter::from_str(&user_filter) {
+            Ok(filter) => filter,
             Err(_) => return log_level_error,
-        }
+        };
+        setup_logging(Some(filter))?;
     } else {
-        setup_logging(None);
+        setup_logging(None)?;
     }
 
     tracing::info!("Lend me some sugar, I am your neighbor.");
