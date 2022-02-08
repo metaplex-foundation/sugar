@@ -19,7 +19,7 @@ use sugar::upload::{process_upload, UploadArgs};
 use sugar::upload_assets::{process_upload_assets, UploadAssetsArgs};
 use sugar::validate::{process_validate, ValidateArgs};
 use sugar::verify::{process_verify, VerifyArgs};
-use sugar::withdraw::{process_withdraw, WithdrawArgs};
+use sugar::withdraw::{process_withdraw, process_withdraw_all, WithdrawAllArgs, WithdrawArgs};
 
 fn setup_logging(level: Option<EnvFilter>) -> Result<()> {
     // Log path; change this to be dynamic for multiple OSes.
@@ -124,6 +124,9 @@ async fn main() -> Result<()> {
             keypair,
             rpc_url,
         })?,
+        Commands::WithdrawAll { keypair, rpc_url } => {
+            process_withdraw_all(WithdrawAllArgs { keypair, rpc_url })?
+        }
         Commands::Verify {
             keypair,
             rpc_url,
