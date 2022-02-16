@@ -34,7 +34,7 @@ pub fn process_upload(args: UploadArgs) -> Result<()> {
         }
     };
 
-    let client = Arc::new(setup_client(&sugar_config).unwrap());
+    let client = Arc::new(setup_client(&sugar_config)?);
 
     let mut cache = load_cache(&args.cache)?;
     let config_data = get_config_data(&args.config)?;
