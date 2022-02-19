@@ -13,7 +13,7 @@ use tracing_subscriber::{self, filter::LevelFilter, prelude::*, EnvFilter};
 use sugar::cache::Cache;
 use sugar::candy_machine::{get_candy_machine_state, print_candy_machine_state};
 use sugar::cli::{Cli, Commands};
-use sugar::mint::{process_mint_one, MintOneArgs};
+use sugar::mint::{process_mint_multiple, process_mint_one, MintMultipleArgs, MintOneArgs};
 use sugar::setup::sugar_setup;
 use sugar::upload::{process_upload, UploadArgs};
 use sugar::upload_assets::{process_upload_assets, UploadAssetsArgs};
@@ -85,6 +85,17 @@ async fn main() -> Result<()> {
             keypair,
             rpc_url,
             cache,
+        })?,
+        Commands::MintMultiple {
+            keypair,
+            rpc_url,
+            cache,
+            number,
+        } => process_mint_multiple(MintMultipleArgs {
+            keypair,
+            rpc_url,
+            cache,
+            number,
         })?,
         Commands::Upload {
             assets_dir,

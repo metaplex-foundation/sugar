@@ -29,6 +29,25 @@ pub enum Commands {
         cache: String,
     },
 
+    /// Mint multiple NFTs from candy machine
+    MintMultiple {
+        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
+        #[clap(short, long)]
+        keypair: Option<String>,
+
+        /// RPC Url
+        #[clap(short, long)]
+        rpc_url: Option<String>,
+
+        /// Path to the cache file, defaults to "cache.json"
+        #[clap(long, default_value = "cache.json")]
+        cache: String,
+
+        /// Amount of NFTs to be minted in bulk
+        #[clap(short, long)]
+        number: u64,
+    },
+
     /// Upload assets to storage and then insert items into candy machine config
     Upload {
         /// Assets directory to upload, defaults to "assets"
