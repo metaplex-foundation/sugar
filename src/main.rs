@@ -81,10 +81,12 @@ async fn main() -> Result<()> {
             keypair,
             rpc_url,
             cache,
+            number,
         } => process_mint_one(MintOneArgs {
             keypair,
             rpc_url,
             cache,
+            number,
         })?,
         Commands::Upload {
             assets_dir,
