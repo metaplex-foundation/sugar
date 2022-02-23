@@ -26,14 +26,14 @@ use crate::candy_machine::*;
 use crate::common::*;
 use crate::mint::pdas::*;
 
-pub struct MintOneArgs {
+pub struct MintArgs {
     pub keypair: Option<String>,
     pub rpc_url: Option<String>,
     pub cache: String,
     pub number: Option<u64>,
 }
 
-pub fn process_mint_one(args: MintOneArgs) -> Result<()> {
+pub fn process_mint(args: MintArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let cache = load_cache(&args.cache)?;
     let client = Arc::new(setup_client(&sugar_config)?);
@@ -60,14 +60,14 @@ pub fn process_mint_one(args: MintOneArgs) -> Result<()> {
     info!("Candy machine program id: {:?}", CANDY_MACHINE_PROGRAM_ID);
 
     if number == 1 {
-        mint_one(
+        mint(
             Arc::clone(&client),
             candy_machine_id,
             Arc::clone(&candy_machine_state),
         )?;
     } else {
         for _n in 1..=number {
-            mint_one(
+            mint(
                 Arc::clone(&client),
                 candy_machine_id,
                 Arc::clone(&candy_machine_state),
@@ -78,7 +78,7 @@ pub fn process_mint_one(args: MintOneArgs) -> Result<()> {
     Ok(())
 }
 
-pub fn mint_one(
+pub fn mint(
     client: Arc<Client>,
     candy_machine_id: Pubkey,
     candy_machine_state: Arc<CandyMachine>,
