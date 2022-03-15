@@ -69,11 +69,6 @@ pub fn process_mint(args: MintArgs) -> Result<()> {
         )?;
     } else {
         let pb = ProgressBar::new(number as u64);
-        // pb.set_style(
-        //     ProgressStyle::default_bar()
-        //         .template("[{percent}] {bar:40.cyan/blue}")
-        //         .progress_chars("##-"),
-        // );
 
         (0..number).into_iter().for_each(|_num| {
             match mint(
@@ -91,9 +86,6 @@ pub fn process_mint(args: MintArgs) -> Result<()> {
                 }
             }
         });
-
-        //timer here
-
         thread::sleep(Duration::from_millis(1000));
     }
 
