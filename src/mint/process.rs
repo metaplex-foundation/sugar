@@ -31,7 +31,7 @@ pub struct MintArgs {
     pub keypair: Option<String>,
     pub rpc_url: Option<String>,
     pub cache: String,
-    pub number: Option<i32>,
+    pub number: Option<u64>,
 }
 
 pub fn process_mint(args: MintArgs) -> Result<()> {
@@ -68,7 +68,7 @@ pub fn process_mint(args: MintArgs) -> Result<()> {
             Arc::clone(&candy_machine_state),
         )?;
     } else {
-        let pb = ProgressBar::new(number as u64);
+        let pb = ProgressBar::new(number);
 
         (0..number).into_iter().for_each(|_num| {
             match mint(
@@ -313,6 +313,5 @@ pub fn mint(
 
     info!("Minted! TxId: {}", sig);
     info!("Cleanup TxId: {}", sig2);
-    // println!("Minted! TxId: {}", sig);
     Ok(())
 }

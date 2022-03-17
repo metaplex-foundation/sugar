@@ -76,7 +76,6 @@ pub fn process_withdraw_all(args: WithdrawAllArgs) -> Result<()> {
     let accounts = program
         .rpc()
         .get_program_accounts_with_config(&program.id(), config)?;
-    println!("{:?}", accounts);
 
     let pb = ProgressBar::new(accounts.len() as u64);
 

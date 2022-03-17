@@ -30,7 +30,7 @@ pub enum Commands {
 
         /// Amount of NFTs to be minted in bulk
         #[clap(short, long)]
-        number: Option<i32>,
+        number: Option<u64>,
     },
 
     Update {
