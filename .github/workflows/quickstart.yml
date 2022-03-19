@@ -7,6 +7,7 @@ jobs:
     name: Check
     runs-on: ubuntu-latest
     steps:
+      - run: apt-get install libudev-dev
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
@@ -21,6 +22,7 @@ jobs:
     name: Test Suite
     runs-on: ubuntu-latest
     steps:
+      - run: apt-get install libudev-dev
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
@@ -51,6 +53,7 @@ jobs:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
+      - run: apt-get install libudev-dev
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
