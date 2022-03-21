@@ -48,7 +48,6 @@ pub const CONFIG_LINE_SIZE: usize = 4 + MAX_NAME_LENGTH + 4 + MAX_URI_LENGTH;
 
 pub const CONFIG_CHUNK_SIZE: usize = 10;
 
-/// Default length (in bytes) of a config line.
 pub const CONFIG_NAME_OFFSET: usize = 2;
 
 pub const CONFIG_URI_OFFSET: usize = 40;
