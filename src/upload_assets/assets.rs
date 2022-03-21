@@ -187,7 +187,7 @@ pub fn get_asset_pairs(assets_dir: &str) -> Result<HashMap<usize, AssetPair>> {
     let files = fs::read_dir(assets_dir)?
         .filter_map(|entry| entry.ok())
         .filter(|entry| {
-            !entry.file_name().to_str().unwrap().starts_with(".")
+            !entry.file_name().to_str().unwrap().starts_with('.')
                 && entry.metadata().unwrap().is_file()
         });
 
