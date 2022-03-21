@@ -21,9 +21,7 @@ pub async fn process_upload_assets(args: UploadAssetsArgs) -> Result<()> {
     let http_client = reqwest::Client::new();
     let client = setup_client(&sugar_config)?;
 
-    let pid = CANDY_MACHINE_V2
-        .parse()
-        .expect("Failed to parse PID");
+    let pid = CANDY_MACHINE_V2.parse().expect("Failed to parse PID");
     let program = client.program(pid);
 
     // Get keypair as base58 string for Bundlr.
@@ -62,7 +60,8 @@ pub async fn process_upload_assets(args: UploadAssetsArgs) -> Result<()> {
 
     // (1) Funds the bundlr wallet for media upload
 
-    println!("{} {}Funding Bundlr wallet to upload media",
+    println!(
+        "{} {}Funding Bundlr wallet to upload media",
         style("[1/5]").bold().dim(),
         CARD_EMOJI
     );
@@ -123,7 +122,8 @@ pub async fn process_upload_assets(args: UploadAssetsArgs) -> Result<()> {
 
     // (3) Funds Bundlr wallet for metadata upload
 
-    println!("\n{} {}Funding Bundlr wallet to upload metadata",
+    println!(
+        "\n{} {}Funding Bundlr wallet to upload metadata",
         style("[3/5]").bold().dim(),
         CARD_EMOJI
     );
@@ -147,7 +147,8 @@ pub async fn process_upload_assets(args: UploadAssetsArgs) -> Result<()> {
 
     // (4) Uploads metadata to bundlr
 
-    println!("\n{} {}Uploading metadata to Bundlr",
+    println!(
+        "\n{} {}Uploading metadata to Bundlr",
         style("[4/5]").bold().dim(),
         UPLOAD_EMOJI
     );
@@ -164,7 +165,8 @@ pub async fn process_upload_assets(args: UploadAssetsArgs) -> Result<()> {
 
     // (5) Creates/updates cache file
 
-    println!("\n{} {}Preparing cache file",
+    println!(
+        "\n{} {}Preparing cache file",
         style("[5/5]").bold().dim(),
         PAPER_EMOJI
     );

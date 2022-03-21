@@ -63,12 +63,8 @@ pub fn process_mint(args: MintArgs) -> Result<()> {
     let number = args.number.unwrap_or(1);
     let available = candy_machine_state.data.items_available - candy_machine_state.items_redeemed;
 
-    if number > available || number <= 0 {
-        let error = anyhow!(
-            "{} item(s) available, requested {}",
-            available,
-            number
-        );
+    if number > available || number == 0 {
+        let error = anyhow!("{} item(s) available, requested {}", available, number);
         error!("{:?}", error);
         return Err(error);
     }
@@ -101,7 +97,8 @@ pub fn process_mint(args: MintArgs) -> Result<()> {
             Arc::clone(&client),
             candy_machine_id,
             Arc::clone(&candy_machine_state),
-        ).ok();
+        )
+        .ok();
 
         pb.finish_and_clear();
     } else {
@@ -112,7 +109,8 @@ pub fn process_mint(args: MintArgs) -> Result<()> {
                 Arc::clone(&client),
                 candy_machine_id,
                 Arc::clone(&candy_machine_state),
-            ).ok();
+            )
+            .ok();
             pb.inc(1);
         });
         pb.finish();
