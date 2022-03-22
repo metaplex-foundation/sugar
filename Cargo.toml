@@ -44,3 +44,5 @@ tokio = "1.15.0"
 tracing = { version = "0.1", features = ["log"] }
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
 tracing-bunyan-formatter = "0.3"
+requestty = "0.3.0"
+dialoguer = "0.10.0"

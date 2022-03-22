@@ -15,3 +15,4 @@ pub mod upload_assets;
 pub mod validate;
 pub mod verify;
 pub mod withdraw;
+pub mod interactive;
