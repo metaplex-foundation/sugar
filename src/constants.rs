@@ -77,7 +77,7 @@ pub const BUNDLR_MAINNET: &str = "https://node1.bundlr.network";
 /// Default RPC endpoint for devnet.
 pub const DEFAULT_RPC_DEVNET: &str = "https://psytrbhymqlkfrhudd.dev.genesysgo.net:8899/";
 
-pub const LOOKING_GLASS_EMOJI: Emoji<'_, '_> = Emoji("🔍  ", "");
+pub const LOOKING_GLASS_EMOJI: Emoji<'_, '_> = Emoji("🔍 ", "");
 
 pub const CANDY_EMOJI: Emoji<'_, '_> = Emoji("🍬 ", "");
 
@@ -85,4 +85,6 @@ pub const CARD_EMOJI: Emoji<'_, '_> = Emoji("💳 ", "");
 
 pub const PAPER_EMOJI: Emoji<'_, '_> = Emoji("📃 ", "");
 
-pub const UPLOAD_EMOJI: Emoji<'_, '_> = Emoji("⬆️  ", "");
+pub const UPLOAD_EMOJI: Emoji<'_, '_> = Emoji("⬆️ ", "");
+
+pub const CONFETTI_EMOJI: Emoji<'_, '_> = Emoji("🎉 ", "");

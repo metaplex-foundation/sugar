@@ -1,4 +1,4 @@
-use crate::common::sugar_setup;
+use crate::common::{sugar_setup, CANDY_EMOJI, CONFETTI_EMOJI};
 use crate::config::{
     go_live_date_as_timestamp, ConfigData, EndSettingType, EndSettings, GatekeeperConfig,
     HiddenSettings, UploadMethod, WhitelistMintMode, WhitelistMintSettings,
@@ -60,6 +60,25 @@ pub fn process_interactive() -> Result<()> {
     };
 
     let sugar_config = sugar_setup(None, None)?;
+
+    println!(
+        "{}{} {}",
+        CANDY_EMOJI,
+        style("Sugar Interactive Config Maker")
+            .bold()
+            .cyan()
+            .underlined(),
+        CANDY_EMOJI
+    );
+    println!(
+        "{}{}{}\n",
+        style("Check out our Candy Machine config docs at ").magenta(),
+        style("https://docs.metaplex.com/candy-machine-v2/configuration")
+            .bold()
+            .underlined()
+            .magenta(),
+        style(" to learn about the options!").magenta()
+    );
 
     config.price = Input::with_theme(&theme)
         .with_prompt("What is the price of each NFT?")
@@ -314,32 +333,44 @@ pub fn process_interactive() -> Result<()> {
         2 => UploadMethod::Metaplex,
         _ => UploadMethod::Bundlr,
     };
-
-    config.retain_authority = Confirm::with_theme(&theme).with_prompt("Do you want to retain update authority on your NFTs? We HIGHLY reccomend you choose yes! If you choose no, update authority will be transfered to the user that mints the NFT.").interact()?;
-    config.is_mutable = Confirm::with_theme(&theme).with_prompt("Do you want your NFTs to remain mutable? We HIGHLY reccomend you choose yes! If you choose no, you will never be able to update your NFTs EVER!").interact()?;
+    config.retain_authority = Confirm::with_theme(&theme).with_prompt("Do you want to retain update authority on your NFTs? We HIGHLY reccomend you choose yes!").interact()?;
+    config.is_mutable = Confirm::with_theme(&theme)
+        .with_prompt("Do you want your NFTs to remain mutable? We HIGHLY reccomend you choose yes!")
+        .interact()?;
 
     let file = OpenOptions::new()
         .write(true)
         .create_new(true)
         .open("./config.json");
-
     match file {
         Err(_) => {
             println!(
                 "{}",
-                style("Error creating config file! Logging config to console!")
+                style("Error creating config file! Logging config to console!\n")
                     .bold()
-                    .dim()
+                    .red()
             );
             println!(
                 "{}",
-                serde_json::to_string_pretty(&config).expect("Unable to convert config to JSON!")
+                style(
+                    serde_json::to_string_pretty(&config)
+                        .expect("Unable to convert config to JSON!")
+                )
+                .red()
             );
         }
         Ok(mut f) => {
-            println!("{}", style("Saving config info file...").bold().dim());
+            println!("{}", style("Saving config info file...").dim());
             serde_json::to_writer_pretty(&mut f, &config)
                 .expect("Unable to convert config to JSON!");
+            println!(
+                "{}{} {}",
+                CONFETTI_EMOJI,
+                style("Successfully generated the config file!")
+                    .bold()
+                    .green(),
+                CONFETTI_EMOJI
+            )
         }
     }
     Ok(())
