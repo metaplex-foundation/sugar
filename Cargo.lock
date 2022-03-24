@@ -4433,6 +4433,7 @@ dependencies = [
  "tracing",
  "tracing-bunyan-formatter",
  "tracing-subscriber",
+ "url",
 ]
 
 [[package]]

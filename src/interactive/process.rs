@@ -7,9 +7,12 @@ use crate::{constants::DEFAULT_ASSETS, upload_assets::count_files};
 use anchor_client::solana_sdk::signer::Signer;
 use anchor_lang::prelude::Pubkey;
 use anyhow::Result;
+use console::style;
 use dialoguer::Confirm;
 use dialoguer::{theme::ColorfulTheme, Input, MultiSelect, Select};
+use std::fs::OpenOptions;
 use std::str::FromStr;
+use url::Url;
 
 pub fn process_interactive() -> Result<()> {
     let mut config: ConfigData = ConfigData::default();
@@ -41,6 +44,16 @@ pub fn process_interactive() -> Result<()> {
     let date_validator = |input: &String| -> Result<(), String> {
         if go_live_date_as_timestamp(input).is_err() {
             Err(format!("Couldn't parse input of '{}' to a date!", input))
+        } else {
+            Ok(())
+        }
+    };
+    let url_validator = |input: &String| -> Result<(), String> {
+        if Url::parse(input).is_err() {
+            Err(format!(
+                "Couldn't parse input of '{}' to a valid uri!",
+                input
+            ))
         } else {
             Ok(())
         }
@@ -269,6 +282,7 @@ pub fn process_interactive() -> Result<()> {
                     Ok(())
                 }
             })
+            .validate_with(url_validator)
             .interact()
             .unwrap();
         let hash = Input::with_theme(&theme)
@@ -304,10 +318,29 @@ pub fn process_interactive() -> Result<()> {
     config.retain_authority = Confirm::with_theme(&theme).with_prompt("Do you want to retain update authority on your NFTs? We HIGHLY reccomend you choose yes! If you choose no, update authority will be transfered to the user that mints the NFT.").interact()?;
     config.is_mutable = Confirm::with_theme(&theme).with_prompt("Do you want your NFTs to remain mutable? We HIGHLY reccomend you choose yes! If you choose no, you will never be able to update your NFTs EVER!").interact()?;
 
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&config)
-            .expect("Failed to deserialize the config into a json!")
-    );
+    let file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open("./config.json");
+
+    match file {
+        Err(_) => {
+            println!(
+                "{}",
+                style("Error creating config file! Logging config to console!")
+                    .bold()
+                    .dim()
+            );
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&config).expect("Unable to convert config to JSON!")
+            );
+        }
+        Ok(mut f) => {
+            println!("{}", style("Saving config info file...").bold().dim());
+            serde_json::to_writer_pretty(&mut f, &config)
+                .expect("Unable to convert config to JSON!");
+        }
+    }
     Ok(())
 }

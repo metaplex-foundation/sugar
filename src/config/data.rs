@@ -27,45 +27,36 @@ pub struct SolanaConfig {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct ConfigData {
     pub price: f64,
     pub number: u64,
     pub gatekeeper: Option<GatekeeperConfig>,
 
-    #[serde(rename = "solTreasuryAccount")]
     #[serde(deserialize_with = "to_pubkey")]
     #[serde(serialize_with = "to_string")]
     pub sol_treasury_account: Pubkey,
 
-    #[serde(rename = "splTokenAccount")]
     #[serde(deserialize_with = "to_option_pubkey")]
     #[serde(serialize_with = "to_option_string")]
     pub spl_token_account: Option<Pubkey>,
 
-    #[serde(rename = "splToken")]
     #[serde(deserialize_with = "to_option_pubkey")]
     #[serde(serialize_with = "to_option_string")]
     pub spl_token: Option<Pubkey>,
 
-    #[serde(rename = "goLiveDate")]
     pub go_live_date: String,
 
-    #[serde(rename = "endSettings")]
     pub end_settings: Option<EndSettings>,
 
-    #[serde(rename = "whitelistMintSettings")]
     pub whitelist_mint_settings: Option<WhitelistMintSettings>,
 
-    #[serde(rename = "hiddenSettings")]
     pub hidden_settings: Option<HiddenSettings>,
 
-    #[serde(rename = "uploadMethod")]
     pub upload_method: UploadMethod,
 
-    #[serde(rename = "retainAuthority")]
     pub retain_authority: bool,
 
-    #[serde(rename = "isMutable")]
     pub is_mutable: bool,
 }
 
@@ -122,6 +113,7 @@ fn discount_price_to_lamports(discount_price: Option<f64>) -> Option<u64> {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GatekeeperConfig {
     /// The network for the gateway token required
     #[serde(serialize_with = "to_string")]
@@ -155,6 +147,7 @@ pub enum EndSettingType {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EndSettings {
+    #[serde(rename = "endSettingType")]
     end_setting_type: EndSettingType,
     number: u64,
 }
@@ -178,13 +171,13 @@ impl EndSettings {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WhitelistMintSettings {
     mode: WhitelistMintMode,
     #[serde(deserialize_with = "to_pubkey")]
     #[serde(serialize_with = "to_string")]
     mint: Pubkey,
     presale: bool,
-    #[serde(rename = "discountPrice")]
     discount_price: Option<f64>,
 }
 
