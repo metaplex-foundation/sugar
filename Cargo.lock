@@ -1128,31 +1128,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "crossterm"
-version = "0.22.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c85525306c4291d1b73ce93c8acf9c339f9b213aef6c1d85c3830cbf1c16325c"
-dependencies = [
- "bitflags",
- "crossterm_winapi",
- "libc",
- "mio 0.7.14",
- "parking_lot 0.11.2",
- "signal-hook",
- "signal-hook-mio",
- "winapi 0.3.9",
-]
-
-[[package]]
-name = "crossterm_winapi"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ae1b35a484aa10e07fe0638d02301c5ad24de82d310ccbd2f3693da5f09bf1c"
-dependencies = [
- "winapi 0.3.9",
-]
-
-[[package]]
 name = "crunchy"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3270,29 +3245,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "requestty"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fdf30b6cd04b06b4b74763149e10e90f13fc824e3705ac6c21f0946dffa9cbcf"
-dependencies = [
- "requestty-ui",
- "smallvec",
- "tempfile",
-]
-
-[[package]]
-name = "requestty-ui"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9618a4542dec181c091b871699197a85e1e2e07a56c9e38a7d41cb238b92c52b"
-dependencies = [
- "bitflags",
- "crossterm",
- "textwrap 0.14.2",
- "unicode-segmentation",
-]
-
-[[package]]
 name = "reqwest"
 version = "0.11.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3650,27 +3602,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "signal-hook"
-version = "0.3.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "647c97df271007dcea485bb74ffdb57f2e683f1306c854f468a0c244badabf2d"
-dependencies = [
- "libc",
- "signal-hook-registry",
-]
-
-[[package]]
-name = "signal-hook-mio"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29fd5867f1c4f2c5be079aee7a2adf1152ebb04a4bc4d341f504b7dece607ed4"
-dependencies = [
- "libc",
- "mio 0.7.14",
- "signal-hook",
-]
-
-[[package]]
 name = "signal-hook-registry"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3696,12 +3627,6 @@ name = "smallvec"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2dd574626839106c320a323308629dcb1acfc96e32a8cba364ddc61ac23ee83"
-
-[[package]]
-name = "smawk"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f67ad224767faa3c7d8b6d91985b78e70a1324408abcb1cfcc2be4c06bc06043"
 
 [[package]]
 name = "socket2"
@@ -4493,7 +4418,6 @@ dependencies = [
  "rand 0.7.3",
  "rayon",
  "regex 1.5.4",
- "requestty",
  "reqwest",
  "serde 1.0.136",
  "serde_json 1.0.78",
@@ -4609,11 +4533,6 @@ name = "textwrap"
 version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0066c8d12af8b5acd21e00547c3797fde4e8677254a7ee429176ccebbe93dd80"
-dependencies = [
- "smawk",
- "unicode-linebreak",
- "unicode-width",
-]
 
 [[package]]
 name = "thiserror"
@@ -4948,15 +4867,6 @@ name = "unicode-bidi"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a01404663e3db436ed2746d9fefef640d868edae3cceb81c3b8d5732fda678f"
-
-[[package]]
-name = "unicode-linebreak"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a52dcaab0c48d931f7cc8ef826fa51690a08e1ea55117ef26f89864f532383f"
-dependencies = [
- "regex 1.5.4",
-]
 
 [[package]]
 name = "unicode-normalization"
