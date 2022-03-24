@@ -85,8 +85,6 @@ pub const COMPUTER_EMOJI: Emoji<'_, '_> = Emoji("🖥  ", "");
 
 pub const PAPER_EMOJI: Emoji<'_, '_> = Emoji("📝 ", "");
 
-pub const UPLOAD_EMOJI: Emoji<'_, '_> = Emoji("⬆️ ", "");
-
 pub const CONFETTI_EMOJI: Emoji<'_, '_> = Emoji("🎉 ", "");
 
 pub const PAYMENT_EMOJI: Emoji<'_, '_> = Emoji("💵 ", "");
