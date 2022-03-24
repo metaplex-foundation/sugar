@@ -11,10 +11,10 @@ use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::{self, filter::LevelFilter, prelude::*, EnvFilter};
 
 use sugar_cli::cache::Cache;
-use sugar_cli::interactive::process_interactive;
 use sugar_cli::candy_machine::{get_candy_machine_state, print_candy_machine_state};
 use sugar_cli::cli::{Cli, Commands};
 use sugar_cli::constants::DEFAULT_CACHE;
+use sugar_cli::interactive::process_interactive;
 use sugar_cli::mint::{process_mint, MintArgs};
 use sugar_cli::setup::sugar_setup;
 use sugar_cli::update::{process_update, UpdateArgs};

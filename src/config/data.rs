@@ -1,7 +1,8 @@
 use anchor_client::solana_sdk::signature::Keypair;
 use anchor_client::solana_sdk::{native_token::LAMPORTS_PER_SOL, pubkey::Pubkey};
 use anyhow::Result;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::fmt::Display;
 use std::str::FromStr;
 
 use mpl_candy_machine::{
@@ -25,7 +26,7 @@ pub struct SolanaConfig {
     pub commitment: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct ConfigData {
     pub price: f64,
     pub number: u64,
@@ -33,14 +34,17 @@ pub struct ConfigData {
 
     #[serde(rename = "solTreasuryAccount")]
     #[serde(deserialize_with = "to_pubkey")]
+    #[serde(serialize_with = "to_string")]
     pub sol_treasury_account: Pubkey,
 
     #[serde(rename = "splTokenAccount")]
     #[serde(deserialize_with = "to_option_pubkey")]
+    #[serde(serialize_with = "to_option_string")]
     pub spl_token_account: Option<Pubkey>,
 
     #[serde(rename = "splToken")]
     #[serde(deserialize_with = "to_option_pubkey")]
+    #[serde(serialize_with = "to_option_string")]
     pub spl_token: Option<Pubkey>,
 
     #[serde(rename = "goLiveDate")]
@@ -65,6 +69,24 @@ pub struct ConfigData {
     pub is_mutable: bool,
 }
 
+pub fn to_string<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+where
+    T: Display,
+    S: Serializer,
+{
+    serializer.collect_str(value)
+}
+
+pub fn to_option_string<T, S>(value: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    T: Display,
+    S: Serializer,
+{
+    match value {
+        Some(v) => serializer.collect_str(&v),
+        None => serializer.serialize_none(),
+    }
+}
 pub fn go_live_date_as_timestamp(go_live_date: &str) -> Result<i64> {
     let go_live_date = chrono::DateTime::parse_from_rfc3339(go_live_date)?;
     Ok(go_live_date.timestamp())
@@ -102,6 +124,7 @@ fn discount_price_to_lamports(discount_price: Option<f64>) -> Option<u64> {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GatekeeperConfig {
     /// The network for the gateway token required
+    #[serde(serialize_with = "to_string")]
     gatekeeper_network: Pubkey,
     /// Whether or not the token should expire after minting.
     /// The gatekeeper network must support this if true.
@@ -109,6 +132,13 @@ pub struct GatekeeperConfig {
 }
 
 impl GatekeeperConfig {
+    pub fn new(gatekeeper_network: Pubkey, expire_on_use: bool) -> GatekeeperConfig {
+        GatekeeperConfig {
+            gatekeeper_network,
+            expire_on_use,
+        }
+    }
+
     pub fn into_candy_format(&self) -> CandyGatekeeperConfig {
         CandyGatekeeperConfig {
             gatekeeper_network: self.gatekeeper_network,
@@ -130,6 +160,12 @@ pub struct EndSettings {
 }
 
 impl EndSettings {
+    pub fn new(end_setting_type: EndSettingType, number: u64) -> EndSettings {
+        EndSettings {
+            end_setting_type,
+            number,
+        }
+    }
     pub fn into_candy_format(&self) -> CandyEndSettings {
         CandyEndSettings {
             end_setting_type: match self.end_setting_type {
@@ -145,6 +181,7 @@ impl EndSettings {
 pub struct WhitelistMintSettings {
     mode: WhitelistMintMode,
     #[serde(deserialize_with = "to_pubkey")]
+    #[serde(serialize_with = "to_string")]
     mint: Pubkey,
     presale: bool,
     #[serde(rename = "discountPrice")]
@@ -152,6 +189,19 @@ pub struct WhitelistMintSettings {
 }
 
 impl WhitelistMintSettings {
+    pub fn new(
+        mode: WhitelistMintMode,
+        mint: Pubkey,
+        presale: bool,
+        discount_price: Option<f64>,
+    ) -> WhitelistMintSettings {
+        WhitelistMintSettings {
+            mode,
+            mint,
+            presale,
+            discount_price,
+        }
+    }
     pub fn into_candy_format(&self) -> CandyWhitelistMintSettings {
         CandyWhitelistMintSettings {
             mode: self.mode.into_candy_format(),
@@ -194,15 +244,18 @@ impl FromStr for WhitelistMintMode {
 pub struct HiddenSettings {
     name: String,
     uri: String,
-    hash: [u8; 32],
+    hash: String,
 }
 
 impl HiddenSettings {
+    pub fn new(name: String, uri: String, hash: String) -> HiddenSettings {
+        HiddenSettings { name, uri, hash }
+    }
     pub fn into_candy_format(&self) -> CandyHiddenSettings {
         CandyHiddenSettings {
             name: self.name.clone(),
             uri: self.uri.clone(),
-            hash: self.hash,
+            hash: self.hash.as_bytes().try_into().expect("Hidden settings hash is the not 32 characters!"),
         }
     }
 }
@@ -212,6 +265,12 @@ pub enum UploadMethod {
     Metaplex,
     Bundlr,
     Arloader,
+}
+
+impl Default for UploadMethod {
+    fn default() -> UploadMethod {
+        UploadMethod::Bundlr
+    }
 }
 
 impl FromStr for UploadMethod {
