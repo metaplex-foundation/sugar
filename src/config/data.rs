@@ -255,7 +255,11 @@ impl HiddenSettings {
         CandyHiddenSettings {
             name: self.name.clone(),
             uri: self.uri.clone(),
-            hash: self.hash.as_bytes().try_into().expect("Hidden settings hash is the not 32 characters!"),
+            hash: self
+                .hash
+                .as_bytes()
+                .try_into()
+                .expect("Hidden settings hash is the not 32 characters!"),
         }
     }
 }

@@ -1,7 +1,7 @@
 use crate::common::sugar_setup;
 use crate::config::{
     go_live_date_as_timestamp, ConfigData, EndSettingType, EndSettings, GatekeeperConfig,
-    UploadMethod, WhitelistMintMode, WhitelistMintSettings, HiddenSettings,
+    HiddenSettings, UploadMethod, WhitelistMintMode, WhitelistMintSettings,
 };
 use crate::{constants::DEFAULT_ASSETS, upload_assets::count_files};
 use anchor_client::solana_sdk::signer::Signer;
@@ -310,5 +310,4 @@ pub fn process_interactive() -> Result<()> {
             .expect("Failed to deserialize the config into a json!")
     );
     Ok(())
-
 }
