@@ -100,10 +100,10 @@ pub fn process_interactive() -> Result<()> {
 		(num_files.unwrap() / 2) as u64
 	} else {
 		Input::with_theme(&theme)
-				.with_prompt("How many NFTs will you have in your candy machine?")
-				.validate_with(number_validator)
-				.interact()
-				.unwrap().parse::<u64>().expect("Failed to parse number into u64 that should have already been validated.")
+            .with_prompt("How many NFTs will you have in your candy machine?")
+            .validate_with(number_validator)
+            .interact()
+            .unwrap().parse::<u64>().expect("Failed to parse number into u64 that should have already been validated.")
 	};
 
     config.go_live_date = Input::with_theme(&theme)
@@ -137,10 +137,10 @@ pub fn process_interactive() -> Result<()> {
         let encore_network =
             Pubkey::from_str("tibePmPaoTgrs929rWpu755EXaxC7M3SthVCf6GzjZt").unwrap();
         let selection = Select::with_theme(&theme)
-				.with_prompt("Which gatekeeper do you want to use? Check https://docs.metaplex.com/candy-machine-v2/configuration#provider-networks for more info.")
-				.items(&gatekeeper_options)
-				.default(0)
-				.interact()?;
+            .with_prompt("Which gatekeeper do you want to use? Check https://docs.metaplex.com/candy-machine-v2/configuration#provider-networks for more info.")
+            .items(&gatekeeper_options)
+            .default(0)
+            .interact()?;
         let gatekeeper_network = match selection {
             0 => civic_network,
             1 => encore_network,
@@ -148,7 +148,7 @@ pub fn process_interactive() -> Result<()> {
         };
 
         let expire_on_use = Confirm::with_theme(&theme)
-				.with_prompt("To help prevent bots even more, do you want to expire the gateway token on each mint?").interact()?;
+            .with_prompt("To help prevent bots even more, do you want to expire the gateway token on each mint?").interact()?;
         Some(GatekeeperConfig::new(gatekeeper_network, expire_on_use))
     } else {
         None
@@ -169,12 +169,12 @@ pub fn process_interactive() -> Result<()> {
         config.spl_token_account = Some(
 			Pubkey::from_str(
 				&Input::with_theme(&theme)
-						.with_prompt("What is your SPL token account address (the account that will hold the SPL token mints)?")
-						.validate_with(pubkey_validator)
-						.interact()
-						.unwrap(),
+                    .with_prompt("What is your SPL token account address (the account that will hold the SPL token mints)?")
+                    .validate_with(pubkey_validator)
+                    .interact()
+                    .unwrap(),
 			)
-					.expect("Failed to parse string into pubkey that should have already been validated."),
+            .expect("Failed to parse string into pubkey that should have already been validated."),
 		)
     } else {
         config.spl_token = None;
