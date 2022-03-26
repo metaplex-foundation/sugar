@@ -252,7 +252,7 @@ impl HiddenSettings {
                 .hash
                 .as_bytes()
                 .try_into()
-                .expect("Hidden settings hash is the not 32 characters!"),
+                .expect("Hidden settings hash has to be 32 characters long!"),
         }
     }
 }

@@ -7,16 +7,21 @@ use crate::{constants::DEFAULT_ASSETS, upload_assets::count_files};
 use anchor_client::solana_sdk::signer::Signer;
 use anchor_lang::prelude::Pubkey;
 use anyhow::Result;
-use console::style;
+use console::{style, Style};
 use dialoguer::Confirm;
 use dialoguer::{theme::ColorfulTheme, Input, MultiSelect, Select};
 use std::fs::OpenOptions;
+use std::path::Path;
 use std::str::FromStr;
 use url::Url;
 
-pub fn process_interactive() -> Result<()> {
+pub fn process_create_config() -> Result<()> {
     let mut config: ConfigData = ConfigData::default();
-    let theme = ColorfulTheme::default();
+    let theme = ColorfulTheme {
+        prompt_style: Style::new(),
+        ..Default::default()
+    };
+
     let pubkey_validator = |input: &String| -> Result<(), String> {
         if Pubkey::from_str(input).is_err() {
             Err(format!("Couldn't parse input of '{}' to a pubkey!", input))
@@ -321,7 +326,7 @@ pub fn process_interactive() -> Result<()> {
     };
 
     let upload_options = vec!["Bundlr", "Arloader", "Metaplex"];
-    config.upload_method = match Select::with_theme(&ColorfulTheme::default())
+    config.upload_method = match Select::with_theme(&theme)
         .with_prompt("What upload method do you want to use?")
         .items(&upload_options)
         .default(0)
@@ -338,40 +343,67 @@ pub fn process_interactive() -> Result<()> {
         .with_prompt("Do you want your NFTs to remain mutable? We HIGHLY reccomend you choose yes!")
         .interact()?;
 
-    let file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open("./config.json");
-    match file {
-        Err(_) => {
-            println!(
-                "{}",
-                style("Error creating config file! Logging config to console!\n")
-                    .bold()
-                    .red()
-            );
-            println!(
-                "{}",
-                style(
-                    serde_json::to_string_pretty(&config)
-                        .expect("Unable to convert config to JSON!")
-                )
-                .red()
-            );
-        }
-        Ok(mut f) => {
-            println!("{}", style("Saving config info file...").dim());
-            serde_json::to_writer_pretty(&mut f, &config)
-                .expect("Unable to convert config to JSON!");
-            println!(
-                "{}{} {}",
-                CONFETTI_EMOJI,
-                style("Successfully generated the config file!")
-                    .bold()
-                    .green(),
-                CONFETTI_EMOJI
-            )
-        }
+    println!();
+    let mut save_file = true;
+    if Path::new("./config.json").is_file() {
+        save_file = Select::with_theme(&theme)
+            .with_prompt("The file \"config.json\" already exists in the current directory! Do you want to overwrite it with the new config or log the new config to the console?")
+            .items(&["Overwrite the file", "Log to console"])
+            .default(0)
+            .interact()
+            .unwrap() == 0;
+        println!();
     }
+
+    if save_file {
+        let file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open("./config.json");
+
+        match file {
+            Ok(f) => {
+                println!("{}", style("Saving config info file...").dim());
+                serde_json::to_writer_pretty(f, &config)
+                    .expect("Unable to convert config to JSON!");
+                println!(
+                    "{}{} {}",
+                    CONFETTI_EMOJI,
+                    style("Successfully generated the config file!")
+                        .bold()
+                        .green(),
+                    CONFETTI_EMOJI
+                )
+            }
+
+            Err(_) => {
+                println!(
+                    "{}",
+                    style("Error creating config file! Logging config to console!\n")
+                        .bold()
+                        .red()
+                );
+                println!(
+                    "{}",
+                    style(
+                        serde_json::to_string_pretty(&config)
+                            .expect("Unable to convert config to JSON!")
+                    )
+                    .red()
+                );
+            }
+        }
+    } else {
+        println!("{}", style("Logging config to console!\n").dim());
+        println!(
+            "{}",
+            style(
+                serde_json::to_string_pretty(&config).expect("Unable to convert config to JSON!")
+            )
+            .green()
+        );
+    }
+
     Ok(())
 }

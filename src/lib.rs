@@ -6,7 +6,7 @@ pub mod config;
 pub mod constants;
 pub mod data;
 pub mod errors;
-pub mod interactive;
+pub mod create_config;
 pub mod mint;
 pub mod parse;
 pub mod setup;

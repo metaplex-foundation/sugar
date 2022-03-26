@@ -18,7 +18,7 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Commands {
     /// Interactive process to create the config file
-    Interactive,
+    CreateConfig,
 
     /// Mint one NFT from candy machine
     Mint {
