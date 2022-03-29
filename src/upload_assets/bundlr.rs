@@ -251,7 +251,7 @@ impl UploadHandler for BundlrHandler {
             .await?;
 
             let pb = ProgressBar::new(MAX_RETRY);
-            pb.set_style(ProgressStyle::default_bar().template("{msg} {spinner} {wide_bar}"));
+            pb.set_style(ProgressStyle::default_bar().template("{spinner} {msg} {wide_bar}"));
             pb.enable_steady_tick(60);
             pb.set_message("Verifying balance:");
 
