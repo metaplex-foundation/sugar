@@ -12,6 +12,7 @@ pub mod setup;
 pub mod update;
 pub mod upload;
 pub mod upload_assets;
+pub mod utils;
 pub mod validate;
 pub mod verify;
 pub mod withdraw;

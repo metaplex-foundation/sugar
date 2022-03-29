@@ -105,19 +105,20 @@ async fn main() -> Result<()> {
         })?,
         Commands::Upload {
             assets_dir,
-            arloader_manifest,
             config,
             keypair,
             rpc_url,
             cache,
-        } => process_upload(UploadArgs {
-            assets_dir,
-            arloader_manifest,
-            config,
-            keypair,
-            rpc_url,
-            cache,
-        })?,
+        } => {
+            process_upload(UploadArgs {
+                assets_dir,
+                config,
+                keypair,
+                rpc_url,
+                cache,
+            })
+            .await?
+        }
         Commands::UploadAssets {
             assets_dir,
             config,
