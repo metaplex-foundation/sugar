@@ -5,9 +5,9 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::str::FromStr;
 
 use mpl_candy_machine::{
-    EndSettingType as CandyEndSettingType, EndSettings as CandyEndSettings,
-    GatekeeperConfig as CandyGatekeeperConfig, HiddenSettings as CandyHiddenSettings,
-    WhitelistMintMode as CandyWhitelistMintMode,
+    Creator as CandyCreator, EndSettingType as CandyEndSettingType,
+    EndSettings as CandyEndSettings, GatekeeperConfig as CandyGatekeeperConfig,
+    HiddenSettings as CandyHiddenSettings, WhitelistMintMode as CandyWhitelistMintMode,
     WhitelistMintSettings as CandyWhitelistMintSettings,
 };
 
@@ -30,6 +30,7 @@ pub struct ConfigData {
     pub price: f64,
     pub number: u64,
     pub gatekeeper: Option<GatekeeperConfig>,
+    pub creators: Vec<Creator>,
 
     #[serde(rename = "solTreasuryAccount")]
     #[serde(deserialize_with = "to_pubkey")]
@@ -244,6 +245,25 @@ impl<'de> Deserialize<'de> for UploadMethod {
     {
         let s: String = Deserialize::deserialize(deserializer)?;
         FromStr::from_str(&s).map_err(serde::de::Error::custom)
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Default, Serialize)]
+pub struct Creator {
+    #[serde(deserialize_with = "to_pubkey")]
+    pub address: Pubkey,
+    pub share: u8,
+}
+
+impl Creator {
+    pub fn into_candy_format(&self) -> Result<CandyCreator> {
+        let creator = CandyCreator {
+            address: self.address,
+            share: self.share,
+            verified: false,
+        };
+
+        Ok(creator)
     }
 }
 
