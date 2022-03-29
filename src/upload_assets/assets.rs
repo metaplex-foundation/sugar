@@ -85,16 +85,19 @@ pub fn get_media_extension(assets_dir: &str) -> Result<String> {
     Err(UploadAssetsError::GetExtensionError.into())
 }
 
-pub fn get_asset_pairs(assets_dir: &str) -> Result<HashMap<usize, AssetPair>> {
-    // filters out directories and hidden files
+pub fn count_files(assets_dir: &str) -> Result<usize> {
     let files = fs::read_dir(assets_dir)?
         .filter_map(|entry| entry.ok())
         .filter(|entry| {
             !entry.file_name().to_str().unwrap().starts_with('.')
                 && entry.metadata().unwrap().is_file()
         });
+    Ok(files.count())
+}
 
-    let num_files = files.count();
+pub fn get_asset_pairs(assets_dir: &str) -> Result<HashMap<usize, AssetPair>> {
+    // filters out directories and hidden files
+    let num_files = count_files(assets_dir)?;
     let mut asset_pairs: HashMap<usize, AssetPair> = HashMap::new();
 
     // number of files should be even

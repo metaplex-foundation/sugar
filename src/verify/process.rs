@@ -1,6 +1,8 @@
 use crate::common::*;
 
 use crate::verify::VerifyError;
+use indicatif::ProgressIterator;
+use std::{thread, time::Duration};
 
 pub struct VerifyArgs {
     pub keypair: Option<String>,
@@ -63,22 +65,25 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
 
     // let candy_machine: CandyMachine = CandyMachine::try_deserialize(&mut data.as_slice())?;
     let num_items = cache.items.0.len();
+    // Should sleep for a total of 1.25 seconds
+    let sleep_micros: u64 = 1250000 / num_items as u64;
     let cache_items = &mut cache.items.0;
 
     let mut invalid_items: Vec<CacheItem> = Vec::new();
 
-    for i in 0..num_items {
+    (0..num_items).into_iter().progress().for_each(|i| {
         let name_start =
             CONFIG_ARRAY_START + STRING_LEN_SIZE + CONFIG_LINE_SIZE * i + CONFIG_NAME_OFFSET;
         let name_end = name_start + MAX_NAME_LENGTH;
         let uri_start =
             CONFIG_ARRAY_START + STRING_LEN_SIZE + CONFIG_LINE_SIZE * i + CONFIG_URI_OFFSET;
         let uri_end = uri_start + MAX_URI_LENGTH;
-
-        let name = String::from_utf8(data[name_start..name_end].to_vec())?
+        let name = String::from_utf8(data[name_start..name_end].to_vec())
+            .unwrap()
             .trim_matches(char::from(0))
             .to_string();
-        let uri = String::from_utf8(data[uri_start..uri_end].to_vec())?
+        let uri = String::from_utf8(data[uri_start..uri_end].to_vec())
+            .unwrap()
             .trim_matches(char::from(0))
             .to_string();
 
@@ -89,7 +94,11 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
             cache_item.on_chain = false;
             invalid_items.push(cache_item.clone());
         }
-    }
+
+        thread::sleep(Duration::from_micros(sleep_micros));
+    });
+
+    cache.write_to_file(cache_file_path)?;
 
     if !invalid_items.is_empty() {
         println!("Invalid items found: ");
@@ -101,7 +110,6 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
         println!("All items checked out. You're good to go!");
     }
 
-    cache.write_to_file(cache_file_path)?;
     Ok(())
 }
 
