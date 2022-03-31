@@ -306,7 +306,8 @@ impl UploadHandler for BundlrHandler {
                     let index = asset_id.parse::<usize>().unwrap();
                     let asset_pair = assets.get(&index).unwrap();
                     let cache_item = cache.items.0.get(&asset_id).unwrap();
-
+                    // replaces the media link without modifying the original file to avoid
+                    // changing the hash of the metadata file
                     get_updated_metadata(asset_pair, cache_item)
                         .unwrap()
                         .into_bytes()

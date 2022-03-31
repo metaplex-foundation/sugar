@@ -122,7 +122,6 @@ pub async fn process_upload_assets(args: UploadAssetsArgs) -> Result<()> {
         );
 
         let handler = match config_data.upload_method {
-            // TODO: handle the initialization error
             UploadMethod::Bundlr => Box::new(
                 BundlrHandler::initialize(&get_config_data(&args.config)?, &sugar_config)
                     .await
