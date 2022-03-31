@@ -19,10 +19,11 @@ use crate::common::*;
 use crate::config::{data::*, parser::get_config_data};
 use crate::setup::{setup_client, sugar_setup};
 use crate::upload::data::*;
+use crate::upload::errors::*;
 use crate::utils::*;
 use crate::validate::format::Metadata;
 
-/// Index of the first element in the cache.
+/// Name of the first metadata file.
 const METADATA_FILE: &str = "0.json";
 
 pub async fn process_upload(args: UploadArgs) -> Result<()> {
@@ -40,6 +41,13 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
 
         // nothing else to do, just tell that the cache file was not found (or empty)
         return Err(CacheError::CacheFileNotFound(args.cache).into());
+    }
+
+    // checks that all metadata links are present
+    for (index, item) in &cache.items.0 {
+        if item.metadata_link.is_empty() {
+            return Err(UploadError::MissingMetadataLink(index.to_string()).into());
+        }
     }
 
     let sugar_config = match sugar_setup(args.keypair, args.rpc_url) {
