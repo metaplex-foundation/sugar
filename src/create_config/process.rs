@@ -120,7 +120,7 @@ pub fn process_create_config() -> Result<()> {
         .unwrap();
 
     let num_creators = Input::with_theme(&theme)
-        .with_prompt("How many creators do you have? (Max limit of 4.)")
+        .with_prompt("How many creators do you have? (Max limit of 4)")
         .validate_with(number_validator)
         .validate_with({
             |input: &String| match input.parse::<u8>().unwrap() {
@@ -187,7 +187,7 @@ pub fn process_create_config() -> Result<()> {
 
     let choices = MultiSelect::with_theme(&theme)
         .with_prompt(
-            "Which extra features do you want to use? (Use spacebar to select options you want. Hit enter for none.)",
+            "Which extra features do you want to use? (Use spacebar to select options you want. Hit enter for when done.)",
         )
         .items(&extra_functions_options)
         .interact()?;
