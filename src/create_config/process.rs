@@ -120,7 +120,7 @@ pub fn process_create_config() -> Result<()> {
         .unwrap();
 
     let num_creators = Input::with_theme(&theme)
-        .with_prompt("How many creators do you have? (Max limit of 4.)")
+        .with_prompt("How many creators do you have? (Max limit of 4)")
         .validate_with(number_validator)
         .validate_with({
             |input: &String| {
