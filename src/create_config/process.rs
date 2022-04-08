@@ -189,7 +189,7 @@ pub fn process_create_config() -> Result<()> {
 
     let choices = MultiSelect::with_theme(&theme)
         .with_prompt(
-            "Which extra features do you want to use? (Use spacebar to select options you want. Hit enter for none.)",
+            "Which extra features do you want to use? (Use spacebar to select options you want. Hit enter for when done.)",
         )
         .items(&extra_functions_options)
         .interact()?;
