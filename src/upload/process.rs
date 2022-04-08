@@ -229,7 +229,7 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
         let message = if !errors.is_empty() {
             let mut message = String::new();
             message.push_str(&format!(
-                "Failed to upload all files, {0} error(s) occured:",
+                "Failed to upload all files, {0} error(s) occurred:",
                 errors.len()
             ));
 
