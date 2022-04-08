@@ -15,9 +15,6 @@ const MAX_RETRY: u64 = 15;
 /// Time (ms) to wait until next try
 const DELAY_UNTIL_RETRY: u64 = 5000;
 
-/// Factor to calculate the funding required for the upload
-const FACTOR: f64 = 1.01;
-
 pub struct BundlrHandler {
     client: Arc<Bundlr<SolanaSigner>>,
     pubkey: Pubkey,
@@ -230,9 +227,8 @@ impl UploadHandler for BundlrHandler {
 
         let http_client = reqwest::Client::new();
 
-        let lamports_fee = (BundlrHandler::get_bundlr_fee(&http_client, &self.node, total_size)
-            .await? as f64
-            * FACTOR) as u64;
+        let lamports_fee =
+            BundlrHandler::get_bundlr_fee(&http_client, &self.node, total_size).await?;
         let address = sugar_config.keypair.pubkey().to_string();
         let mut balance =
             BundlrHandler::get_bundlr_balance(&http_client, &address, &self.node).await?;
