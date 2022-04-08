@@ -123,11 +123,9 @@ pub fn process_create_config() -> Result<()> {
         .with_prompt("How many creators do you have? (Max limit of 4.)")
         .validate_with(number_validator)
         .validate_with({
-            |input: &String| {
-                match input.parse::<u8>().unwrap() {
-                    1 | 2 | 3 | 4 => Ok(()),
-                    _ => Err("Number of creators must be between 1 and 4, inclusive!")
-                }
+            |input: &String| match input.parse::<u8>().unwrap() {
+                1 | 2 | 3 | 4 => Ok(()),
+                _ => Err("Number of creators must be between 1 and 4, inclusive!"),
             }
         })
         .interact()
@@ -228,7 +226,7 @@ pub fn process_create_config() -> Result<()> {
                     .interact()
                     .unwrap(),
             )
-                .expect("Failed to parse string into pubkey that should have already been validated."),
+            .expect("Failed to parse string into pubkey that should have already been validated."),
         );
         config.spl_token_account = Some(
             Pubkey::from_str(
@@ -250,7 +248,7 @@ pub fn process_create_config() -> Result<()> {
                 .interact()
                 .unwrap(),
         )
-            .expect("Failed to parse string into pubkey that should have already been validated.");
+        .expect("Failed to parse string into pubkey that should have already been validated.");
     };
 
     config.whitelist_mint_settings = if choices.contains(&WL_INDEX) {
@@ -261,7 +259,7 @@ pub fn process_create_config() -> Result<()> {
                 .interact()
                 .unwrap(),
         )
-            .expect("Failed to parse string into pubkey that should have already been validated.");
+        .expect("Failed to parse string into pubkey that should have already been validated.");
 
         let whitelist_mint_mode: WhitelistMintMode = if Confirm::with_theme(&theme)
             .with_prompt("Do you want the whitelist token to be burned each time someone mints?")
@@ -449,7 +447,7 @@ pub fn process_create_config() -> Result<()> {
                         serde_json::to_string_pretty(&config)
                             .expect("Unable to convert config to JSON!")
                     )
-                        .red()
+                    .red()
                 );
             }
         }
@@ -460,7 +458,7 @@ pub fn process_create_config() -> Result<()> {
             style(
                 serde_json::to_string_pretty(&config).expect("Unable to convert config to JSON!")
             )
-                .green()
+            .green()
         );
     }
 
