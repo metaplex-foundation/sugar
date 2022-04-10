@@ -366,6 +366,8 @@ if [ "${RESET}" = "Y" ]; then
     clean_up
 fi
 
+echo "[$(date "+%T")] Creating assets"
+
 # preparing the assets metadata
 read -r -d $'\0' METADATA <<-EOM
 {
@@ -531,7 +533,7 @@ if [ "${CHANGE}" = "Y" ] && [ "$(command -v jq)" = "" ]; then
     CHANGE="n"
 fi
 
-echo "[$(date "+%T")] Deploying Candy Machine with $ITEMS"
+echo "[$(date "+%T")] Deploying Candy Machine with $ITEMS items"
 echo "[$(date "+%T")] Environment: ${ENV_URL}"
 echo "[$(date "+%T")] RPC URL: ${RPC}"
 echo "[$(date "+%T")] Testing started using ${STORAGE} storage"
