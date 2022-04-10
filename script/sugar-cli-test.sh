@@ -35,6 +35,7 @@ ASSETS_DIR=$CURRENT_DIR/assets
 CACHE_DIR=$CURRENT_DIR
 SUGAR_BIN="cargo run --bin sugar --"
 SUGAR_LOG="sugar.log"
+RESUME_FILE="$SCRIPT_DIR/.sugar_resume"
 
 # Remote files to test the upload
 PNG_MIN="https://arweave.net/N3LqmO6yURUK1JxV9MJtH8YeqppEtZhKuy3RB0Tqm3A/?ext=png"
@@ -44,7 +45,9 @@ JPG="https://arweave.net/X5Czkw4R6EAq5kKW0VgX0oVjLlhn3MV2L0LId0PgZPQ?ext=jpg"
 MP4="https://arweave.net/kM6fxv3Qj_Gcn8tcq9dU8wpZAXHNEWvEfVoIpRJzg8c/?ext=mp4"
 
 # Metadata URL for large collection tests
-METADATA_URL="https://arweave.net/K7UcRZBeLgd9rTSAcP243Pqvx9BUSVcniJ0d0EB8dBI"
+METADATA_URL="https://arweave.net/uJSdJIsz_tYTcjUEWdeVSj0aR90K-hjDauATWZSi-tQ"
+# Media hash (png) for large collection tests
+MEDIA_HASH="209a200ebea39be9e9e7882da2bc5e652fb690e612abecb094dc13e06db84e54"
 
 # output colours
 RED() { echo $'\e[1;31m'$1$'\e[0m'; }
@@ -102,6 +105,8 @@ function devnet_env() {
 # SETUP                                                                       #
 #-----------------------------------------------------------------------------#
 
+RESUME=0
+
 echo ""
 CYN "Sugar CLI - Candy Machine automated test"
 CYN "----------------------------------------"
@@ -111,7 +116,15 @@ CYN "Test template:"
 echo "1. interactive"
 echo "2. devnet (default)"
 echo "3. mainnet-beta"
-echo -n "$(CYN "Select test template [1-3]") (default 'devnet'): "
+echo "4. devnet [manual cache]"
+
+if [ -f "$RESUME_FILE" ]; then
+    echo "5. resume previous run"
+    echo -n "$(CYN "Select test template [1-5]") (default 'devnet'): "
+else
+    echo -n "$(CYN "Select test template [1-4]") (default 'devnet'): "
+fi
+
 read Template
 case "$Template" in
     1)
@@ -121,6 +134,15 @@ case "$Template" in
     3)
         mainnet_env
         default_settings
+    ;;
+    4)
+        devnet_env
+        max_settings
+    ;;
+    5)
+        source $RESUME_FILE
+        RESUME=1
+        RESET="n"
     ;;
     *)
         devnet_env
@@ -336,6 +358,31 @@ if [ -z ${CLOSE+x} ]; then
     fi
 fi
 
+# Resume checkpoint
+
+cat >$RESUME_FILE <<-EOM
+#!/bin/bash
+
+MANUAL_CACHE="$MANUAL_CACHE"
+ITEMS=$ITEMS
+MULTIPLE=$MULTIPLE
+
+RESET="$RESET"
+EXT="$EXT"
+CLOSE="$CLOSE"
+CHANGE="$CHANGE"
+TEST_IMAGE="$TEST_IMAGE"
+
+ARWEAVE_JWK="$ARWEAVE_JWK"
+INFURA_ID="$INFURA_ID"
+INFURA_SECRET="$INFURA_SECRET"
+AWS_BUCKET="$AWS_BUCKET"
+
+ENV_URL="$ENV_URL"
+RPC="$RPC"
+STORAGE="$STORAGE"
+EOM
+
 echo ""
 
 #-----------------------------------------------------------------------------#
@@ -357,7 +404,6 @@ function clean_up {
     rm -rf $ASSETS_DIR 2>/dev/null
     rm -rf $CACHE_FILE 2>/dev/null
     rm -rf $SUGAR_LOG 2>/dev/null
-    # created by cargo run
     rm -rf test_item 2>/dev/null
 }
 
@@ -365,8 +411,6 @@ if [ "${RESET}" = "Y" ]; then
     echo "[$(date "+%T")] Removing previous cache and assets"
     clean_up
 fi
-
-echo "[$(date "+%T")] Creating assets"
 
 # preparing the assets metadata
 read -r -d $'\0' METADATA <<-EOM
@@ -388,65 +432,70 @@ read -r -d $'\0' METADATA <<-EOM
 }
 EOM
 
-# Creation of the collection. This will generate ITEMS x (json, image)
-# files in the ASSETS_DIR
+if [ $RESUME -eq 0 ]; then
+    echo "[$(date "+%T")] Creating assets"
 
-if [ ! -d $ASSETS_DIR ]; then
-    mkdir $ASSETS_DIR
-    # loads the animation asset
-    if [ "$ANIMATION" -eq 1 ]; then
-        curl -L -s $MP4 >"$ASSETS_DIR/template_animation.mp4"
-        SIZE=$(wc -c "$ASSETS_DIR/template_animation.mp4" | grep -oE '[0-9]+' | head -n 1)
+    # Creation of the collection. This will generate ITEMS x (json, image)
+    # files in the ASSETS_DIR
+
+    if [ ! -d $ASSETS_DIR ]; then
+        mkdir $ASSETS_DIR
+        # loads the animation asset
+        if [ "$ANIMATION" -eq 1 ]; then
+            curl -L -s $MP4 >"$ASSETS_DIR/template_animation.mp4"
+            SIZE=$(wc -c "$ASSETS_DIR/template_animation.mp4" | grep -oE '[0-9]+' | head -n 1)
+
+            if [ $SIZE -eq 0 ]; then
+                RED "[$(date "+%T")] Aborting: could not download sample mp4"
+                exit 1
+            fi
+        fi
+
+        curl -L -s $IMAGE >"$ASSETS_DIR/template_image.$EXT"
+        SIZE=$(wc -c "$ASSETS_DIR/template_image.$EXT" | grep -oE '[0-9]+' | head -n 1)
 
         if [ $SIZE -eq 0 ]; then
-            RED "[$(date "+%T")] Aborting: could not download sample mp4"
+            RED "[$(date "+%T")] Aborting: could not download sample image"
             exit 1
         fi
+
+        # initialises the assets - this will be multiple copies of the same
+        # image/json pair with a new index
+        INDEX="image"
+        for ((i = 0; i < $ITEMS; i++)); do
+            if [ ! "$TEST_IMAGE" = "Y" ]; then
+                INDEX=$i
+            fi
+            NAME=$(($i + 1))
+            MEDIA_NAME="$INDEX.$EXT"
+            MEDIA_TYPE="image/$EXT"
+            ANIMATION_URL=","
+            cp "$ASSETS_DIR/template_image.$EXT" "$ASSETS_DIR/$i.$EXT"
+            if [ "$ANIMATION" = 1 ]; then
+                cp "$ASSETS_DIR/template_animation.mp4" "$ASSETS_DIR/$i.mp4"
+                ANIMATION_URL=",\n\t\"animation_url\": \"$i.mp4\","
+            fi
+            printf "$METADATA" $NAME $NAME $MEDIA_NAME $ANIMATION_URL $MEDIA_NAME $MEDIA_TYPE >"$ASSETS_DIR/$i.json"
+        done
+        rm "$ASSETS_DIR/template_image.$EXT"
+        # quietly removes the animation template (it might not exist)
+        rm -f "$ASSETS_DIR/template_animation.mp4"
     fi
 
-    curl -L -s $IMAGE >"$ASSETS_DIR/template_image.$EXT"
-    SIZE=$(wc -c "$ASSETS_DIR/template_image.$EXT" | grep -oE '[0-9]+' | head -n 1)
+    if [ "$MANUAL_CACHE" == "Y" ]; then
+        echo -n "{\"program\":{\"candyMachine\":\"\"}, \"items\":{" >> $CACHE_FILE
+        
+        for ((i = 0; i < $ITEMS; i++)); do
+            if [ "$i" -gt "0" ]; then
+                echo -n "," >> $CACHE_FILE
+            fi
+            NAME=$(($i + 1))
+            METADATA_HASH=`sha256sum "$ASSETS_DIR/$i.json" | cut -d ' ' -f 1`
+            echo -n "\"$i\":{\"name\":\"[$TIMESTAMP] Test #$NAME\",\"media_hash\":\"$MEDIA_HASH\",\"media_link\":\"$PNG\",\"metadata_hash\":\"$METADATA_HASH\",\"metadata_link\":\"$METADATA_URL\",\"onChain\":false}" >> $CACHE_FILE
+        done
 
-    if [ $SIZE -eq 0 ]; then
-        RED "[$(date "+%T")] Aborting: could not download sample image"
-        exit 1
+        echo -n "}}" >> $CACHE_FILE
     fi
-
-    # initialises the assets - this will be multiple copies of the same
-    # image/json pair with a new index
-    INDEX="image"
-    for ((i = 0; i < $ITEMS; i++)); do
-        if [ ! "$TEST_IMAGE" = "Y" ]; then
-            INDEX=$i
-        fi
-        NAME=$(($i + 1))
-        MEDIA_NAME="$INDEX.$EXT"
-        MEDIA_TYPE="image/$EXT"
-        ANIMATION_URL=","
-        cp "$ASSETS_DIR/template_image.$EXT" "$ASSETS_DIR/$i.$EXT"
-        if [ "$ANIMATION" = 1 ]; then
-            cp "$ASSETS_DIR/template_animation.mp4" "$ASSETS_DIR/$i.mp4"
-            ANIMATION_URL=",\n\t\"animation_url\": \"$i.mp4\","
-        fi
-        printf "$METADATA" $NAME $NAME $MEDIA_NAME $ANIMATION_URL $MEDIA_NAME $MEDIA_TYPE >"$ASSETS_DIR/$i.json"
-    done
-    rm "$ASSETS_DIR/template_image.$EXT"
-    # quietly removes the animation template (it might not exist)
-    rm -f "$ASSETS_DIR/template_animation.mp4"
-fi
-
-if [ "$MANUAL_CACHE" = "Y" ]; then
-    echo -n "{\"program\":{\"candyMachine\":\"\"}, \"items\":{" >> $CACHE_FILE
-    
-    for ((i = 0; i < $ITEMS; i++)); do
-        if [ "$i" -gt "0" ]; then
-            echo -n "," >> $CACHE_FILE
-        fi
-        NAME=$(($i + 1))
-        echo -n "\"$i\":{\"link\":\"$METADATA_URL\",\"name\":\"[$TIMESTAMP] Test #$NAME\",\"onChain\":false}" >> $CACHE_FILE
-    done
-
-    echo -n "}}" >> $CACHE_FILE
 fi
 
 # Candy Machine configuration
@@ -479,6 +528,10 @@ cat >$CONFIG_FILE <<-EOM
   ]
 }
 EOM
+
+#-----------------------------------------------------------------------------#
+# AUXILIARY FUNCTIONS                                                         #
+#-----------------------------------------------------------------------------#
 
 # edit cache file for reupload
 function change_cache {
@@ -617,6 +670,9 @@ if [ "${CLOSE}" = "Y" ]; then
 
     clean_up
 fi
+
+# save to delete the resume checkpoint
+rm -rf $RESUME_FILE 2>/dev/null
 
 echo ""
 echo "[$(date "+%T")] Test completed"
