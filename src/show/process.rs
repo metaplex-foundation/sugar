@@ -69,7 +69,7 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
         println!(":.. {}", token_mint);
     }
 
-    print_with_style("", "max_supply", cndy_data.max_supply.to_string());
+    print_with_style("", "max supply", cndy_data.max_supply.to_string());
     print_with_style("", "items redeemed", cndy_state.items_redeemed.to_string());
     print_with_style("", "items available", cndy_data.items_available.to_string());
 
@@ -86,7 +86,7 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
     print_with_style("", "symbol", cndy_data.symbol.to_string());
     print_with_style(
         "",
-        "seller_fee_basis_points",
+        "seller fee basis points",
         format!(
             "{}% ({})",
             cndy_data.seller_fee_basis_points / 100,
