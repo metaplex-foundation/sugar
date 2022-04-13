@@ -1,17 +1,21 @@
-use crate::common::{CANDY_EMOJI, CONFETTI_EMOJI};
+use crate::common::{SetupError, CANDY_EMOJI, CANDY_MACHINE_V2, CONFETTI_EMOJI};
 use crate::config::{
     go_live_date_as_timestamp, ConfigData, Creator, EndSettingType, EndSettings, GatekeeperConfig,
     HiddenSettings, UploadMethod, WhitelistMintMode, WhitelistMintSettings,
 };
+use crate::setup::{setup_client, sugar_setup};
 use crate::{constants::DEFAULT_ASSETS, upload::count_files};
-use anchor_lang::prelude::Pubkey;
+use anchor_client::solana_sdk::{
+    program_pack::{IsInitialized, Pack},
+    pubkey::Pubkey,
+};
 use anyhow::Result;
 use console::{style, Style};
 use dialoguer::Confirm;
 use dialoguer::{theme::ColorfulTheme, Input, MultiSelect, Select};
+use spl_token::state::{Account, Mint};
 use std::fs::OpenOptions;
-use std::path::Path;
-use std::str::FromStr;
+use std::{path::Path, str::FromStr, sync::Arc};
 use url::Url;
 
 pub struct CreateConfigArgs {
@@ -19,7 +23,7 @@ pub struct CreateConfigArgs {
     pub rpc_url: Option<String>,
 }
 
-pub fn process_create_config() -> Result<()> {
+pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     let mut config: ConfigData = ConfigData::default();
     let theme = ColorfulTheme {
         prompt_style: Style::new(),
@@ -218,6 +222,17 @@ pub fn process_create_config() -> Result<()> {
         None
     };
 
+    let pid = CANDY_MACHINE_V2.parse().expect("Failed to parse PID");
+    let sugar_config = match sugar_setup(args.keypair, args.rpc_url) {
+        Ok(sugar_config) => sugar_config,
+        Err(err) => {
+            return Err(SetupError::SugarSetupError(err.to_string()).into());
+        }
+    };
+    let client = Arc::new(setup_client(&sugar_config)?);
+    let program = client.program(pid);
+    let payer = program.payer();
+
     if choices.contains(&SPL_INDEX) {
         config.sol_treasury_account = None;
         config.spl_token = Some(
@@ -225,6 +240,16 @@ pub fn process_create_config() -> Result<()> {
                 &Input::with_theme(&theme)
                     .with_prompt("What is your SPL token mint?")
                     .validate_with(pubkey_validator)
+                    .validate_with(|input: &String| -> Result<(), &str> {
+                        let pubkey = Pubkey::from_str(&input).unwrap();
+                        let token_data = program.rpc().get_account_data(&pubkey).unwrap();
+                        let token_mint = Mint::unpack_from_slice(&token_data).unwrap();
+                        if !token_mint.is_initialized {
+                            Err("The specified spl-token is not initialized.")
+                        } else {
+                            Ok(())
+                        }
+                    })
                     .interact()
                     .unwrap(),
             )
