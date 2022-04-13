@@ -1,7 +1,15 @@
 pub use anchor_client::solana_sdk::hash::Hash;
+use anchor_client::{
+    solana_sdk::{
+        program_pack::{IsInitialized, Pack},
+        pubkey::Pubkey,
+    },
+    Program,
+};
 pub use anyhow::{anyhow, Result};
 pub use indicatif::{ProgressBar, ProgressStyle};
 use solana_client::rpc_client::RpcClient;
+use spl_token::state::{Account, Mint};
 use std::str::FromStr;
 
 use crate::config::data::Cluster;
@@ -27,6 +35,19 @@ pub fn get_cluster(rpc_client: RpcClient) -> Result<Cluster> {
             "Genesis hash '{}' doesn't match supported Solana clusters for Bundlr",
             genesis_hash
         )))
+    }
+}
+
+/// Return the environment of the current connected RPC.
+pub fn check_spl_token(program: &Program, input: &String) -> Result<(), String> {
+    let pubkey = Pubkey::from_str(&input).unwrap();
+    let token_data = program.rpc().get_account_data(&pubkey).unwrap();
+    let token_mint = Mint::unpack_from_slice(&token_data).unwrap();
+    if !token_mint.is_initialized {
+        let message = "The specified spl-token is not initialized.";
+        Err(message.to_string())
+    } else {
+        Ok(())
     }
 }
 

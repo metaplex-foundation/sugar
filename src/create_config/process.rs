@@ -260,6 +260,19 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
                 &Input::with_theme(&theme)
                     .with_prompt("What is your SPL token account address (the account that will hold the SPL token mints)?")
                     .validate_with(pubkey_validator)
+                    .validate_with(|input: &String| -> Result<(), &str> {
+                        let pubkey = Pubkey::from_str(&input).unwrap();
+                        let ata_data = program
+                .rpc()
+                .get_account_data(&pubkey).unwrap();
+            let ata_account = Account::unpack_unchecked(&ata_data).unwrap();
+            let is_initialized = IsInitialized::is_initialized(&ata_account);
+            if !is_initialized {
+               Err("The specified spl-token-account is not initialized")
+            } else {
+                Ok(())
+            }
+                    })
                     .interact()
                     .unwrap(),
             )
