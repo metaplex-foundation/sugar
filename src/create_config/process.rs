@@ -1,9 +1,3 @@
-use crate::common::{CANDY_EMOJI, CONFETTI_EMOJI};
-use crate::config::{
-    go_live_date_as_timestamp, ConfigData, Creator, EndSettingType, EndSettings, GatekeeperConfig,
-    HiddenSettings, UploadMethod, WhitelistMintMode, WhitelistMintSettings,
-};
-use crate::{constants::DEFAULT_ASSETS, upload::count_files};
 use anchor_lang::prelude::Pubkey;
 use anyhow::Result;
 use console::{style, Style};
@@ -13,6 +7,14 @@ use std::fs::OpenOptions;
 use std::path::Path;
 use std::str::FromStr;
 use url::Url;
+
+use crate::common::{CANDY_EMOJI, CONFETTI_EMOJI};
+use crate::config::{
+    go_live_date_as_timestamp, ConfigData, Creator, EndSettingType, EndSettings, GatekeeperConfig,
+    HiddenSettings, UploadMethod, WhitelistMintMode, WhitelistMintSettings,
+};
+use crate::constants::{DEFAULT_ASSETS, DEFAULT_CACHE};
+use crate::upload::count_files};
 
 pub struct CreateConfigArgs {
     pub keypair: Option<String>,
@@ -407,9 +409,14 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     println!();
     let mut save_file = true;
-    if Path::new("./config.json").is_file() {
+    let file_path = Path::new(match args.config {
+        Some(config) => config,
+        None => format!("./{}", DEFAULT_CACHE)
+    });
+
+    if file_path.is_file() {
         save_file = Select::with_theme(&theme)
-            .with_prompt("The file \"config.json\" already exists in the current directory! Do you want to overwrite it with the new config or log the new config to the console?")
+            .with_prompt(format!("The file \"{}\" already exists in the current directory! Do you want to overwrite it with the new config or log the new config to the console?", file_path))
             .items(&["Overwrite the file", "Log to console"])
             .default(0)
             .interact()
@@ -418,25 +425,16 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     }
 
     if save_file {
-        let file = match args.config {
-            Some(config) => {
-                let path = format!("{}", &config);
+        let file = 
                 OpenOptions::new()
                     .write(true)
                     .create(true)
                     .truncate(true)
-                    .open(Path::new(&path))
-            }
-            None => OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open("./config.json"),
-        };
+                    .open(file_path);
 
         match file {
             Ok(f) => {
-                println!("{}", style("Saving config info file...").dim());
+                println!("{}", style(format!("Saving config file \"{}\"...", file_path)).dim());
                 serde_json::to_writer_pretty(f, &config_data)
                     .expect("Unable to convert config to JSON!");
                 println!(
