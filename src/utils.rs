@@ -38,13 +38,27 @@ pub fn get_cluster(rpc_client: RpcClient) -> Result<Cluster> {
     }
 }
 
-/// Return the environment of the current connected RPC.
+/// Validate that the mint token is a valid account.
 pub fn check_spl_token(program: &Program, input: &String) -> Result<(), String> {
     let pubkey = Pubkey::from_str(&input).unwrap();
     let token_data = program.rpc().get_account_data(&pubkey).unwrap();
     let token_mint = Mint::unpack_from_slice(&token_data).unwrap();
     if !token_mint.is_initialized {
         let message = "The specified spl-token is not initialized.";
+        Err(message.to_string())
+    } else {
+        Ok(())
+    }
+}
+
+/// Validate that the mint token account is a valid account.
+pub fn check_spl_token_account(program: &Program, input: &String) -> Result<(), String> {
+    let pubkey = Pubkey::from_str(&input).unwrap();
+    let ata_data = program.rpc().get_account_data(&pubkey).unwrap();
+    let ata_account = Account::unpack_unchecked(&ata_data).unwrap();
+    let is_initialized = IsInitialized::is_initialized(&ata_account);
+    if !is_initialized {
+        let message = "The specified spl-token-account is not initialized.";
         Err(message.to_string())
     } else {
         Ok(())
