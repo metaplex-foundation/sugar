@@ -49,18 +49,22 @@ impl Default for Cache {
 pub struct CacheProgram {
     #[serde(rename = "candyMachine")]
     pub candy_machine: String,
+    #[serde(rename = "candyMachineCreator")]
+    pub candy_machine_creator: String,
 }
 
 impl CacheProgram {
     pub fn new() -> Self {
         CacheProgram {
             candy_machine: String::new(),
+            candy_machine_creator: String::new(),
         }
     }
 
-    pub fn new_from_cm(candy_machine: &Pubkey) -> Self {
+    pub fn new_from_cm(candy_machine: &Pubkey, candy_machine_creator: &Pubkey) -> Self {
         CacheProgram {
             candy_machine: candy_machine.to_string(),
+            candy_machine_creator: candy_machine_creator.to_string(),
         }
     }
 }

@@ -19,6 +19,7 @@ use crate::common::*;
 use crate::config::{data::*, parser::get_config_data};
 use crate::deploy::data::*;
 use crate::deploy::errors::*;
+use crate::mint::pdas::get_candy_machine_creator_pda;
 use crate::setup::{setup_client, sugar_setup};
 use crate::utils::*;
 use crate::validate::format::Metadata;
@@ -116,7 +117,9 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
             &candy_pubkey.to_string()
         );
 
-        cache.program = CacheProgram::new_from_cm(&candy_pubkey);
+        let (candy_machine_creator_pda, _creator_bump) =
+            get_candy_machine_creator_pda(&candy_pubkey);
+        cache.program = CacheProgram::new_from_cm(&candy_pubkey, &candy_machine_creator_pda);
         cache.sync_file()?;
 
         spinner.finish_and_clear();
