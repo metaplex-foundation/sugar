@@ -13,7 +13,7 @@ use crate::config::{
     go_live_date_as_timestamp, ConfigData, Creator, EndSettingType, EndSettings, GatekeeperConfig,
     HiddenSettings, UploadMethod, WhitelistMintMode, WhitelistMintSettings,
 };
-use crate::constants::{DEFAULT_ASSETS, DEFAULT_CACHE};
+use crate::constants::{DEFAULT_ASSETS, DEFAULT_CONFIG};
 use crate::upload::count_files;
 
 pub struct CreateConfigArgs {
@@ -389,7 +389,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         None
     };
 
-    let upload_options = vec!["Bundlr", "Arloader", "Metaplex"];
+    let upload_options = vec!["Bundlr", "AWS"];
     config_data.upload_method = match Select::with_theme(&theme)
         .with_prompt("What upload method do you want to use?")
         .items(&upload_options)
@@ -398,10 +398,19 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         .unwrap()
     {
         0 => UploadMethod::Bundlr,
-        1 => UploadMethod::Arloader,
-        2 => UploadMethod::Metaplex,
+        1 => UploadMethod::AWS,
         _ => UploadMethod::Bundlr,
     };
+
+    if config_data.upload_method == UploadMethod::AWS {
+        config_data.aws_s3_bucket = Some(
+            Input::with_theme(&theme)
+                .with_prompt("What is the AWS S3 bucket name?")
+                .interact()
+                .unwrap(),
+        );
+    }
+
     config_data.retain_authority = Confirm::with_theme(&theme).with_prompt("Do you want to retain update authority on your NFTs? We HIGHLY reccomend you choose yes!").interact()?;
     config_data.is_mutable = Confirm::with_theme(&theme)
         .with_prompt("Do you want your NFTs to remain mutable? We HIGHLY recommend you choose yes!")
@@ -411,7 +420,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     let mut save_file = true;
     let file_path = match args.config {
         Some(config) => config,
-        None => DEFAULT_CACHE.to_string(),
+        None => DEFAULT_CONFIG.to_string(),
     };
 
     if Path::new(&file_path).is_file() {

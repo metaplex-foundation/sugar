@@ -134,12 +134,6 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
                 Box::new(AWSHandler::initialize(&get_config_data(&args.config)?).await?)
                     as Box<dyn UploadHandler>
             }
-            _ => {
-                return Err(anyhow!(format!(
-                    "Upload method '{}' currently unsupported!",
-                    &config_data.upload_method.to_string()
-                )))
-            }
         };
 
         pb.finish_with_message("Connected");
