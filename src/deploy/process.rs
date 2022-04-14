@@ -1,5 +1,4 @@
 use anchor_client::solana_sdk::{
-    program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
     signature::{Keypair, Signature, Signer},
     system_instruction, system_program, sysvar,
@@ -9,7 +8,6 @@ use console::style;
 use futures::future::select_all;
 use rand::rngs::OsRng;
 use spl_associated_token_account::get_associated_token_address;
-use spl_token::state::{Account, Mint};
 use std::{cmp, str::FromStr, sync::Arc};
 
 use mpl_candy_machine::accounts as nft_accounts;
@@ -113,38 +111,15 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         let candy_data = create_candy_machine_data(&config_data, uuid, metadata)?;
 
         let pid = CANDY_MACHINE_V2.parse().expect("Failed to parse PID");
-
         let program = client.program(pid);
-
-        let payer = program.payer();
 
         if config_data.spl_token.is_some() {
             let spl_token = config_data.spl_token.unwrap();
             let spl_token_account_figured = if config_data.spl_token_account.is_some() {
                 config_data.spl_token_account
             } else {
-                Some(get_associated_token_address(&payer, &spl_token))
+                Some(get_associated_token_address(&program.payer(), &spl_token))
             };
-
-            let token_data = program.rpc().get_account_data(&spl_token)?;
-
-            let token_mint = Mint::unpack_from_slice(&token_data)?;
-            if !token_mint.is_initialized {
-                let error = anyhow!("The specified spl-token is not initialized.");
-                error!("{:?}", error);
-                return Err(error);
-            }
-
-            let ata_data = program
-                .rpc()
-                .get_account_data(&spl_token_account_figured.unwrap())?;
-            let ata_account = Account::unpack_unchecked(&ata_data)?;
-            let is_initialized = IsInitialized::is_initialized(&ata_account);
-            if !is_initialized {
-                let error = anyhow!("The specified spl-token is not initialized.");
-                error!("{:?}", error);
-                return Err(error);
-            }
 
             if config_data.sol_treasury_account.is_some() {
                 let error = anyhow!("If spl-token-account or spl-token is set then sol-treasury-account cannot be set");
@@ -152,14 +127,19 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
                 return Err(error);
             }
 
+            check_spl_token(&program, &spl_token.to_string()).unwrap();
+
             if spl_token_account_figured.is_none() {
                 let error = anyhow!("If spl-token is set, spl-token-account must also be set");
                 error!("{:?}", error);
                 return Err(error);
+            } else {
+                check_spl_token_account(&program, &spl_token_account_figured.unwrap().to_string())
+                    .unwrap();
             }
         }
 
-        let sig = initialize_candy_machine(&candy_keypair, candy_data, client.clone())?;
+        let sig = initialize_candy_machine(&candy_keypair, candy_data, program)?;
         info!("Candy machine initialized with sig: {}", sig);
         info!(
             "Candy machine created with address: {}",
@@ -327,11 +307,8 @@ fn generate_config_lines(num_items: u64, cache_items: &CacheItems) -> Vec<Vec<(u
 fn initialize_candy_machine(
     candy_account: &Keypair,
     candy_machine_data: CandyMachineData,
-    client: Arc<Client>,
+    program: Program,
 ) -> Result<Signature> {
-    let pid = CANDY_MACHINE_V2.parse().expect("Failed to parse PID");
-
-    let program = client.program(pid);
     let payer = program.payer();
     let items_available = candy_machine_data.items_available;
 
