@@ -40,7 +40,7 @@ pub fn get_cluster(rpc_client: RpcClient) -> Result<Cluster> {
 
 /// Validate that the mint token is a valid account.
 pub fn check_spl_token(program: &Program, input: &String) -> Result<(), String> {
-    let pubkey = Pubkey::from_str(&input).expect("Couldn't parse spl-token into a pubkey.");
+    let pubkey = Pubkey::from_str(input).expect("Couldn't parse spl-token into a pubkey.");
     let token_data = program
         .rpc()
         .get_account_data(&pubkey)
@@ -57,7 +57,7 @@ pub fn check_spl_token(program: &Program, input: &String) -> Result<(), String> 
 
 /// Validate that the mint token account is a valid account.
 pub fn check_spl_token_account(program: &Program, input: &String) -> Result<(), String> {
-    let pubkey = Pubkey::from_str(&input).expect("Couldn't parse spl-token into a pubkey.");
+    let pubkey = Pubkey::from_str(input).expect("Couldn't parse spl-token into a pubkey.");
     let ata_data = program
         .rpc()
         .get_account_data(&pubkey)

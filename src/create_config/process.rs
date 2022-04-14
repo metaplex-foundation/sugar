@@ -238,7 +238,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
                     .with_prompt("What is your SPL token mint?")
                     .validate_with(pubkey_validator)
                     .validate_with(|input: &String| -> Result<(), String> {
-                        check_spl_token(&program, &input)
+                        check_spl_token(&program, input)
                     })
                     .interact()
                     .unwrap(),
@@ -251,7 +251,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
                     .with_prompt("What is your SPL token account address (the account that will hold the SPL token mints)?")
                     .validate_with(pubkey_validator)
                     .validate_with(|input: &String| -> Result<(), String> {
-                   check_spl_token_account(&program, &input)
+                   check_spl_token_account(&program, input)
                     })
                     .interact()
                     .unwrap(),
@@ -437,7 +437,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     if save_file {
         let file = match args.config {
             Some(config) => {
-                let path = format!("{}", &config);
+                let path = (&config).to_string();
                 OpenOptions::new()
                     .write(true)
                     .create(true)
