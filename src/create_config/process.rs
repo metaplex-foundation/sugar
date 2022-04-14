@@ -14,7 +14,7 @@ use crate::config::{
     HiddenSettings, UploadMethod, WhitelistMintMode, WhitelistMintSettings,
 };
 use crate::constants::{DEFAULT_ASSETS, DEFAULT_CACHE};
-use crate::upload::count_files};
+use crate::upload::count_files;
 
 pub struct CreateConfigArgs {
     pub keypair: Option<String>,
@@ -409,14 +409,14 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     println!();
     let mut save_file = true;
-    let file_path = Path::new(match args.config {
+    let file_path = match args.config {
         Some(config) => config,
-        None => format!("./{}", DEFAULT_CACHE)
-    });
+        None => DEFAULT_CACHE.to_string(),
+    };
 
-    if file_path.is_file() {
+    if Path::new(&file_path).is_file() {
         save_file = Select::with_theme(&theme)
-            .with_prompt(format!("The file \"{}\" already exists in the current directory! Do you want to overwrite it with the new config or log the new config to the console?", file_path))
+            .with_prompt(format!("The file \"{}\" already exists! Do you want to overwrite it with the new config or log the new config to the console?", file_path))
             .items(&["Overwrite the file", "Log to console"])
             .default(0)
             .interact()
@@ -425,16 +425,18 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     }
 
     if save_file {
-        let file = 
-                OpenOptions::new()
-                    .write(true)
-                    .create(true)
-                    .truncate(true)
-                    .open(file_path);
+        let file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(Path::new(&file_path));
 
         match file {
             Ok(f) => {
-                println!("{}", style(format!("Saving config file \"{}\"...", file_path)).dim());
+                println!(
+                    "{}",
+                    style(format!("Saving config file: \"{}\"", file_path)).dim()
+                );
                 serde_json::to_writer_pretty(f, &config_data)
                     .expect("Unable to convert config to JSON!");
                 println!(
