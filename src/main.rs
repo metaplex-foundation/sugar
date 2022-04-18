@@ -149,14 +149,12 @@ async fn run() -> Result<()> {
             new_authority,
         })?,
         Commands::Deploy {
-            assets_dir,
             config,
             keypair,
             rpc_url,
             cache,
         } => {
             process_deploy(DeployArgs {
-                assets_dir,
                 config,
                 keypair,
                 rpc_url,
