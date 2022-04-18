@@ -113,8 +113,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         let pid = CANDY_MACHINE_V2.parse().expect("Failed to parse PID");
         let program = client.program(pid);
 
-        if config_data.spl_token.is_some() {
-            let spl_token = config_data.spl_token.unwrap();
+        if let Some(spl_token) = config_data.spl_token {
             let spl_token_account_figured = if config_data.spl_token_account.is_some() {
                 config_data.spl_token_account
             } else {
@@ -122,21 +121,21 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
             };
 
             if config_data.sol_treasury_account.is_some() {
-                let error = anyhow!("If spl-token-account or spl-token is set then sol-treasury-account cannot be set");
-                error!("{:?}", error);
-                return Err(error);
+                return Err(anyhow!("If spl-token-account or spl-token is set then sol-treasury-account cannot be set"));
             }
 
-            check_spl_token(&program, &spl_token.to_string()).unwrap();
+            check_spl_token(&program, &spl_token.to_string())
+                .expect("Failed to check that the spl-token is valid.");
 
-            if spl_token_account_figured.is_none() {
-                let error = anyhow!("If spl-token is set, spl-token-account must also be set");
-                error!("{:?}", error);
-                return Err(error);
+            if let Some(token_account) = spl_token_account_figured {
+                check_spl_token_account(&program, &token_account.to_string())
+                    .expect("Failed to check that the spl-token-account is valid.");
+                token_account
             } else {
-                check_spl_token_account(&program, &spl_token_account_figured.unwrap().to_string())
-                    .unwrap();
-            }
+                return Err(anyhow!(
+                    "If spl-token is set, spl-token-account must also be set"
+                ));
+            };
         }
 
         let sig = initialize_candy_machine(&candy_keypair, candy_data, program)?;
