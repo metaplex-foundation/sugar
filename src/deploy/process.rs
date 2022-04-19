@@ -124,19 +124,20 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
                 return Err(anyhow!("If spl-token-account or spl-token is set then sol-treasury-account cannot be set"));
             }
 
-            check_spl_token(&program, &spl_token.to_string())
-                .expect("Failed to check that the spl-token is valid.");
+            // validates the mint address of the token accepted as payment
+            check_spl_token(&program, &spl_token.to_string())?;
 
             if let Some(token_account) = spl_token_account_figured {
-                check_spl_token_account(&program, &token_account.to_string())
-                    .expect("Failed to check that the spl-token-account is valid.");
-                token_account
+                // validates the spl token wallet to receive proceedings from SPL token payments
+                check_spl_token_account(&program, &token_account.to_string())?;
             } else {
                 return Err(anyhow!(
-                    "If spl-token is set, spl-token-account must also be set"
+                    "If spl-token is set, spl-token account must also be set"
                 ));
             };
         }
+
+        // all good, let's create the candy machine
 
         let sig = initialize_candy_machine(&candy_keypair, candy_data, program)?;
         info!("Candy machine initialized with sig: {}", sig);
