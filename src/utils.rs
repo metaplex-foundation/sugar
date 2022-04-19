@@ -38,38 +38,35 @@ pub fn get_cluster(rpc_client: RpcClient) -> Result<Cluster> {
     }
 }
 
-/// Validate that the mint token is a valid account.
-pub fn check_spl_token(program: &Program, input: &str) -> Result<(), String> {
-    let pubkey = Pubkey::from_str(input).expect("Couldn't parse spl-token into a pubkey.");
-    let token_data = program
-        .rpc()
-        .get_account_data(&pubkey)
-        .expect("Failed to get account data for spl-token.");
-    let token_mint =
-        Mint::unpack_from_slice(&token_data).expect("Failed to unpack spl-token account data.");
-    if !token_mint.is_initialized {
-        let message = "The specified spl-token is not initialized.";
-        Err(message.to_string())
-    } else {
+/// Check that the mint token is a valid address.
+pub fn check_spl_token(program: &Program, input: &str) -> Result<()> {
+    let pubkey = Pubkey::from_str(input)?;
+    let token_data = program.rpc().get_account_data(&pubkey)?;
+    let token_mint = Mint::unpack_from_slice(&token_data)?;
+
+    if token_mint.is_initialized {
         Ok(())
+    } else {
+        Err(anyhow!(format!(
+            "The specified spl-token is not initialized: {}",
+            input
+        )))
     }
 }
 
-/// Validate that the mint token account is a valid account.
-pub fn check_spl_token_account(program: &Program, input: &str) -> Result<(), String> {
-    let pubkey = Pubkey::from_str(input).expect("Couldn't parse spl-token into a pubkey.");
-    let ata_data = program
-        .rpc()
-        .get_account_data(&pubkey)
-        .expect("Failed to get account data for spl-token-account.");
-    let ata_account = Account::unpack_unchecked(&ata_data)
-        .expect("Failed to unpack spl-token-account account data.");
-    let is_initialized = IsInitialized::is_initialized(&ata_account);
-    if !is_initialized {
-        let message = "The specified spl-token-account is not initialized.";
-        Err(message.to_string())
-    } else {
+/// Check that the mint token account is a valid account.
+pub fn check_spl_token_account(program: &Program, input: &str) -> Result<()> {
+    let pubkey = Pubkey::from_str(input)?;
+    let ata_data = program.rpc().get_account_data(&pubkey)?;
+    let ata_account = Account::unpack_unchecked(&ata_data)?;
+
+    if IsInitialized::is_initialized(&ata_account) {
         Ok(())
+    } else {
+        Err(anyhow!(format!(
+            "The specified spl-token account is not initialized: {}",
+            input
+        )))
     }
 }
 
