@@ -21,6 +21,9 @@ const HEADER_SIZE: u64 = 2000;
 /// Minimum file size for cost calculation
 const MINIMUM_SIZE: u64 = 10000;
 
+/// Size of the mock media URI for cost calculation
+const MOCK_URI_SIZE: usize = 100;
+
 struct TxInfo {
     asset_id: String,
     file_path: String,
@@ -87,12 +90,15 @@ impl BundlrHandler {
     pub async fn get_bundlr_solana_address(http_client: &HttpClient, node: &str) -> Result<String> {
         let url = format!("{}/info", node);
         let data = http_client.get(&url).send().await?.json::<Value>().await?;
-        let addresses = data.get("addresses").unwrap();
+        let addresses = data
+            .get("addresses")
+            .expect("Failed to get bundlr addresses.");
+
         let solana_address = addresses
             .get("solana")
-            .unwrap()
+            .expect("Failed to get Solana address from bundlr.")
             .as_str()
-            .unwrap()
+            .expect("Solana bundlr address is not of type string.")
             .to_string();
         Ok(solana_address)
     }
@@ -151,9 +157,15 @@ impl BundlrHandler {
         debug!("Getting balance for address: {address}");
         let url = format!("{}/account/balance/solana/?address={}", node, address);
         let response = http_client.get(&url).send().await?.json::<Value>().await?;
-        let value = response.get("balance").unwrap();
+        let value = response
+            .get("balance")
+            .expect("Failed to get balance from bundlr.");
 
-        Ok(value.as_str().unwrap().parse::<u64>().unwrap())
+        Ok(value
+            .as_str()
+            .unwrap()
+            .parse::<u64>()
+            .expect("Failed to parse bundlr balance."))
     }
 
     /// Return the Bundlr fee for upload based on the data size.
@@ -179,9 +191,7 @@ impl BundlrHandler {
             DataType::Metadata => {
                 // replaces the media link without modifying the original file to avoid
                 // changing the hash of the metadata file
-                get_updated_metadata(&tx_info.file_path, &tx_info.media_link)
-                    .unwrap()
-                    .into_bytes()
+                get_updated_metadata(&tx_info.file_path, &tx_info.media_link)?.into_bytes()
             }
         };
 
@@ -189,7 +199,11 @@ impl BundlrHandler {
             .bundlr_client
             .create_transaction_with_tags(data, tx_info.tag);
         let response = tx_info.bundlr_client.send_transaction(tx).await?;
-        let id = response.get("id").unwrap().as_str().unwrap();
+        let id = response
+            .get("id")
+            .expect("Failed to convert transaction id to string.")
+            .as_str()
+            .expect("Failed to get an id from bundlr transaction.");
 
         Ok((tx_info.asset_id, id.to_string()))
     }
@@ -197,56 +211,37 @@ impl BundlrHandler {
 
 #[async_trait]
 impl UploadHandler for BundlrHandler {
-    /// Upload the data to Bundlr.
-    async fn upload_data(
+    /// Funds Bundlr account for the upload.
+    async fn prepare(
         &self,
         sugar_config: &SugarConfig,
         assets: &HashMap<usize, AssetPair>,
-        cache: &mut Cache,
-        indices: &[usize],
-        data_type: DataType,
-    ) -> Result<Vec<UploadError>> {
+        media_indices: &[usize],
+        metadata_indices: &[usize],
+    ) -> Result<()> {
         // calculates the size of the files to upload
         let mut total_size = 0;
-        let mut extension = HashSet::with_capacity(1);
-        let mut paths = Vec::new();
 
-        for index in indices {
+        for index in media_indices {
             let item = assets.get(index).unwrap();
-            // chooses the file path based on the data type
-            let file_path = match data_type {
-                DataType::Media => item.media.clone(),
-                DataType::Metadata => item.metadata.clone(),
-            };
+            let path = Path::new(&item.media);
+            total_size += HEADER_SIZE + cmp::max(MINIMUM_SIZE, std::fs::metadata(path)?.len());
+        }
 
-            let path = Path::new(&file_path);
+        let mock_uri = "x".repeat(MOCK_URI_SIZE);
+
+        for index in metadata_indices {
+            let item = assets.get(index).unwrap();
+
             total_size += HEADER_SIZE
                 + cmp::max(
                     MINIMUM_SIZE,
-                    match data_type {
-                        DataType::Media => std::fs::metadata(path)?.len(),
-                        DataType::Metadata => {
-                            let cache_item = cache.items.0.get(&index.to_string()).unwrap();
-                            get_updated_metadata(&item.metadata, &cache_item.metadata_link)
-                                .unwrap()
-                                .into_bytes()
-                                .len() as u64
-                        }
-                    },
+                    get_updated_metadata(&item.metadata, &mock_uri)
+                        .expect("Failed to get updated metadata.")
+                        .into_bytes()
+                        .len() as u64,
                 );
-
-            let ext = path.extension().and_then(OsStr::to_str).unwrap();
-            extension.insert(String::from(ext));
-
-            paths.push(file_path);
         }
-
-        // validates that all files have the same extension
-        let extension = if extension.len() == 1 {
-            extension.iter().next().unwrap()
-        } else {
-            return Err(anyhow!("Invalid file extension: {:?}", extension));
-        };
 
         info!("Total upload size: {}", total_size);
 
@@ -312,6 +307,49 @@ impl UploadHandler for BundlrHandler {
             }
         }
 
+        Ok(())
+    }
+
+    /// Upload the data to Bundlr.
+    async fn upload_data(
+        &self,
+        _sugar_config: &SugarConfig,
+        assets: &HashMap<usize, AssetPair>,
+        cache: &mut Cache,
+        indices: &[usize],
+        data_type: DataType,
+    ) -> Result<Vec<UploadError>> {
+        let mut extension = HashSet::with_capacity(1);
+        let mut paths = Vec::new();
+
+        for index in indices {
+            let item = match assets.get(index) {
+                Some(asset_index) => asset_index,
+                None => return Err(anyhow::anyhow!("Failed to get asset at index {}", index)),
+            };
+            // chooses the file path based on the data type
+            let file_path = match data_type {
+                DataType::Media => item.media.clone(),
+                DataType::Metadata => item.metadata.clone(),
+            };
+
+            let path = Path::new(&file_path);
+            let ext = path
+                .extension()
+                .and_then(OsStr::to_str)
+                .expect("Failed to convert extension from unicode");
+            extension.insert(String::from(ext));
+
+            paths.push(file_path);
+        }
+
+        // validates that all files have the same extension
+        let extension = if extension.len() == 1 {
+            extension.iter().next().unwrap()
+        } else {
+            return Err(anyhow!("Invalid file extension: {:?}", extension));
+        };
+
         let sugar_tag = Tag::new("App-Name".into(), format!("Sugar {}", crate_version!()));
 
         let media_tag = match data_type {
@@ -329,15 +367,23 @@ impl UploadHandler for BundlrHandler {
         for file_path in paths {
             // path to the media/metadata file
             let path = Path::new(&file_path);
-            // id of the asset (to be used to update the cache link)
-            let asset_id = String::from(path.file_stem().and_then(OsStr::to_str).unwrap());
 
-            let cache_item = cache.items.0.get(&asset_id).unwrap();
+            // id of the asset (to be used to update the cache link)
+            let asset_id = String::from(
+                path.file_stem()
+                    .and_then(OsStr::to_str)
+                    .expect("Failed to convert path to unicode."),
+            );
+
+            let cache_item = match cache.items.0.get(&asset_id) {
+                Some(item) => item,
+                None => return Err(anyhow!("Failed to get config item at index {}", asset_id)),
+            };
             let bundlr_client = self.client.clone();
 
             transactions.push(TxInfo {
                 asset_id: asset_id.to_string(),
-                file_path: String::from(path.to_str().unwrap()),
+                file_path: String::from(path.to_str().expect("Failed to parse path from unicode.")),
                 media_link: cache_item.media_link.clone(),
                 data_type: data_type.clone(),
                 bundlr_client: bundlr_client.clone(),

@@ -8,14 +8,24 @@ use crate::config::{data::SugarConfig, get_config_data, UploadMethod};
 use crate::upload::bundlr::BundlrHandler;
 use crate::upload::*;
 use crate::utils::*;
+use crate::validate::format::Metadata;
 
 /// A trait for storage upload handlers.
 #[async_trait]
 pub trait UploadHandler {
+    /// Prepares the upload of the specified media/metadata files.
+    async fn prepare(
+        &self,
+        sugar_config: &SugarConfig,
+        assets: &HashMap<usize, AssetPair>,
+        media_indices: &[usize],
+        metadata_indices: &[usize],
+    ) -> Result<()>;
+
     /// Upload the data to a (permanent) storage.
     async fn upload_data(
         &self,
-        config: &SugarConfig,
+        sugar_config: &SugarConfig,
         assets: &HashMap<usize, AssetPair>,
         cache: &mut Cache,
         indices: &[usize],
@@ -32,6 +42,9 @@ pub struct UploadArgs {
 }
 
 pub async fn process_upload(args: UploadArgs) -> Result<()> {
+    let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
+    let config_data = get_config_data(&args.config)?;
+
     // loading assets
     println!(
         "{} {}Loading assets",
@@ -45,7 +58,8 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
 
     let asset_pairs = get_asset_pairs(&args.assets_dir)?;
     // creates/loads the cache
-    let mut cache = load_cache(&args.cache, true).unwrap();
+    let mut cache = load_cache(&args.cache, true)?;
+
     // list of indices to upload
     // 0: media
     // 1: metadata
@@ -85,6 +99,39 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
                 indices.1.push(*index);
             }
         }
+        // sanity check: verifies that both symbol and seller-fee-basis-points are the
+        // same as the ones in the config file
+        let f = File::open(Path::new(&pair.metadata))?;
+        match serde_json::from_reader(f) {
+            Ok(metadata) => {
+                let metadata: Metadata = metadata;
+                // symbol check
+                if config_data.symbol.ne(&metadata.symbol) {
+                    return Err(UploadError::MismatchValue(
+                        "symbol".to_string(),
+                        pair.metadata.clone(),
+                        config_data.symbol,
+                        metadata.symbol,
+                    )
+                    .into());
+                }
+                // seller-fee-basis-points check
+                if config_data.seller_fee_basis_points != metadata.seller_fee_basis_points {
+                    return Err(UploadError::MismatchValue(
+                        "seller_fee_basis_points".to_string(),
+                        pair.metadata.clone(),
+                        config_data.seller_fee_basis_points.to_string(),
+                        metadata.seller_fee_basis_points.to_string(),
+                    )
+                    .into());
+                }
+            }
+            Err(err) => {
+                let error = anyhow!("Error parsing metadata ({}): {}", pair.metadata, err);
+                error!("{:?}", error);
+                return Err(error);
+            }
+        }
     }
 
     pb.finish_and_clear();
@@ -112,13 +159,11 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
 
     // ready to upload data
 
-    let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
-    let config_data = get_config_data(&args.config)?;
     let mut errors = Vec::new();
 
     if need_upload {
         println!(
-            "\n{} {}Initiliazing upload",
+            "\n{} {}Initializing upload",
             style("[2/4]").bold().dim(),
             COMPUTER_EMOJI
         );
@@ -137,6 +182,10 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
         };
 
         pb.finish_with_message("Connected");
+
+        handler
+            .prepare(&sugar_config, &asset_pairs, &indices.0, &indices.1)
+            .await?;
 
         println!(
             "\n{} {}Uploading media files {}",
