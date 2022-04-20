@@ -3,6 +3,7 @@ use anchor_client::solana_sdk::{
     signature::{Keypair, Signature, Signer},
     system_instruction, system_program, sysvar,
 };
+use anchor_lang::prelude::AccountMeta;
 use anyhow::Result;
 use console::style;
 use futures::future::select_all;
@@ -108,7 +109,8 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         let uuid = uuid_from_pubkey(&candy_pubkey);
         let candy_data = create_candy_machine_data(&config_data, uuid)?;
 
-        let sig = initialize_candy_machine(&candy_keypair, candy_data, client.clone())?;
+        let sig =
+            initialize_candy_machine(&config_data, &candy_keypair, candy_data, client.clone())?;
         info!("Candy machine initialized with sig: {}", sig);
         info!(
             "Candy machine created with address: {}",
@@ -271,6 +273,7 @@ fn generate_config_lines(num_items: u64, cache_items: &CacheItems) -> Vec<Vec<(u
 
 /// Send the `initialize_candy_machine` instruction to the candy machine program.
 fn initialize_candy_machine(
+    config_data: &ConfigData,
     candy_account: &Keypair,
     candy_machine_data: CandyMachineData,
     client: Arc<Client>,
@@ -292,7 +295,8 @@ fn initialize_candy_machine(
         candy_account_size,
         candy_account.pubkey().to_string()
     );
-    let sig = program
+
+    let mut tx = program
         .request()
         .instruction(system_instruction::create_account(
             &payer,
@@ -314,8 +318,17 @@ fn initialize_candy_machine(
         })
         .args(nft_instruction::InitializeCandyMachine {
             data: candy_machine_data,
-        })
-        .send()?;
+        });
+
+    if let Some(token) = config_data.spl_token {
+        tx = tx.accounts(AccountMeta {
+            pubkey: token,
+            is_signer: false,
+            is_writable: false,
+        });
+    }
+
+    let sig = tx.send()?;
 
     Ok(sig)
 }
