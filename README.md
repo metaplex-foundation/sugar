@@ -15,7 +15,7 @@ Sugar is the next iteration of the Metaplex Candy Machine CLI. It has been writt
 Binaries for the supported OS can be found at:
 - [Sugar Releases](https://github.com/metaplex-foundation/sugar/releases)
 
-To use one of the binaries, copy to a folder in your file system (preferable a folder in your `PATH` environment variable).
+To use one of the binaries, copy to a folder in your file system (preferable a folder in your `PATH` environment variable). It is recommended to rename the downloaded binary (e.g., `sugar-ubuntu-latest` or `sugar-macos-latest`) to `sugar` for simplicitly &mdash; the remainder of this guide assumes that the binary is called `sugar`.
 
 ### Build From Source
 
@@ -45,19 +45,15 @@ This will create a directory `sugar` with the lastest code from the repository. 
 cd sugar
 ```
 
-Then build the release binary with `cargo`:
+Then, you can build and install the binary to `~/.cargo/bin`:
 
 ```bash
-cargo build --release
+cargo install --locked --path ./
 ```
 
-Finally, you can install the binary to a directory of your choice:
+As long as `./cargo/bin` is in your `PATH` environment variable, you will be able to execute `sugar` from any directory in your file system.
 
-```bash
-cargo install --path <DIR>
-```
-
-where `<DIR>` is the directory to copy the binary to. It is recommended that you install the binary to a directory that it is in your `PATH` environment variable in order to be able to execute `sugar` from any directory in your file system.
+> **Note:** You need to execute `cargo install` from Sugar souce code root directory &mdash; the directory where the `Cargo.toml` is located.
 
 ## Quick Start
 
@@ -78,8 +74,6 @@ sugar launch
 ```
 
 At the end of the execution of the `launch` command, the Candy Machine will be deployed on-chain.
-
-> Replace `sugar` binary name with `sugar-ubuntu-latest` or `sugar-macos-latest` if you used the binary distribution.
 
 ## Working with Sugar
 
@@ -140,7 +134,7 @@ OPTIONS:
     -r, --rpc-url <RPC_URL>        RPC Url
 ```
 
-> **Note:** This guide assumes that you set up your RPC url and a keypair using Solana CLI config, as described in the `Quick Start` section above. Replace `sugar` binary name with `sugar-ubuntu-latest` or `sugar-macos-latest` in the following sections if you used the binary distribution.
+> **Note:** This guide assumes that you set up your RPC url and a keypair using Solana CLI config, as described in the `Quick Start` section above.
 
 ### Configuration
 
