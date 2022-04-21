@@ -77,7 +77,7 @@ You can then use the `launch` command to start an iterative process to create yo
 sugar launch
 ```
 
-At the end of the execution of the `launch` command, the candy machine will be deployed on-chain.
+At the end of the execution of the `launch` command, the Candy Machine will be deployed on-chain.
 
 > Replace `sugar` binary name with `sugar-ubuntu-latest` or `sugar-macos-latest` if you used the binary distribution.
 
@@ -140,9 +140,7 @@ OPTIONS:
     -r, --rpc-url <RPC_URL>        RPC Url
 ```
 
-This guide assumes that you set up your RPC url and a keypair using Solana CLI config, as described in the `Quick Start` section above.
-
-> Replace `sugar` binary name with `sugar-ubuntu-latest` or `sugar-macos-latest` in the following sections if you used the binary distribution.
+> **Note:** This guide assumes that you set up your RPC url and a keypair using Solana CLI config, as described in the `Quick Start` section above. Replace `sugar` binary name with `sugar-ubuntu-latest` or `sugar-macos-latest` in the following sections if you used the binary distribution.
 
 ### Configuration
 
