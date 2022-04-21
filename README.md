@@ -65,9 +65,9 @@ solana config set --url <rpc url> --keypair <path to keypair file>
 
 Sugar will then use these settings by default if you don't specify them as CLI options, allowing commands to be much simpler. 
 
-Create a folder named `assets` to store your json and media file pairs with the naming convention 0.json, 0.<ext>, 1.json, 1.<ext>, etc., where the extension is `.png`, `.jpg`, etc. This is the same format described in the Candy Machine v2 [documentation](http://docs.metaplex.com/candy-machine-v2/preparing-assets).
+Create a folder named `assets` to store your json and media file pairs with the naming convention 0.json, 0.<ext>, 1.json, 1.<ext>, etc., where the extension is `.png`, `.jpg`, etc. This is the same format described in the [Candy Machine v2 documentation](http://docs.metaplex.com/candy-machine-v2/preparing-assets).
 
-You can then use the `launch` command to start an iterative process to create your config file and deploy a Candy Machine to Solana:
+You can then use the `launch` command to start an interative process to create your config file and deploy a Candy Machine to Solana:
 
 ```bash
 sugar launch
@@ -175,7 +175,7 @@ A minimum configuration file looks like this:
 
 The main differences with the previous configuration file are:
 - **goLiveDate**: this needs to be specified using [RFC 3339 standard](https://datatracker.ietf.org/doc/html/rfc3339). In most cases, the format used will be "yyyy-mm-dd`T`hh:mm:ss`Z`", where `T` is the separator between the *full-date* and *full-time* and `Z` is the timezone offset from UTC (use `Z` or `+00:00` for UTC time);
-- **retainAuthority**: this is similar to the previous *noRetainAuthority* property, but provides a clearer meaning&mdash;you should specify **yes** to indicate that the candy machine authority retain the update authority for each mint (most common case) or **no** to transfer the authority to the minter;
+- **retainAuthority**: this is similar to the previous *noRetainAuthority* property, but provides a clearer meaning&mdash;you should specify **yes** to indicate that the candy machine retains the update authority for each mint (most common case) or **no** to transfer the authority to the minter;
 - **isMutable**: this is similar to the previous *noMutable* property, but provides a clearer meaning&mdash;you should specify **yes** to indicate that the metadata is mutable (most common case) or **no** to prevent updates to the metadata;
 - **creators**: specifies the list of creators and their percentage share of the royalties&mdash; at least one creator must be specified (up to a maximum of four) and the sum of shares must add up to `100`. This information used to be located on each metadata file, but has been deprecated since Token Metadata Standard v1.1.0 and therefore needs to be specfied in the configuration file. The list of creators will be the same to all NFTs minted from the Candy Machine.
 
