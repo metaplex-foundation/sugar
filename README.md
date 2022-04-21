@@ -30,6 +30,7 @@ After the installation completes, running:
 ```bash
 rustc --version
 ```
+
 should print the version of the Rust compiler. If the command fails, check if the `~/.cargo/bin` directory is in your `PATH` environment variable.
 
 The next step is to clone Sugar repository:
@@ -39,20 +40,24 @@ git clone https://github.com/metaplex-foundation/sugar.git
 ```
 
 This will create a directory `sugar` with the lastest code from the repository. Switch to the newly created directory:
+
 ```bash
 cd sugar
 ```
 
 Then build the release binary with `cargo`:
+
 ```bash
 cargo build --release
 ```
 
 Finally, you can install the binary to a directory of your choice:
+
 ```bash
-cargo install --path <path>
+cargo install --path <DIR>
 ```
-where `path` is the directory to copy the binary to. It is recommended that you install the binary to a directory that it is in your `PATH` environment variable in order to be able to execute `sugar` from any directory in your file system.
+
+where `<DIR>` is the directory to copy the binary to. It is recommended that you install the binary to a directory that it is in your `PATH` environment variable in order to be able to execute `sugar` from any directory in your file system.
 
 ## Quick Start
 
@@ -64,9 +69,9 @@ solana config set --url <rpc url> --keypair <path to keypair file>
 
 Sugar will then use these settings by default if you don't specify them as CLI options, allowing commands to be much simpler. 
 
-Create a directory with a folder named `assets` to store your json and media file pairs with the naming convention 0.json, 0.<ext>, 1.json, 1.<ext>, etc., where the extension is `.png`, `.jpg`, etc. This is the same format described in the Candy Machine v2 [documentation](http://docs.metaplex.com/candy-machine-v2/preparing-assets).
+Create a folder named `assets` to store your json and media file pairs with the naming convention 0.json, 0.<ext>, 1.json, 1.<ext>, etc., where the extension is `.png`, `.jpg`, etc. This is the same format described in the Candy Machine v2 [documentation](http://docs.metaplex.com/candy-machine-v2/preparing-assets).
 
-You can then use the `launch` command to start an iterative process to create your config file and deploy a Candy Machine to the blockchain:
+You can then use the `launch` command to start an iterative process to create your config file and deploy a Candy Machine to Solana:
 
 ```bash
 sugar launch
@@ -83,6 +88,7 @@ Sugar contains a collection of commands for creating and managing Metaplex Candy
 ```bash
 sugar
 ```
+
 This will display a list of commands and their short description:
 
 ```bash
@@ -108,14 +114,16 @@ SUBCOMMANDS:
     withdraw         Withdraw funds from candy machine account closing it
 ```
 
-To get more information about a particular command, use the `help` command:
+To get more information about a particular command (e.g., `deploy`), use the `help` command:
+
 ```bash
 sugar help deploy
 ```
- The list of options together with a short description will be displayed:
+
+The list of options together with a short description will be displayed:
  
- ```bash
- Deploy cache items into candy machine config on-chain
+```bash
+Deploy cache items into candy machine config on-chain
 
 USAGE:
     sugar deploy [OPTIONS]
@@ -130,8 +138,11 @@ OPTIONS:
                                    "~/.config/solana/id.json"
     -l, --log-level <LOG_LEVEL>    Log level: trace, debug, info, warn, error, off
     -r, --rpc-url <RPC_URL>        RPC Url
+```
 
- ```
+This guide assumes that you set up your RPC url and a keypair using Solana CLI config, as described in the `Quick Start` section above.
+
+> Replace `sugar` binary name with `sugar-ubuntu-latest` or `sugar-macos-latest` in the following sections if you used the binary distribution.
 
 ### Configuration
 
@@ -169,6 +180,7 @@ A minimum configuration file looks like this:
   ]
 }
 ```
+
 The main differences with the previous configuration file are:
 - **goLiveDate**: this needs to be specified using [RFC 3339 standard](https://datatracker.ietf.org/doc/html/rfc3339). In most cases, the format used will be "yyyy-mm-dd`T`hh:mm:ss`Z`", where `T` is the separator between the *full-date* and *full-time* and `Z` is the timezone offset from UTC (use `Z` or `+00:00` for UTC time);
 - **retainAuthority**: this is similar to the previous *noRetainAuthority* property, but provides a clearer meaning&mdash;you should specify **yes** to indicate that the candy machine authority retain the update authority for each mint (most common case) or **no** to transfer the authority to the minter;
@@ -181,13 +193,13 @@ There are currently two upload (storage) methods available in Sugar: `"bundlr"` 
 
 ##### Bundlr
 
-Uploads to [arweave](https://www.arweave.org/) using [Bundlr](https://bundlr.network/) and payments are made in `SOL`.
+Uploads to [Arweave](https://www.arweave.org/) using [Bundlr Network](https://bundlr.network/) and payments are made in `SOL`.
 
 > **Note:** Files are only stored for 7 days when uploaded with Bundlr on `devnet`.
 
 ##### Amazon (AWS) S3
 
-Uploads the files to Amazon S3 storage. When using the `"aws"`, you need to specify the bucket name `"awsS3Bucket"` in the configuration file and set up the credentials in your system. In most cases, this will involve creating a file `~/.aws/credentials` with the following properties:
+Uploads files to Amazon S3 storage. When using the `"aws"`, you need to specify the bucket name `"awsS3Bucket"` in the configuration file and set up the credentials in your system. In most cases, this will involve creating a file `~/.aws/credentials` with the following properties:
 
 ```bash
 [default]
@@ -195,13 +207,14 @@ aws_access_key_id=<ACCESS KEY ID>
 aws_secret_access_key=<SECRET ACCESS KEY>
 region=<REGION>
 ```
-It is also important to set up the ACL permission of the bucket correctly to enable `"public-read"` and apply Cross-Origin Resource Sharing (CORS) rules to enable display content requested from a different origin (necessary to enable wallets and blockchain explorers load the metadata/media files). More information about these configurations can be found at:
+
+It is also important to set up the ACL permission of the bucket correctly to enable `"public-read"` and apply Cross-Origin Resource Sharing (CORS) rules to enable content access requested from a different origin (necessary to enable wallets and blockchain explorers load the metadata/media files). More information about these configurations can be found at:
 - [Bucket policy examples](https://docs.aws.amazon.com/AmazonS3/latest/userguide/example-bucket-policies.html)
 - [CORS configuration](https://aws.amazon.com/premiumsupport/knowledge-center/s3-configure-cors/)
 
 ### Preparing Your Assets
 
-The preparation of the assets is similar to the current version of the CLI. Full instructions can be found [here](http://docs.metaplex.com/candy-machine-v2/preparing-assets). By default, Sugar loads media/metadata files from a `assets` folder in directory where the command has been executed, but the name of the folder can be specified as a command-line parameter.
+The preparation of the assets is similar to the instructions provided in the [Candy Machine v2 documentation](http://docs.metaplex.com/candy-machine-v2/preparing-assets). By default, Sugar loads media/metadata files from an `assets` folder in the directory where the command has been executed, but the name of the folder can be specified as a command-line parameter.
 
 ### Deploying a Candy Machine
 
@@ -219,7 +232,7 @@ You can either create this file manually, following the instructions above, or u
 sugar create-config
 ```
 
-Executing the command starts an iterative process consisting in a sequence of prompts to gather information about all configuration options. At the end of it, a configuration file is saved (default to `config.json`) or its content is displayed on screen. To specify a custom file name, use the option `-c`:
+Executing the command starts an interative process consisting in a sequence of prompts to gather information about all configuration options. At the end of it, a configuration file is saved (default to `config.json`) or its content is displayed on screen. To specify a custom file name, use the option `-c`:
 
 ```bash
 sugar create-config -c my-config.json
@@ -239,7 +252,7 @@ if your assest are in a folder named `assets` or:
 sugar validate [ASSETS_DIR]
 ```
 
-to specify a custom asset `[ASSETS_DIR]` folder name.
+to specify a custom asset `<ASSETS DIR>` folder name.
 
 > **Note:** It is important to validate your assets before the upload to avoid having to repeat the upload process.
 
@@ -254,7 +267,7 @@ sugar upload
 if your assest are in a folder named `assets` or:
 
 ```bash
-sugar upload [ASSETS_DIR]
+sugar upload <ASSETS DIR>
 ```
 
 There is also the option to specify the path for the configuration file with the `-c` option (default `config.json`) and the name of the cache file with the option `--cache` (default `cache.json`).
@@ -269,7 +282,8 @@ Once all assets are uploaded and the cache file is successfully created, you are
 sugar deploy
 ```
 
-The `deploy` command will write the information of your cache file to the Candy Machine account on-chain. This effectively created the Cancy Machine and displays its on-chain ID &mdash; use this ID to query its information on-chain using an [explorer](https://explorer.solana.com/).
+The `deploy` command will write the information of your cache file to the Candy Machine account on-chain. This effectively creates the Cancy Machine and displays its on-chain ID &mdash; use this ID to query its information on-chain using an [explorer](https://explorer.solana.com/). You can specify the path for the configuration file with the `-c` option (default `config.json`) and the name of the cache file with the option `--cache` (default `cache.json`) in case you are not using the default names.
+
 
 After a succesful deploy, the Candy Machine is ready to be minted according to its `goLiveDate` and `whitelistMintSettings`.
 
@@ -282,14 +296,14 @@ The `verify` command checks that all items in your cache file have been successf
 ```bash
 sugar verify
 ```
+
 if you are using the default cache file name (`cache.json`) or:
 
 ```bash
-sugar verify --cache [CACHE]
+sugar verify --cache <CACHE>
 ```
-to specify a different cache file path. If you deploy has been succesfully, the verification return no errors.
 
-At this point, you can set up your [minting webpage](http://docs.metaplex.com/candy-machine-v2/mint-frontend) to allow your community the chance to mint.
+to specify a different cache file path. If you deploy has been succesfully, the verification return no errors. At this point, you can set up your [minting webpage](http://docs.metaplex.com/candy-machine-v2/mint-frontend) to allow your community the chance to mint.
 
 ### Other Commands
 
@@ -297,18 +311,19 @@ Sugar includes other commands to manage a Candy Machine.
 
 #### `mint`
 
-The `mint` command mint NFTs from a Candy Machine.
+The `mint` command mints NFTs from a Candy Machine from the command-line.
 
 ```bash
 sugar mint
 ```
+
 if you are using the default cache file name (`cache.json`) or:
 
 ```bash
-sugar mint --cache [CACHE]
+sugar mint --cache <CACHE>
 ```
 
-to specify a different cache file path. The cache file is used to retrieve the ID of the Candy Machine. You can specify the number of NFTs to mint using the option `-n`:
+to specify a different cache file path. You can specify the number of NFTs to mint using the option `-n`:
 
 ```bash
 sugar mint -n 10
@@ -323,19 +338,18 @@ The above command will mint 10 NFTs from the Candy Machine.
 The `show` command displays the on-chain config of an existing candy machine:
 
 ```bash
-sugar show [CANDY MACHINE]
+sugar show <CANDY MACHINE>
 ```
-where the `[CANDY MACHINE]` is the Candy Machine ID &mdash; the ID given by the `deploy` command.
+
+where the `<CANDY MACHINE>` is the Candy Machine ID &mdash; the ID given by the `deploy` command.
 
 #### `update`
 
-The `update` command is used to modify the current configuration of a Candy Machine.
-
-Most configuration settings can be updated in a CMv2 with a single command, with the exception of:
+The `update` command is used to modify the current configuration of a Candy Machine. Most configuration settings can be updated in a CMv2 with a single command, with the exception of:
 - `number` of items in the Candy Machine can only be updated when `hiddenSettings` are being used;
 - switching to use `hiddenSettings` is only possible if the `number` of items is equal to `0`. After the switch, you will be able to update the `number` of items.
 
-To update the configuration, modify your `config.json` file (or equivalent) and execute:
+To update the configuration, modify your `config.json` (or equivalent) file and execute:
 
 ```bash
 sugar update
@@ -344,22 +358,22 @@ sugar update
 if you are using the default cache file name (`cache.json`) and configuration file (`config.json`). Otherwise, use:
 
 ```bash
-sugar update -c [CONFIG] --cache [CACHE]
+sugar update -c <CONFIG> --cache <CACHE>
 ```
 
-where `[CONFIG]` is the path to the configuration file and `[CACHE]` is the path to the cache file.
+where `<CONFIG>` is the path to the configuration file and `<CACHE>` is the path to the cache file.
 
 > You need to be careful when updating a live Candy Machine, since setting a wrong value will immediately affect its functionality.
 
 #### `withdraw`
 
-When the mint from a Candy Machine is complete, it is possible to recover the funds used to pay the rent for the data stored on-chain. To initiate the withdraw:
+When the mint from a Candy Machine is complete, it is possible to recover the funds used to pay rent for the data stored on-chain. To initiate the withdraw:
 
 ```bash
-sugar withdraw [CANDY MACHINE]
+sugar withdraw <CANDY MACHINE>
 ```
 
-where the `[CANDY MACHINE]` is the Candy Machine ID &mdash; the ID given by the `deploy` command. It is possible to withdraw funds from all Candy Machines associated with the current keypair:
+where the `<CANDY MACHINE>` is the Candy Machine ID &mdash; the ID given by the `deploy` command. It is possible to withdraw funds from all Candy Machines associated with the current keypair:
 
 ```bash
 sugar withdraw
