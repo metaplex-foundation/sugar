@@ -77,7 +77,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     };
     let symbol_validator = |input: &String| -> Result<(), String> {
         if input.len() > 10 {
-            Err(format!("Symbol must be 10 characters or less!"))
+            Err(String::from("Symbol must be 10 characters or less!"))
         } else {
             Ok(())
         }
@@ -88,7 +88,9 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             Err(_) => return Err(format!("Couldn't parse input of '{}' to a number!", input)),
         };
         if value > 10_000 {
-            Err(format!("Seller fee basis points must be 10,000 or less!"))
+            Err(String::from(
+                "Seller fee basis points must be 10,000 or less!",
+            ))
         } else {
             Ok(())
         }
