@@ -287,7 +287,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
                 &Input::with_theme(&theme)
                     .with_prompt("What is your SPL token account address (the account that will hold the SPL token mints)?")
                     .validate_with(pubkey_validator)
-                    .validate_with(|input: &String| -> Result<()> {
+                    .validate_with(|input: &String| -> Result<() > {
                         check_spl_token_account(&program, input)
                     })
                     .interact()
