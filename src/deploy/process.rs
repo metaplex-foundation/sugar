@@ -203,7 +203,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         PAPER_EMOJI
     );
 
-    let config_lines = generate_config_lines(num_items, &cache.items);
+    let config_lines = generate_config_lines(num_items, &cache.items)?;
 
     if config_lines.is_empty() {
         println!("\nAll config lines deployed.");
@@ -308,13 +308,23 @@ fn create_candy_machine_data(config: &ConfigData, uuid: String) -> Result<CandyM
 }
 
 /// Determine the config lines that need to be uploaded.
-fn generate_config_lines(num_items: u64, cache_items: &CacheItems) -> Vec<Vec<(u32, ConfigLine)>> {
+fn generate_config_lines(
+    num_items: u64,
+    cache_items: &CacheItems,
+) -> Result<Vec<Vec<(u32, ConfigLine)>>> {
     let mut config_lines: Vec<Vec<(u32, ConfigLine)>> = Vec::new();
     let mut current: Vec<(u32, ConfigLine)> = Vec::new();
     let mut tx_size = 0;
 
     for i in 0..num_items {
-        let item = cache_items.0.get(&i.to_string()).unwrap();
+        let item = match cache_items.0.get(&i.to_string()) {
+            Some(item) => item,
+            None => {
+                return Err(
+                    DeployError::AddConfigLineFailed(format!("Missing cache item {}", i)).into(),
+                );
+            }
+        };
 
         if item.on_chain {
             // if the current item is on-chain already, store the previous
@@ -347,7 +357,7 @@ fn generate_config_lines(num_items: u64, cache_items: &CacheItems) -> Vec<Vec<(u
         config_lines.push(current);
     }
 
-    config_lines
+    Ok(config_lines)
 }
 
 /// Send the `initialize_candy_machine` instruction to the candy machine program.
