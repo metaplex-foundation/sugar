@@ -31,7 +31,7 @@ use crate::validate::parser::{check_name, check_seller_fee_basis_points, check_s
 /// The maximum config line bytes per transaction.
 const MAX_TRANSACTION_BYTES: usize = 1390;
 
-/// The maximum config line bytes per transaction.
+/// The maximum number of config lines per transaction.
 const MAX_TRANSACTION_LINES: usize = 17;
 
 struct TxInfo {
