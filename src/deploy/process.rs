@@ -9,7 +9,7 @@ use console::style;
 use futures::future::select_all;
 use rand::rngs::OsRng;
 use spl_associated_token_account::get_associated_token_address;
-use std::{cmp, collections::HashSet, mem::size_of, str::FromStr, sync::Arc};
+use std::{cmp, collections::HashSet, str::FromStr, sync::Arc};
 
 use mpl_candy_machine::accounts as nft_accounts;
 use mpl_candy_machine::instruction as nft_instruction;
@@ -29,7 +29,7 @@ use crate::utils::*;
 use crate::validate::parser::{check_name, check_seller_fee_basis_points, check_symbol, check_url};
 
 /// The maximum config line bytes per transaction.
-const MAX_TRANSACTION_BYTES: usize = 1390;
+const MAX_TRANSACTION_BYTES: usize = 1000;
 
 /// The maximum number of config lines per transaction.
 const MAX_TRANSACTION_LINES: usize = 17;
@@ -344,7 +344,8 @@ fn generate_config_lines(
             let config_line = item
                 .into_config_line()
                 .expect("Could not convert item to config line");
-            let size = size_of::<ConfigLine>() + config_line.name.len() + config_line.uri.len();
+
+            let size = (2 * STRING_LEN_SIZE) + config_line.name.len() + config_line.uri.len();
 
             if (tx_size + size) > MAX_TRANSACTION_BYTES || current.len() == MAX_TRANSACTION_LINES {
                 // we need a separate tx to not break the size limit
