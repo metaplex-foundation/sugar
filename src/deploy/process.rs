@@ -89,8 +89,9 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
     // checks the candy machine data
 
     let num_items = config_data.number;
+    let hidden = config_data.hidden_settings.is_some();
 
-    if num_items != (cache.items.0.len() as u64) && config_data.hidden_settings.is_none() {
+    if num_items != (cache.items.0.len() as u64) {
         return Err(anyhow!(
             "Number of items ({}) do not match cache items ({})",
             num_items,
@@ -104,7 +105,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
     let candy_pubkey = if candy_machine_address.is_empty() {
         println!(
             "{} {}Creating candy machine",
-            style("[1/2]").bold().dim(),
+            style(if hidden { "[1/1]" } else { "[1/2]" }).bold().dim(),
             CANDY_EMOJI
         );
         info!("Candy machine address is empty, creating new candy machine...");
@@ -176,7 +177,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
     } else {
         println!(
             "{} {}Loading candy machine",
-            style("[1/2]").bold().dim(),
+            style(if hidden { "[1/1]" } else { "[1/2]" }).bold().dim(),
             CANDY_EMOJI
         );
 
@@ -197,46 +198,50 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
 
     println!("{} {}", style("Candy machine ID:").bold(), candy_pubkey);
 
-    println!(
-        "\n{} {}Writing config lines",
-        style("[2/2]").bold().dim(),
-        PAPER_EMOJI
-    );
+    if !hidden {
+        println!(
+            "\n{} {}Writing config lines",
+            style("[2/2]").bold().dim(),
+            PAPER_EMOJI
+        );
 
-    let config_lines = generate_config_lines(num_items, &cache.items)?;
+        let config_lines = generate_config_lines(num_items, &cache.items)?;
 
-    if config_lines.is_empty() {
-        println!("\nAll config lines deployed.");
-    } else {
-        let errors = upload_config_lines(
-            client,
-            &sugar_config,
-            candy_pubkey,
-            &mut cache,
-            config_lines,
-        )
-        .await?;
+        if config_lines.is_empty() {
+            println!("\nAll config lines deployed.");
+        } else {
+            let errors = upload_config_lines(
+                client,
+                &sugar_config,
+                candy_pubkey,
+                &mut cache,
+                config_lines,
+            )
+            .await?;
 
-        if !errors.is_empty() {
-            let mut message = String::new();
-            message.push_str(&format!(
-                "Failed to deploy all config lines, {0} error(s) occurred:",
-                errors.len()
-            ));
+            if !errors.is_empty() {
+                let mut message = String::new();
+                message.push_str(&format!(
+                    "Failed to deploy all config lines, {0} error(s) occurred:",
+                    errors.len()
+                ));
 
-            let mut unique = HashSet::new();
+                let mut unique = HashSet::new();
 
-            for err in errors {
-                unique.insert(err.to_string());
+                for err in errors {
+                    unique.insert(err.to_string());
+                }
+
+                for u in unique {
+                    message.push_str("\n\t• ");
+                    message.push_str(&u);
+                }
+
+                return Err(DeployError::AddConfigLineFailed(message).into());
             }
-
-            for u in unique {
-                message.push_str("\n\t• ");
-                message.push_str(&u);
-            }
-
-            return Err(DeployError::AddConfigLineFailed(message).into());
         }
+    } else {
+        println!("\nCandy machine with hidden settings deployed.");
     }
 
     Ok(())
