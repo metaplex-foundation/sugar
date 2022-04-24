@@ -83,8 +83,9 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
     // checks the candy machine data
 
     let num_items = config_data.number;
+    let hidden = config_data.hidden_settings.is_some();
 
-    if num_items != (cache.items.0.len() as u64) && config_data.hidden_settings.is_none() {
+    if num_items != (cache.items.0.len() as u64) {
         return Err(anyhow!(
             "Number of items ({}) do not match cache items ({})",
             num_items,
@@ -98,7 +99,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
     let candy_pubkey = if candy_machine_address.is_empty() {
         println!(
             "{} {}Creating candy machine",
-            style("[1/2]").bold().dim(),
+            style(if hidden { "[1/1]" } else { "[1/2]" }).bold().dim(),
             CANDY_EMOJI
         );
         info!("Candy machine address is empty, creating new candy machine...");
@@ -170,7 +171,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
     } else {
         println!(
             "{} {}Loading candy machine",
-            style("[1/2]").bold().dim(),
+            style(if hidden { "[1/1]" } else { "[1/2]" }).bold().dim(),
             CANDY_EMOJI
         );
 
@@ -191,35 +192,39 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
 
     println!("{} {}", style("Candy machine ID:").bold(), candy_pubkey);
 
-    println!(
-        "\n{} {}Writing config lines",
-        style("[2/2]").bold().dim(),
-        PAPER_EMOJI
-    );
-
-    let config_lines = generate_config_lines(num_items, &cache.items);
-
-    let completed = if config_lines.is_empty() {
-        println!("\nAll config lines deployed.");
-        true
-    } else {
-        upload_config_lines(
-            client,
-            &sugar_config,
-            candy_pubkey,
-            &mut cache,
-            config_lines,
-        )
-        .await?
-    };
-
-    if !completed {
+    if !hidden {
         println!(
-            "\n{}",
-            style("Not all config lines deployed - re-run needed.")
-                .red()
-                .bold()
-        )
+            "\n{} {}Writing config lines",
+            style("[2/2]").bold().dim(),
+            PAPER_EMOJI
+        );
+
+        let config_lines = generate_config_lines(num_items, &cache.items);
+
+        let completed = if config_lines.is_empty() {
+            println!("\nAll config lines deployed.");
+            true
+        } else {
+            upload_config_lines(
+                client,
+                &sugar_config,
+                candy_pubkey,
+                &mut cache,
+                config_lines,
+            )
+            .await?
+        };
+
+        if !completed {
+            println!(
+                "\n{}",
+                style("Not all config lines deployed - re-run needed.")
+                    .red()
+                    .bold()
+            )
+        }
+    } else {
+        println!("\nCandy machine with hidden settings deployed.");
     }
 
     Ok(())
@@ -347,17 +352,25 @@ fn initialize_candy_machine(
     let payer = program.payer();
     let items_available = candy_machine_data.items_available;
 
-    let candy_account_size = CONFIG_ARRAY_START
-        + 4
-        + items_available as usize * CONFIG_LINE_SIZE
-        + 8
-        + 2 * (items_available as usize / 8 + 1);
+    // when hidden settings are used, config lines are not stored on-chain
+    // so there is no need to allocated space for them
+    let candy_account_size = if config_data.hidden_settings.is_some() {
+        CONFIG_ARRAY_START
+    } else {
+        CONFIG_ARRAY_START
+            + 4
+            + items_available as usize * CONFIG_LINE_SIZE
+            + 8
+            + 2 * (items_available as usize / 8 + 1)
+    };
 
     info!(
         "Initializing candy machine with account size of: {} and address of: {}",
         candy_account_size,
         candy_account.pubkey().to_string()
     );
+
+    println!("{:?}", config_data);
 
     let mut tx = program
         .request()
