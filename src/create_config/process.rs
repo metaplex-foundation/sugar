@@ -39,14 +39,8 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     let mut config_data: ConfigData = ConfigData::default();
     let theme = ColorfulTheme {
         prompt_style: Style::new(),
-        checked_item_prefix: style("✔".to_string())
-            .for_stderr()
-            .green()
-            .force_styling(true),
-        unchecked_item_prefix: style("✔".to_string())
-            .for_stderr()
-            .black()
-            .force_styling(true),
+        checked_item_prefix: style("✔".to_string()).green().force_styling(true),
+        unchecked_item_prefix: style("✔".to_string()).black().force_styling(true),
         ..Default::default()
     };
 
@@ -54,7 +48,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     let pubkey_validator = |input: &String| -> Result<(), String> {
         if Pubkey::from_str(input).is_err() {
-            Err(format!("Couldn't parse input of '{}' to a pubkey!", input))
+            Err(format!("Couldn't parse input of '{}' to a pubkey.", input))
         } else {
             Ok(())
         }
@@ -63,7 +57,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     let float_validator = |input: &String| -> Result<(), String> {
         if input.parse::<f64>().is_err() {
             Err(format!(
-                "Couldn't parse price input of '{}' to a float!",
+                "Couldn't parse price input of '{}' to a float.",
                 input
             ))
         } else {
@@ -72,7 +66,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     };
     let number_validator = |input: &String| -> Result<(), String> {
         if input.parse::<u64>().is_err() || input.parse::<u8>().is_err() {
-            Err(format!("Couldn't parse input of '{}' to a number!", input))
+            Err(format!("Couldn't parse input of '{}' to a number.", input))
         } else {
             Ok(())
         }
@@ -80,7 +74,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     let date_validator = |input: &String| -> Result<(), String> {
         if go_live_date_as_timestamp(input).is_err() {
-            Err(format!("Couldn't parse input of '{}' to a date!", input))
+            Err(format!("Couldn't parse input of '{}' to a date.", input))
         } else {
             Ok(())
         }
@@ -88,7 +82,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     let url_validator = |input: &String| -> Result<(), String> {
         if Url::parse(input).is_err() {
             Err(format!(
-                "Couldn't parse input of '{}' to a valid uri!",
+                "Couldn't parse input of '{}' to a valid uri.",
                 input
             ))
         } else {
@@ -97,7 +91,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     };
     let symbol_validator = |input: &String| -> Result<(), String> {
         if input.len() > 10 {
-            Err(String::from("Symbol must be 10 characters or less!"))
+            Err(String::from("Symbol must be 10 characters or less."))
         } else {
             Ok(())
         }
@@ -105,11 +99,11 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     let seller_fee_basis_points_validator = |input: &String| -> Result<(), String> {
         let value = match input.parse::<u16>() {
             Ok(value) => value,
-            Err(_) => return Err(format!("Couldn't parse input of '{}' to a number!", input)),
+            Err(_) => return Err(format!("Couldn't parse input of '{}' to a number.", input)),
         };
         if value > 10_000 {
             Err(String::from(
-                "Seller fee basis points must be 10,000 or less!",
+                "Seller fee basis points must be 10,000 or less.",
             ))
         } else {
             Ok(())
@@ -125,7 +119,6 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     println!(
         "\n{}",
         style("Check out our Candy Machine config docs to learn about the options:")
-            .magenta()
             .bold()
             .dim()
     );
@@ -133,6 +126,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         "  -> {}\n",
         style("https://docs.metaplex.com/candy-machine-v2/configuration")
             .bold()
+            .magenta()
             .underlined()
     );
 
@@ -176,7 +170,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     config_data.number = if (num_files % 2) == 0 && Confirm::with_theme(&theme)
         .with_prompt(
             format!(
-                "I found {} file pairs in \"{}\". Is this how many NFTs you will have in your candy machine?", num_files / 2, args.assets_dir,
+                "Found {} file pairs in \"{}\". Is this how many NFTs you will have in your candy machine?", num_files / 2, args.assets_dir,
             )
         )
         .interact()? {
@@ -191,19 +185,25 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     // symbol
 
-    config_data.symbol = if !symbol.is_empty() && Confirm::with_theme(&theme)
-        .with_prompt(
-            format!(
-                "I found symbol \"{}\" in your metadata file. Is this the symbol of your collection?", symbol,
-            )
-        )
-        .interact()? {
+    config_data.symbol = if num_files > 0
+        && Confirm::with_theme(&theme)
+            .with_prompt(format!(
+                "Found {} in your metadata file. Is this value correct?",
+                if symbol.is_empty() {
+                    "no symbol".to_string()
+                } else {
+                    format!("symbol \"{}\"", symbol)
+                },
+            ))
+            .interact()?
+    {
         symbol
     } else {
         Input::with_theme(&theme)
             .with_prompt(
-                "What is the symbol of your collection? (this must match what is in your asset files)",
+                "What is the symbol of your collection? This must match what is in your asset files. Hit [ENTER] for no symbol.",
             )
+            .allow_empty(true)
             .validate_with(symbol_validator)
             .interact()
             .unwrap()
@@ -211,10 +211,10 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     // seller_fee_basis_points
 
-    config_data.seller_fee_basis_points = if seller_fee != INVALID_SELLER_FEE && Confirm::with_theme(&theme)
+    config_data.seller_fee_basis_points = if num_files > 0 && Confirm::with_theme(&theme)
         .with_prompt(
             format!(
-                "I found value {} for seller fee basis points in your metadata file. Is this value correct?", seller_fee,
+                "Found value {} for seller fee basis points in your metadata file. Is this value correct?", seller_fee,
             )
         )
         .interact()? {
@@ -234,7 +234,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     // go_live_date
 
     config_data.go_live_date = Input::with_theme(&theme)
-        .with_prompt("What is your go live date? Enter it in RFC 3339 format, i.e., \"2022-02-25T13:00:00Z\", which is 1:00 PM UTC on Feburary 25, 2022.")
+        .with_prompt("What is your go live date? Enter it in RFC 3339 format, e.g., \"2022-02-25T13:00:00Z\" for 1:00 PM UTC on Feburary 25, 2022.")
         .validate_with(date_validator)
         .interact()
         .unwrap();
@@ -247,7 +247,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         .validate_with({
             |input: &String| match input.parse::<u8>().unwrap() {
                 1 | 2 | 3 | 4 => Ok(()),
-                _ => Err("Number of creator walltets must be between 1 and 4, inclusive!"),
+                _ => Err("Number of creator walltets must be between 1 and 4, inclusive."),
             }
         })
         .interact()
@@ -269,16 +269,16 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
         let share = Input::with_theme(&theme)
             .with_prompt(format!(
-                "Enter royalty percentage share for creator #{} (i.e. 70). Total shares must add to 100!",
+                "Enter royalty percentage share for creator #{} (e.g., 70). Total shares must add to 100.",
                 i + 1
             ))
             .validate_with(number_validator)
             .validate_with({
                 |input: &String| -> Result<(), &str> {
                     if input.parse::<u8>().unwrap() + total_share > 100 {
-                        Err("Royalty share total has exceeded 100 percent!")
+                        Err("Royalty share total has exceeded 100 percent.")
                     } else if i == num_creators && input.parse::<u8>().unwrap() + total_share != 100 {
-                        Err("Royalty share for all creators must total 100 percent!")
+                        Err("Royalty share for all creators must total 100 percent.")
                     } else {
                         Ok(())
                     }
@@ -308,7 +308,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     ];
 
     let choices = MultiSelect::with_theme(&theme)
-        .with_prompt("Which extra features do you want to use? (use spacebar to select options you want and hit enter for when done)")
+        .with_prompt("Which extra features do you want to use? (use [SPACEBAR] to select options you want and hit [ENTER] when done)")
         .items(&extra_functions_options)
         .interact()?;
 
@@ -330,7 +330,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         };
 
         let expire_on_use = Confirm::with_theme(&theme)
-            .with_prompt("To help prevent bots even more, do you want to expire the gateway token on each mint?").interact()?;
+            .with_prompt("To help prevent bots even more, do you want to expire the gatekeeper token on each mint?").interact()?;
         Some(GatekeeperConfig::new(gatekeeper_network, expire_on_use))
     } else {
         None
@@ -399,7 +399,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         .expect("Failed to parse string into pubkey that should have already been validated.");
 
         let whitelist_mint_mode: WhitelistMintMode = if Confirm::with_theme(&theme)
-            .with_prompt("Do you want the whitelist token to be burned each time someone mints?")
+            .with_prompt("Do you want the whitelist token to be burned on each mint?")
             .interact()?
         {
             WhitelistMintMode::BurnEveryTime
@@ -413,7 +413,9 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         let discount_price: Option<f64> = if presale {
             Some(
                 Input::with_theme(&theme)
-                    .with_prompt("What is the discount price for the presale? Leave it blank for no discount.")
+                    .with_prompt(
+                        "What is the discount price for the presale? Hit [ENTER] for no discount.",
+                    )
                     .validate_with(float_validator)
                     .interact()
                     .unwrap()
@@ -459,7 +461,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
                     if num.parse::<u64>().unwrap() < config_data.number {
                         Ok(())
                     } else {
-                        Err("Your end settings ammount cannot be more than the number of items in your candy machine!")
+                        Err("Your end settings ammount cannot be more than the number of items in your candy machine.")
                     }
                 })
                 .interact()
@@ -468,11 +470,11 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
                 .expect("Failed to parse number into u64 that should have already been validated."),
             EndSettingType::Date => {
                 let date = Input::with_theme(&theme)
-                    .with_prompt("What is the date to stop the mint? Enter it in RFC 3339 format, i.e., \"2022-02-25T13:00:00Z\", which is 1:00 PM UTC on Feburary 25, 2022.")
+                    .with_prompt("What is the date to stop the mint? Enter it in RFC 3339 format, e.g., \"2022-02-25T13:00:00Z\" for 1:00 PM UTC on Feburary 25, 2022.")
                     .validate_with(date_validator)
                     .interact()
                     .unwrap();
-                go_live_date_as_timestamp(&date).expect("Failed to parse string into timestamp that should have already been validated!") as u64
+                go_live_date_as_timestamp(&date).expect("Failed to parse string into timestamp that should have already been validated.") as u64
             }
         };
 
@@ -485,10 +487,10 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     config_data.hidden_settings = if choices.contains(&HIDDEN_SETTINGS_INDEX) {
         let name = Input::with_theme(&theme)
-            .with_prompt("What is the prefix name for your hidden settings? The mint index will be appended at the end of the name.")
+            .with_prompt("What is the prefix name for your hidden settings mints? The mint index will be appended at the end of the name.")
             .validate_with(|name: &String| {
                 if name.len() > (MAX_NAME_LENGTH - 7) {
-                    Err("Your hidden settings name probably cannot be longer than 25 characters!")
+                    Err("Your hidden settings name probably cannot be longer than 25 characters.")
                 } else {
                     Ok(())
                 }
@@ -499,7 +501,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             .with_prompt("What is URI to be used for each mint?")
             .validate_with(|uri: &String| {
                 if uri.len() > MAX_URI_LENGTH {
-                    Err("The URI cannot be longer than 200 characters!")
+                    Err("The URI cannot be longer than 200 characters.")
                 } else {
                     Ok(())
                 }
@@ -511,7 +513,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             .with_prompt("What is the hash value for your hidden settings?")
             .validate_with(|hash: &String| {
                 if hash.len() != 32 {
-                    Err("Your hidden settings hash has to be 32 characters long!")
+                    Err("Your hidden settings hash has to be 32 characters long.")
                 } else {
                     Ok(())
                 }
@@ -549,9 +551,14 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     // retain authority
 
-    config_data.retain_authority = Confirm::with_theme(&theme).with_prompt("Do you want to retain update authority on your NFTs? We HIGHLY reccomend you choose yes!").interact()?;
+    config_data.retain_authority = Confirm::with_theme(&theme)
+        .with_prompt("Do you want to retain update authority on your NFTs? We HIGHLY recommend you choose yes.")
+        .interact()?;
+
+    // is mutable
+
     config_data.is_mutable = Confirm::with_theme(&theme)
-        .with_prompt("Do you want your NFTs to remain mutable? We HIGHLY recommend you choose yes!")
+        .with_prompt("Do you want your NFTs to remain mutable? We HIGHLY recommend you choose yes.")
         .interact()?;
 
     // saving configuration file
