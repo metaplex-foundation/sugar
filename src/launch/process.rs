@@ -21,16 +21,7 @@ pub struct LaunchArgs {
 }
 
 pub async fn process_launch(args: LaunchArgs) -> Result<()> {
-    println!("Starting Sugar launch... {}", LAUNCH_EMOJI);
-
-    println!("\n{} sugar validate\n", style(">>>").magenta());
-
-    let validate_args = ValidateArgs {
-        assets_dir: args.assets_dir.clone(),
-        strict: args.strict,
-    };
-
-    process_validate(validate_args)?;
+    println!("Starting Sugar launch... {}\n", LAUNCH_EMOJI);
 
     let theme = ColorfulTheme {
         prompt_style: Style::new(),
@@ -39,7 +30,7 @@ pub async fn process_launch(args: LaunchArgs) -> Result<()> {
 
     if let Err(err) = get_config_data(&args.config) {
         if Confirm::with_theme(&theme)
-            .with_prompt("Config file not found. Would you like to create a new config file?")
+            .with_prompt("Could not load config file. Would you like to create a new config file?")
             .interact()?
         {
             println!("\n{} sugar create-config\n", style(">>>").magenta());
@@ -56,6 +47,15 @@ pub async fn process_launch(args: LaunchArgs) -> Result<()> {
             return Err(err.into());
         }
     }
+
+    println!("\n{} sugar validate\n", style(">>>").magenta());
+
+    let validate_args = ValidateArgs {
+        assets_dir: args.assets_dir.clone(),
+        strict: args.strict,
+    };
+
+    process_validate(validate_args)?;
 
     println!("\n{} sugar upload\n", style(">>>").magenta());
 
