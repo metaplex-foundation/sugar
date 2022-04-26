@@ -3,9 +3,9 @@ use anyhow::Result;
 use console::{style, Style};
 use dialoguer::Confirm;
 use dialoguer::{theme::ColorfulTheme, Input, MultiSelect, Select};
-use std::fs::OpenOptions;
 use std::{
-    fs::File,
+    default::Default,
+    fs::{File, OpenOptions},
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
@@ -24,6 +24,9 @@ use crate::{constants::*, upload::count_files};
 
 /// Default name of the first metadata file.
 const DEFAULT_METADATA: &str = "0.json";
+
+/// Default value to represent an invalid seller fee basis points.
+const INVALID_SELLER_FEE: u16 = std::u16::MAX;
 
 pub struct CreateConfigArgs {
     pub keypair: Option<String>,
@@ -140,8 +143,8 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         _ => 0,
     };
 
-    let mut symbol = None;
-    let mut seller_fee = None;
+    let mut symbol: String = Default::default();
+    let mut seller_fee = INVALID_SELLER_FEE;
 
     if num_files > 0 {
         // loads the default values from the first metadata file
@@ -154,8 +157,8 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         let m = File::open(&metadata_file)?;
         let metadata: Metadata = serde_json::from_reader(m)?;
 
-        symbol = Some(metadata.symbol);
-        seller_fee = Some(metadata.seller_fee_basis_points);
+        symbol = metadata.symbol;
+        seller_fee = metadata.seller_fee_basis_points;
     }
 
     // price
@@ -188,14 +191,14 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     // symbol
 
-    config_data.symbol = if symbol.is_some() && Confirm::with_theme(&theme)
+    config_data.symbol = if !symbol.is_empty() && Confirm::with_theme(&theme)
         .with_prompt(
             format!(
-                "I found symbol \"{}\" in your metadata file. Is this the symbol of your collection?", symbol.as_ref().unwrap(),
+                "I found symbol \"{}\" in your metadata file. Is this the symbol of your collection?", symbol,
             )
         )
         .interact()? {
-        symbol.unwrap()
+        symbol
     } else {
         Input::with_theme(&theme)
             .with_prompt(
@@ -208,18 +211,18 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     // seller_fee_basis_points
 
-    config_data.seller_fee_basis_points = if seller_fee.is_some() && Confirm::with_theme(&theme)
+    config_data.seller_fee_basis_points = if seller_fee != INVALID_SELLER_FEE && Confirm::with_theme(&theme)
         .with_prompt(
             format!(
-                "I found value {} for seller fee basis points in your metadata file. Is this value correct?", seller_fee.unwrap(),
+                "I found value {} for seller fee basis points in your metadata file. Is this value correct?", seller_fee,
             )
         )
         .interact()? {
-        seller_fee.unwrap()
+        seller_fee
     } else {
         Input::with_theme(&theme)
             .with_prompt(
-                "What is the seller fee basis points? (this must match what is in your asset files.)",
+                "What is the seller fee basis points? (this must match what is in your asset files)",
             )
             .validate_with(seller_fee_basis_points_validator)
             .interact()
