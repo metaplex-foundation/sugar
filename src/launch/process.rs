@@ -10,7 +10,6 @@ use crate::deploy::{process_deploy, DeployArgs};
 use crate::upload::{process_upload, UploadArgs};
 use crate::validate::{process_validate, ValidateArgs};
 use crate::verify::{process_verify, VerifyArgs};
-use std::sync::Arc;
 
 pub struct LaunchArgs {
     pub assets_dir: String,
