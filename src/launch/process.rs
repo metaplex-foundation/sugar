@@ -21,7 +21,7 @@ pub struct LaunchArgs {
 }
 
 pub async fn process_launch(args: LaunchArgs) -> Result<()> {
-    println!("Starting Sugar launch... {}\n", LAUNCH_EMOJI);
+    println!("Starting Sugar launch... {}", LAUNCH_EMOJI);
 
     let theme = ColorfulTheme {
         prompt_style: Style::new(),
@@ -29,6 +29,8 @@ pub async fn process_launch(args: LaunchArgs) -> Result<()> {
     };
 
     if let Err(err) = get_config_data(&args.config) {
+        // padding
+        println!();
         if Confirm::with_theme(&theme)
             .with_prompt("Could not load config file. Would you like to create a new config file?")
             .interact()?
