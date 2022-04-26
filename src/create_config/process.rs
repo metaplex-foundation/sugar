@@ -4,7 +4,12 @@ use console::{style, Style};
 use dialoguer::Confirm;
 use dialoguer::{theme::ColorfulTheme, Input, MultiSelect, Select};
 use std::fs::OpenOptions;
-use std::{path::Path, str::FromStr, sync::Arc};
+use std::{
+    fs::File,
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::Arc,
+};
 use url::Url;
 
 use crate::common::{CANDY_EMOJI, CANDY_MACHINE_V2, CONFETTI_EMOJI};
@@ -14,15 +19,17 @@ use crate::config::{
 };
 use crate::setup::{setup_client, sugar_setup};
 use crate::utils::{check_spl_token, check_spl_token_account};
-use crate::{
-    constants::{DEFAULT_ASSETS, DEFAULT_CONFIG},
-    upload::count_files,
-};
+use crate::validate::Metadata;
+use crate::{constants::*, upload::count_files};
+
+/// Default name of the first metadata file.
+const DEFAULT_METADATA: &str = "0.json";
 
 pub struct CreateConfigArgs {
     pub keypair: Option<String>,
     pub rpc_url: Option<String>,
     pub config: Option<String>,
+    pub assets_dir: String,
 }
 
 pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
@@ -39,6 +46,8 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             .force_styling(true),
         ..Default::default()
     };
+
+    // validators
 
     let pubkey_validator = |input: &String| -> Result<(), String> {
         if Pubkey::from_str(input).is_err() {
@@ -105,23 +114,51 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     };
 
     println!(
-        "{}{} {}",
-        CANDY_EMOJI,
-        style("Sugar Interactive Config Maker")
-            .bold()
-            .cyan()
-            .underlined(),
+        "{} {}Sugar interactive config maker",
+        style("[1/2]").bold().dim(),
         CANDY_EMOJI
     );
+
     println!(
-        "{}{}{}\n",
-        style("Check out our Candy Machine config docs at ").magenta(),
+        "\n{}",
+        style("Check out our Candy Machine config docs to learn about the options:")
+            .magenta()
+            .bold()
+            .dim()
+    );
+    println!(
+        "  -> {}\n",
         style("https://docs.metaplex.com/candy-machine-v2/configuration")
             .bold()
             .underlined()
-            .magenta(),
-        style(" to learn about the options!").magenta()
     );
+
+    // checks if we have an assets dir and count the number of files
+    // assumes 0 in case of error since assets_dir is optional
+    let num_files = match count_files(&args.assets_dir) {
+        Ok(number) => number,
+        _ => 0,
+    };
+
+    let mut symbol = None;
+    let mut seller_fee = None;
+
+    if num_files > 0 {
+        // loads the default values from the first metadata file
+        let metadata_file = PathBuf::from(&args.assets_dir)
+            .join(DEFAULT_METADATA)
+            .to_str()
+            .expect("Failed to convert metadata path from unicode.")
+            .to_string();
+
+        let m = File::open(&metadata_file)?;
+        let metadata: Metadata = serde_json::from_reader(m)?;
+
+        symbol = Some(metadata.symbol);
+        seller_fee = Some(metadata.seller_fee_basis_points);
+    }
+
+    // price
 
     config_data.price = Input::with_theme(&theme)
         .with_prompt("What is the price of each NFT?")
@@ -131,16 +168,16 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         .parse::<f64>()
         .expect("Failed to parse string into u64 that should have already been validated.");
 
-    let num_files = count_files(DEFAULT_ASSETS);
-    let num_files_ok = num_files.as_ref().map(|num| num % 2 == 0).unwrap_or(false);
-    config_data.number = if num_files_ok && Confirm::with_theme(&theme)
+    // number
+
+    config_data.number = if (num_files % 2) == 0 && Confirm::with_theme(&theme)
         .with_prompt(
             format!(
-                "I found {} file pairs in the default assets directory. Is this how many NFTs you will have in your candy machine?", num_files.as_ref().unwrap() / 2
+                "I found {} file pairs in \"{}\". Is this how many NFTs you will have in your candy machine?", num_files / 2, args.assets_dir,
             )
         )
         .interact()? {
-        (num_files.unwrap() / 2) as u64
+        (num_files / 2) as u64
     } else {
         Input::with_theme(&theme)
             .with_prompt("How many NFTs will you have in your candy machine?")
@@ -149,23 +186,49 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             .unwrap().parse::<u64>().expect("Failed to parse number into u64 that should have already been validated.")
     };
 
-    config_data.symbol = Input::with_theme(&theme)
-        .with_prompt(
-            "What is the symbol of your collection? (This must match what's in your asset files.)",
-        )
-        .validate_with(symbol_validator)
-        .interact()
-        .unwrap();
+    // symbol
 
-    config_data.seller_fee_basis_points = Input::with_theme(&theme)
+    config_data.symbol = if symbol.is_some() && Confirm::with_theme(&theme)
         .with_prompt(
-            "What is the seller fee basis points? (This must match what's in your asset files.)",
+            format!(
+                "I found symbol \"{}\" in your metadata file. Is this the symbol of your collection?", symbol.as_ref().unwrap(),
+            )
         )
-        .validate_with(seller_fee_basis_points_validator)
-        .interact()
-        .unwrap()
-        .parse::<u16>()
-        .expect("Failed to parse number into u16 that should have already been validated.");
+        .interact()? {
+        symbol.unwrap()
+    } else {
+        Input::with_theme(&theme)
+            .with_prompt(
+                "What is the symbol of your collection? (this must match what is in your asset files)",
+            )
+            .validate_with(symbol_validator)
+            .interact()
+            .unwrap()
+    };
+
+    // seller_fee_basis_points
+
+    config_data.seller_fee_basis_points = if seller_fee.is_some() && Confirm::with_theme(&theme)
+        .with_prompt(
+            format!(
+                "I found value {} for seller fee basis points in your metadata file. Is this value correct?", seller_fee.unwrap(),
+            )
+        )
+        .interact()? {
+        seller_fee.unwrap()
+    } else {
+        Input::with_theme(&theme)
+            .with_prompt(
+                "What is the seller fee basis points? (this must match what is in your asset files.)",
+            )
+            .validate_with(seller_fee_basis_points_validator)
+            .interact()
+            .unwrap()
+            .parse::<u16>()
+            .expect("Failed to parse number into u16 that should have already been validated.")
+    };
+
+    // go_live_date
 
     config_data.go_live_date = Input::with_theme(&theme)
         .with_prompt("What is your go live date? Enter it in RFC 3339 format, i.e., \"2022-02-25T13:00:00Z\", which is 1:00 PM UTC on Feburary 25, 2022.")
@@ -173,13 +236,15 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         .interact()
         .unwrap();
 
+    // creators
+
     let num_creators = Input::with_theme(&theme)
-        .with_prompt("How many creators do you have? (Max limit of 4)")
+        .with_prompt("How many creator wallets do you have? (max limit of 4)")
         .validate_with(number_validator)
         .validate_with({
             |input: &String| match input.parse::<u8>().unwrap() {
                 1 | 2 | 3 | 4 => Ok(()),
-                _ => Err("Number of creators must be between 1 and 4, inclusive!"),
+                _ => Err("Number of creator walltets must be between 1 and 4, inclusive!"),
             }
         })
         .interact()
@@ -192,7 +257,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     (0..num_creators).into_iter().for_each(|i| {
         let address = Pubkey::from_str(
             &Input::with_theme(&theme)
-                .with_prompt(format!("Enter creator address #{}", i + 1))
+                .with_prompt(format!("Enter creator wallet address #{}", i + 1))
                 .validate_with(pubkey_validator)
                 .interact()
                 .unwrap(),
@@ -240,18 +305,18 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     ];
 
     let choices = MultiSelect::with_theme(&theme)
-        .with_prompt("Which extra features do you want to use? (Use spacebar to select options you want. Hit enter for when done.)")
+        .with_prompt("Which extra features do you want to use? (use spacebar to select options you want and hit enter for when done)")
         .items(&extra_functions_options)
         .interact()?;
 
+    // gatekeeper
+
     config_data.gatekeeper = if choices.contains(&GATEKEEPER_INDEX) {
         let gatekeeper_options = vec!["Civic Pass", "Verify by Encore"];
-        let civic_network =
-            Pubkey::from_str("ignREusXmGrscGNUesoU9mxfds9AiYTezUKex2PsZV6").unwrap();
-        let encore_network =
-            Pubkey::from_str("tibePmPaoTgrs929rWpu755EXaxC7M3SthVCf6GzjZt").unwrap();
+        let civic_network = Pubkey::from_str(CIVIC_NETWORK).unwrap();
+        let encore_network = Pubkey::from_str(ENCORE_NETWORK).unwrap();
         let selection = Select::with_theme(&theme)
-            .with_prompt("Which gatekeeper do you want to use? Check https://docs.metaplex.com/candy-machine-v2/configuration#provider-networks for more info.")
+            .with_prompt("Which gatekeeper network do you want to use? Check https://docs.metaplex.com/candy-machine-v2/configuration#provider-networks for more info.")
             .items(&gatekeeper_options)
             .default(0)
             .interact()?;
@@ -268,6 +333,8 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         None
     };
 
+    // SPL token mint
+
     let pid = CANDY_MACHINE_V2.parse().expect("Failed to parse PID");
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = Arc::new(setup_client(&sugar_config)?);
@@ -278,7 +345,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         config_data.spl_token = Some(
             Pubkey::from_str(
                 &Input::with_theme(&theme)
-                    .with_prompt("What is your SPL token mint?")
+                    .with_prompt("What is your SPL token mint address?")
                     .validate_with(pubkey_validator)
                     .validate_with(|input: &String| -> Result<()> {
                         check_spl_token(&program, input)
@@ -316,6 +383,8 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         );
     };
 
+    // whitelist mint settings
+
     config_data.whitelist_mint_settings = if choices.contains(&WL_INDEX) {
         let mint = Pubkey::from_str(
             &Input::with_theme(&theme)
@@ -336,12 +405,12 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         };
 
         let presale = Confirm::with_theme(&theme)
-            .with_prompt("Do you want to have a presale mint with your whitelist token?")
+            .with_prompt("Do you want to enable presale mint with your whitelist token?")
             .interact()?;
         let discount_price: Option<f64> = if presale {
             Some(
                 Input::with_theme(&theme)
-                    .with_prompt("What is the discount price for the presale?")
+                    .with_prompt("What is the discount price for the presale? Leave it blank for no discount.")
                     .validate_with(float_validator)
                     .interact()
                     .unwrap()
@@ -363,6 +432,8 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         None
     };
 
+    // end settings
+
     config_data.end_settings = if choices.contains(&END_SETTINGS_INDEX) {
         let end_settings_options = vec!["Date", "Amount"];
         let end_setting_type = match Select::with_theme(&theme)
@@ -379,13 +450,13 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
         let number = match end_setting_type {
             EndSettingType::Amount => Input::with_theme(&theme)
-                .with_prompt("What is your end settings ammount?")
+                .with_prompt("What is the amount to stop the mint?")
                 .validate_with(number_validator)
                 .validate_with(|num: &String| {
                     if num.parse::<u64>().unwrap() < config_data.number {
                         Ok(())
                     } else {
-                        Err("Your end settings ammount can't be more than the number of items in your candy machine!")
+                        Err("Your end settings ammount cannot be more than the number of items in your candy machine!")
                     }
                 })
                 .interact()
@@ -394,7 +465,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
                 .expect("Failed to parse number into u64 that should have already been validated."),
             EndSettingType::Date => {
                 let date = Input::with_theme(&theme)
-                    .with_prompt("What is your end settings date? Enter it in RFC 3339 format, i.e., \"2022-02-25T13:00:00Z\", which is 1:00 PM UTC on Feburary 25, 2022.")
+                    .with_prompt("What is the date to stop the mint? Enter it in RFC 3339 format, i.e., \"2022-02-25T13:00:00Z\", which is 1:00 PM UTC on Feburary 25, 2022.")
                     .validate_with(date_validator)
                     .interact()
                     .unwrap();
@@ -407,12 +478,14 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         None
     };
 
+    // hidden settings
+
     config_data.hidden_settings = if choices.contains(&HIDDEN_SETTINGS_INDEX) {
         let name = Input::with_theme(&theme)
-            .with_prompt("What is your hidden settings name?")
+            .with_prompt("What is the prefix name for your hidden settings? The mint index will be appended at the end of the name.")
             .validate_with(|name: &String| {
-                if name.len() > 27 {
-                    Err("Your hidden settings name probably can't be longer than 27 characters!")
+                if name.len() > (MAX_NAME_LENGTH - 7) {
+                    Err("Your hidden settings name probably cannot be longer than 25 characters!")
                 } else {
                     Ok(())
                 }
@@ -420,10 +493,10 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             .interact()
             .unwrap();
         let uri = Input::with_theme(&theme)
-            .with_prompt("What is your hidden settings uri?")
+            .with_prompt("What is URI to be used for each mint?")
             .validate_with(|uri: &String| {
-                if uri.len() > 200 {
-                    Err("Your uri can't be longer than 200 characters!")
+                if uri.len() > MAX_URI_LENGTH {
+                    Err("The URI cannot be longer than 200 characters!")
                 } else {
                     Ok(())
                 }
@@ -432,9 +505,9 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             .interact()
             .unwrap();
         let hash = Input::with_theme(&theme)
-            .with_prompt("What is your hidden settings hash?")
-            .validate_with(|name: &String| {
-                if name.len() != 32 {
+            .with_prompt("What is the hash value for your hidden settings?")
+            .validate_with(|hash: &String| {
+                if hash.len() != 32 {
                     Err("Your hidden settings hash has to be 32 characters long!")
                 } else {
                     Ok(())
@@ -446,6 +519,8 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     } else {
         None
     };
+
+    // upload method
 
     let upload_options = vec!["Bundlr", "AWS"];
     config_data.upload_method = match Select::with_theme(&theme)
@@ -469,12 +544,21 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         );
     }
 
+    // retain authority
+
     config_data.retain_authority = Confirm::with_theme(&theme).with_prompt("Do you want to retain update authority on your NFTs? We HIGHLY reccomend you choose yes!").interact()?;
     config_data.is_mutable = Confirm::with_theme(&theme)
         .with_prompt("Do you want your NFTs to remain mutable? We HIGHLY recommend you choose yes!")
         .interact()?;
 
-    println!();
+    // saving configuration file
+
+    println!(
+        "\n{} {}Saving config file\n",
+        style("[2/2]").bold().dim(),
+        PAPER_EMOJI
+    );
+
     let mut save_file = true;
     let file_path = match args.config {
         Some(config) => config,
@@ -483,7 +567,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     if Path::new(&file_path).is_file() {
         save_file = Select::with_theme(&theme)
-            .with_prompt(format!("The file \"{}\" already exists! Do you want to overwrite it with the new config or log the new config to the console?", file_path))
+            .with_prompt(format!("The file \"{}\" already exists. Do you want to overwrite it with the new config or log the new config to the console?", file_path))
             .items(&["Overwrite the file", "Log to console"])
             .default(0)
             .interact()
@@ -502,24 +586,24 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             Ok(f) => {
                 println!(
                     "{}",
-                    style(format!("Saving config file: \"{}\"", file_path)).dim()
+                    style(format!("Saving config to file: \"{}\"\n", file_path))
                 );
                 serde_json::to_writer_pretty(f, &config_data)
                     .expect("Unable to convert config to JSON!");
+
                 println!(
-                    "{}{} {}",
-                    CONFETTI_EMOJI,
-                    style("Successfully generated the config file!")
-                        .bold()
-                        .green(),
+                    "{} {}",
+                    style("Successfully generated the config file.")
+                        .magenta()
+                        .bold(),
                     CONFETTI_EMOJI
                 )
             }
 
             Err(_) => {
                 println!(
-                    "{}",
-                    style("Error creating config file! Logging config to console!\n")
+                    "{}\n",
+                    style("Error creating config file - logging config to console.")
                         .bold()
                         .red()
                 );
@@ -527,21 +611,21 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
                     "{}",
                     style(
                         serde_json::to_string_pretty(&config_data)
-                            .expect("Unable to convert config to JSON!")
+                            .expect("Unable to convert config to JSON.")
                     )
                     .red()
                 );
             }
         }
     } else {
-        println!("{}", style("Logging config to console!\n").dim());
+        println!("{}\n", style("Logging config to console:"));
         println!(
             "{}",
             style(
                 serde_json::to_string_pretty(&config_data)
-                    .expect("Unable to convert config to JSON!")
+                    .expect("Unable to convert config to JSON.")
             )
-            .green()
+            .dim()
         );
     }
 
