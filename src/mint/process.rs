@@ -103,6 +103,7 @@ pub fn process_mint(args: MintArgs) -> Result<()> {
                 Arc::clone(&candy_machine_state),
             ) {
                 pb.abandon_with_message(format!("{}", style("Mint failed ").red().bold()));
+                error!("{:?}", err);
                 return Err(err);
             }
 
