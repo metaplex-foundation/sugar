@@ -6,10 +6,19 @@ use anchor_client::solana_sdk::{
 use anchor_lang::prelude::AccountMeta;
 use anyhow::Result;
 use console::style;
+use ctrlc;
 use futures::future::select_all;
 use rand::rngs::OsRng;
 use spl_associated_token_account::get_associated_token_address;
-use std::{cmp, collections::HashSet, str::FromStr, sync::Arc};
+use std::{
+    cmp,
+    collections::HashSet,
+    str::FromStr,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 use mpl_candy_machine::accounts as nft_accounts;
 use mpl_candy_machine::instruction as nft_instruction;
@@ -20,9 +29,9 @@ pub use mpl_token_metadata::state::{
 
 use crate::cache::*;
 use crate::candy_machine::uuid_from_pubkey;
-use crate::candy_machine::ID as CANDY_MACHINE_ID;
 use crate::common::*;
 use crate::config::{data::*, parser::get_config_data};
+use crate::constants::CANDY_MACHINE_V2;
 use crate::deploy::data::*;
 use crate::deploy::errors::*;
 use crate::setup::{setup_client, sugar_setup};
@@ -113,7 +122,9 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
 
         let uuid = uuid_from_pubkey(&candy_pubkey);
         let candy_data = create_candy_machine_data(&config_data, uuid)?;
-        let program = client.program(CANDY_MACHINE_ID);
+
+        let pid = CANDY_MACHINE_V2.parse().expect("Failed to parse PID");
+        let program = client.program(pid);
 
         let treasury_wallet = match config_data.spl_token {
             Some(spl_token) => {
@@ -226,7 +237,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
                 }
 
                 for u in unique {
-                    message.push_str("\n\t• ");
+                    message.push_str(&style("\n=> ").dim().to_string());
                     message.push_str(&u);
                 }
 
@@ -371,10 +382,10 @@ fn initialize_candy_machine(
     let items_available = candy_machine_data.items_available;
 
     let candy_account_size = CONFIG_ARRAY_START
-            + 4
-            + items_available as usize * CONFIG_LINE_SIZE
-            + 8
-            + 2 * (items_available as usize / 8 + 1);
+        + 4
+        + items_available as usize * CONFIG_LINE_SIZE
+        + 8
+        + 2 * (items_available as usize / 8 + 1);
 
     info!(
         "Initializing candy machine with account size of: {} and address of: {}",
@@ -460,8 +471,15 @@ async fn upload_config_lines(
     }
 
     let mut errors = Vec::new();
+    let running = Arc::new(AtomicBool::new(true));
+    let r = running.clone();
 
-    while !handles.is_empty() {
+    ctrlc::set_handler(move || {
+        r.store(false, Ordering::SeqCst);
+    })
+    .expect("Error setting Ctrl-C handler");
+
+    while running.load(Ordering::SeqCst) && !handles.is_empty() {
         match select_all(handles).await {
             (Ok(res), _index, remaining) => {
                 // independently if the upload was successful or not
@@ -511,21 +529,29 @@ async fn upload_config_lines(
             }
         }
     }
-    // makes sure the cache file is fully updated
-    cache.sync_file()?;
 
     if !errors.is_empty() {
         pb.abandon_with_message(format!("{}", style("Deploy failed ").red().bold()));
+    } else if !transactions.is_empty() {
+        pb.abandon_with_message(format!("{}", style("Upload aborted ").red().bold()));
+        return Err(DeployError::AddConfigLineFailed(
+            "Not all config lines were deployed.".to_string(),
+        )
+        .into());
     } else {
         pb.finish_with_message(format!("{}", style("Deploy successful ").green().bold()));
     }
+
+    // makes sure the cache file is updated
+    cache.sync_file()?;
 
     Ok(errors)
 }
 
 /// Send the `add_config_lines` instruction to the candy machine program.
 async fn add_config_lines(client: Arc<Client>, tx_info: TxInfo) -> Result<Vec<u32>> {
-    let program = client.program(CANDY_MACHINE_ID);
+    let pid = CANDY_MACHINE_V2.parse().expect("Failed to parse PID");
+    let program = client.program(pid);
 
     // this will be used to update the cache
     let mut indices: Vec<u32> = Vec::new();
