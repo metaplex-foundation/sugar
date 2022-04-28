@@ -1,10 +1,13 @@
 use async_trait::async_trait;
 use console::style;
 use ctrlc;
-use std::{collections::HashSet, sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-}};
+use std::{
+    collections::HashSet,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 use crate::cache::{load_cache, Cache};
 use crate::common::*;
