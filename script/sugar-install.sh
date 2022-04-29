@@ -59,7 +59,8 @@ DIST="$VERSION.zip"
 # creates a temporary directory to save the distribution file
 SOURCE="$(mktemp -d)"
 
-CYN "1. Downloading distribution\n"
+CYN "1. Downloading distribution"
+echo ""
 
 # downloads the distribution file
 REMOTE="https://github.com/metaplex-foundation/sugar/releases/latest/download/"
@@ -77,7 +78,9 @@ if [ "$(command -v unzip)" = "" ]; then
     exit 1
 fi
 
-CYN "\n2. Extracting\n"
+echo ""
+CYN "2. Extracting"
+echo ""
 
 unzip "$SOURCE/$DIST" -d "$SOURCE"
 abort_on_error $?
@@ -86,7 +89,9 @@ abort_on_error $?
 chmod u+x "$SOURCE/$BIN-$VERSION"
 abort_on_error $?
 
-CYN "\n3. Moving binary into place\n"
+echo ""
+CYN "3. Moving binary into place"
+echo ""
 
 if [ ! "$(command -v $BIN)" = "" ]; then
     # binary already found on system, ask if we should
@@ -94,26 +99,30 @@ if [ ! "$(command -v $BIN)" = "" ]; then
     EXISTING="$(which $BIN)"
 
     echo "Sugar binary was found at:"
-    echo "  => $(CYN $EXISTING)\n"
+    echo "  => $(CYN $EXISTING)"
+    echo ""
     echo -n "$(CYN "Replace it? [Y/n]") (default 'n'): "
     read REPLACE
+
     if [ -z "REPLACE" ]; then
         REPLACE="n"
     fi
 
     if [ "$REPLACE" = Y ]; then
-        echo -n "\n'$BIN' will be moved to '$(dirname "$EXISTING")'"
+        echo ""
+        echo -n "'$BIN' will be moved to '$(dirname "$EXISTING")'"
+
         case "$EXISTING" in
             *local* )
-                echo ". You may be asked to enter your password to confirm the replacement.\n"
+                echo ". You may be asked to enter your password to confirm the replacement."
                 CMD="sudo mv"
                 ;;
             *)
-                echo "\n"
                 CMD="mv"
                 ;;
         esac
 
+        echo ""
         $CMD "$SOURCE/$BIN-$VERSION" "$EXISTING"
         abort_on_error $?
     else
@@ -135,12 +144,12 @@ else
     echo -n "'$BIN' will be moved to '$TARGET'"
 
     if [ -z ${CMD+x} ]; then
-        echo "\n"
         CMD="mv"
     else
-        echo ". You may be asked to enter your password to confirm the replacement.\n"
+        echo ". You may be asked to enter your password to confirm the replacement."
     fi
 
+    echo ""
     $CMD "$SOURCE/$BIN-$VERSION" "$TARGET/$BIN"
     abort_on_error $?
 fi
@@ -148,7 +157,8 @@ fi
 # sanity check
 if [ "$(command -v $BIN)" = "" ]; then
     # installation was not completed
-    RED "\nCould not install Sugar in '$TARGET'"
+    echo ""
+    RED "Could not install Sugar in '$TARGET'"
     exit 1
 else
     # success
