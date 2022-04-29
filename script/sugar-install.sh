@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Sugar CLI binary installation script
 # ------------------------------------
@@ -13,9 +13,9 @@
 # running variations of the sh Unix shells.
 #
 
-RED() { echo '\e[1;31m'$1'\e[0m'; }
-GRN() { echo '\e[1;32m'$1'\e[0m'; }
-CYN() { echo '\e[1;36m'$1'\e[0m'; }
+RED() { echo $'\e[1;31m'$1$'\e[0m'; }
+GRN() { echo $'\e[1;32m'$1$'\e[0m'; }
+CYN() { echo $'\e[1;36m'$1$'\e[0m'; }
 
 abort_on_error() {
     if [ ! $1 -eq 0 ]; then
@@ -102,7 +102,7 @@ if [ ! "$(command -v $BIN)" = "" ]; then
     fi
 
     if [ "$REPLACE" = Y ]; then
-        echo -n "\n'$BIN' will be moved to $(dirname "$EXISTING")"
+        echo -n "\n'$BIN' will be moved to '$(dirname "$EXISTING")'"
         case "$EXISTING" in
             *local* )
                 echo ". You may be asked to enter your password to confirm the replacement.\n"
@@ -132,7 +132,7 @@ else
         CMD="sudo mv"
     fi
 
-    echo -n "'$BIN' will be moved to $TARGET"
+    echo -n "'$BIN' will be moved to '$TARGET'"
 
     if [ -z ${CMD+x} ]; then
         echo "\n"
