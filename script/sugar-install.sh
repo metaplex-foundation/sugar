@@ -110,20 +110,10 @@ if [ ! "$(command -v $BIN)" = "" ]; then
 
     if [ "$REPLACE" = Y ]; then
         echo ""
-        echo -n "'$BIN' will be moved to '$(dirname "$EXISTING")'"
-
-        case "$EXISTING" in
-            *local* )
-                echo ". You may be asked to enter your password to confirm the replacement."
-                CMD="sudo mv"
-                ;;
-            *)
-                CMD="mv"
-                ;;
-        esac
-
+        echo -n "'$BIN' will be moved to '$(dirname "$EXISTING")'."
         echo ""
-        $CMD "$SOURCE/$BIN-$VERSION" "$EXISTING"
+
+        mv "$SOURCE/$BIN-$VERSION" "$EXISTING"
         abort_on_error $?
     else
         # nothing else to do, replacement was cancelled
@@ -133,34 +123,53 @@ if [ ! "$(command -v $BIN)" = "" ]; then
 else
     # determines a suitable directory for the binary - preference:
     # 1) ~/.cargo/bin if exists
-    # 2) /usr/local/bin otherwise
+    # 2) ~/bin otherwise
     TARGET="$HOME/.cargo/bin"
 
     if [ ! -d "$TARGET" ]; then
-        TARGET="/usr/local/bin"
-        CMD="sudo mv"
+        TARGET="$HOME/bin"
+
+        if [ ! -d "$TARGET" ]; then
+            mkdir $TARGET
+        fi
     fi
 
-    echo -n "'$BIN' will be moved to '$TARGET'"
+    echo -n "'$BIN' command will be moved to '$TARGET'."
 
-    if [ -z ${CMD+x} ]; then
-        CMD="mv"
-    else
-        echo ". You may be asked to enter your password to confirm the replacement."
-    fi
-
-    echo ""
-    $CMD "$SOURCE/$BIN-$VERSION" "$TARGET/$BIN"
+    mv "$SOURCE/$BIN-$VERSION" "$TARGET/$BIN"
     abort_on_error $?
+
+    if [ "$(command -v $BIN)" = "" ]; then
+        # the directory might not be on the PATH
+        if [ -f "$HOME/.shrc" ]; then
+            ENV_FILE="$HOME/.shrc"
+        elif [ -f "$HOME/.bashrc" ]; then
+            ENV_FILE="$HOME/.bashrc"
+        elif [ -f "$HOME/.zshrc" ]; then
+            ENV_FILE="$HOME/.zshrc"
+        elif [ -f "$HOME/.cshrc" ]; then
+            ENV_FILE="$HOME/.cshrc"
+        elif [ -f "$HOME/.kshrc" ]; then
+            ENV_FILE="$HOME/.kshrc"
+        elif [ -f "$HOME/.profile" ]; then
+            ENV_FILE="$HOME/.profile"
+        fi
+
+        if [ ! -z ${ENV_FILE+x} ]; then
+            echo ""
+            echo "  => adding '$TARGET' to 'PATH' variable in '$ENV_FILE'"
+            echo "export PATH=\"$HOME/bin:\$PATH\"" >> "$ENV_FILE"
+            source $ENV_FILE && export PATH
+        fi
+    fi
 fi
 
 # sanity check
 if [ "$(command -v $BIN)" = "" ]; then
-    # installation was not completed
+    # installation was completed, but sugar is not in the PATH
     echo ""
-    RED "Could not install Sugar in '$TARGET'"
-    exit 1
+    echo "$(GRN "Installation complete:") restart your shell to update 'PATH' variable or type '$TARGET/$BIN' to start using it."
 else
     # success
-    echo "$(GRN "Installation completed:") type '$BIN' to start using it."
+    echo "$(GRN "Installation successful:") type '$BIN' to start using it."
 fi
