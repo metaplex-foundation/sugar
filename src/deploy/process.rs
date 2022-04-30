@@ -6,10 +6,19 @@ use anchor_client::solana_sdk::{
 use anchor_lang::prelude::AccountMeta;
 use anyhow::Result;
 use console::style;
+use ctrlc;
 use futures::future::select_all;
 use rand::rngs::OsRng;
 use spl_associated_token_account::get_associated_token_address;
-use std::{cmp, collections::HashSet, str::FromStr, sync::Arc};
+use std::{
+    cmp,
+    collections::HashSet,
+    str::FromStr,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 use mpl_candy_machine::accounts as nft_accounts;
 use mpl_candy_machine::instruction as nft_instruction;
@@ -36,7 +45,6 @@ const MAX_TRANSACTION_BYTES: usize = 1000;
 const MAX_TRANSACTION_LINES: usize = 17;
 
 struct TxInfo {
-    client: Arc<Client>,
     candy_pubkey: Pubkey,
     payer: Keypair,
     chunk: Vec<(u32, ConfigLine)>,
@@ -76,12 +84,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         }
     }
 
-    let sugar_config = match sugar_setup(args.keypair, args.rpc_url) {
-        Ok(sugar_config) => sugar_config,
-        Err(err) => {
-            return Err(SetupError::SugarSetupError(err.to_string()).into());
-        }
-    };
+    let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = Arc::new(setup_client(&sugar_config)?);
     let config_data = get_config_data(&args.config)?;
 
@@ -232,7 +235,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
                 }
 
                 for u in unique {
-                    message.push_str("\n\t• ");
+                    message.push_str(&style("\n=> ").dim().to_string());
                     message.push_str(&u);
                 }
 
@@ -450,7 +453,6 @@ async fn upload_config_lines(
         let payer = Keypair::from_base58_string(&keypair);
 
         transactions.push(TxInfo {
-            client: client.clone(),
             candy_pubkey,
             payer,
             chunk,
@@ -460,12 +462,22 @@ async fn upload_config_lines(
     let mut handles = Vec::new();
 
     for tx in transactions.drain(0..cmp::min(transactions.len(), PARALLEL_LIMIT)) {
-        handles.push(tokio::spawn(async move { add_config_lines(tx).await }));
+        let tx_client = client.clone();
+        handles.push(tokio::spawn(async move {
+            add_config_lines(tx_client, tx).await
+        }));
     }
 
     let mut errors = Vec::new();
+    let running = Arc::new(AtomicBool::new(true));
+    let r = running.clone();
 
-    while !handles.is_empty() {
+    ctrlc::set_handler(move || {
+        r.store(false, Ordering::SeqCst);
+    })
+    .expect("Error setting Ctrl-C handler");
+
+    while running.load(Ordering::SeqCst) && !handles.is_empty() {
         match select_all(handles).await {
             (Ok(res), _index, remaining) => {
                 // independently if the upload was successful or not
@@ -479,8 +491,6 @@ async fn upload_config_lines(
                         let item = cache.items.0.get_mut(&index.to_string()).unwrap();
                         item.on_chain = true;
                     }
-                    // saves the progress to the cache file
-                    cache.sync_file()?;
                     // updates the progress bar
                     pb.inc(1);
                 } else {
@@ -505,8 +515,14 @@ async fn upload_config_lines(
         if !transactions.is_empty() {
             // if we are half way through, let spawn more transactions
             if (PARALLEL_LIMIT - handles.len()) > (PARALLEL_LIMIT / 2) {
+                // saves the progress to the cache file
+                cache.sync_file()?;
+
                 for tx in transactions.drain(0..cmp::min(transactions.len(), PARALLEL_LIMIT / 2)) {
-                    handles.push(tokio::spawn(async move { add_config_lines(tx).await }));
+                    let tx_client = client.clone();
+                    handles.push(tokio::spawn(async move {
+                        add_config_lines(tx_client, tx).await
+                    }));
                 }
             }
         }
@@ -514,16 +530,25 @@ async fn upload_config_lines(
 
     if !errors.is_empty() {
         pb.abandon_with_message(format!("{}", style("Deploy failed ").red().bold()));
+    } else if !transactions.is_empty() {
+        pb.abandon_with_message(format!("{}", style("Upload aborted ").red().bold()));
+        return Err(DeployError::AddConfigLineFailed(
+            "Not all config lines were deployed.".to_string(),
+        )
+        .into());
     } else {
         pb.finish_with_message(format!("{}", style("Deploy successful ").green().bold()));
     }
+
+    // makes sure the cache file is updated
+    cache.sync_file()?;
 
     Ok(errors)
 }
 
 /// Send the `add_config_lines` instruction to the candy machine program.
-async fn add_config_lines(tx_info: TxInfo) -> Result<Vec<u32>> {
-    let program = tx_info.client.program(CANDY_MACHINE_ID);
+async fn add_config_lines(client: Arc<Client>, tx_info: TxInfo) -> Result<Vec<u32>> {
+    let program = client.program(CANDY_MACHINE_ID);
 
     // this will be used to update the cache
     let mut indices: Vec<u32> = Vec::new();
