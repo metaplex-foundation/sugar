@@ -59,7 +59,7 @@ DIST="$VERSION.zip"
 # creates a temporary directory to save the distribution file
 SOURCE="$(mktemp -d)"
 
-CYN "1. Downloading distribution"
+echo "$(CYN "1.") 🖥  $(CYN "Downloading distribution")"
 echo ""
 
 # downloads the distribution file
@@ -79,7 +79,7 @@ if [ "$(command -v unzip)" = "" ]; then
 fi
 
 echo ""
-CYN "2. Extracting"
+echo "$(CYN "2.") 🗂  $(CYN "Extracting")"
 echo ""
 
 unzip "$SOURCE/$DIST" -d "$SOURCE"
@@ -90,7 +90,7 @@ chmod u+x "$SOURCE/$BIN-$VERSION"
 abort_on_error $?
 
 echo ""
-CYN "3. Moving binary into place"
+echo "$(CYN "3.") 📤 $(CYN "Moving binary into place")"
 echo ""
 
 if [ ! "$(command -v $BIN)" = "" ]; then
@@ -110,8 +110,7 @@ if [ ! "$(command -v $BIN)" = "" ]; then
 
     if [ "$REPLACE" = Y ]; then
         echo ""
-        echo -n "'$BIN' will be moved to '$(dirname "$EXISTING")'."
-        echo ""
+        echo "'$BIN' command will be moved to '$(dirname "$EXISTING")'."
 
         mv "$SOURCE/$BIN-$VERSION" "$EXISTING"
         abort_on_error $?
@@ -140,36 +139,25 @@ else
     abort_on_error $?
 
     if [ "$(command -v $BIN)" = "" ]; then
-        # the directory might not be on the PATH
-        if [ -f "$HOME/.shrc" ]; then
-            ENV_FILE="$HOME/.shrc"
-        elif [ -f "$HOME/.bashrc" ]; then
-            ENV_FILE="$HOME/.bashrc"
-        elif [ -f "$HOME/.zshrc" ]; then
-            ENV_FILE="$HOME/.zshrc"
-        elif [ -f "$HOME/.cshrc" ]; then
-            ENV_FILE="$HOME/.cshrc"
-        elif [ -f "$HOME/.kshrc" ]; then
-            ENV_FILE="$HOME/.kshrc"
-        elif [ -f "$HOME/.profile" ]; then
-            ENV_FILE="$HOME/.profile"
-        fi
+        ENV_FILE="$HOME/.$(basename $SHELL)rc"
 
-        if [ ! -z ${ENV_FILE+x} ]; then
+        if [ -f "$ENV_FILE" ]; then
             echo ""
             echo "  => adding '$TARGET' to 'PATH' variable in '$ENV_FILE'"
             echo "export PATH=\"$HOME/bin:\$PATH\"" >> "$ENV_FILE"
-            source $ENV_FILE && export PATH
+        else
+            echo ""
+            echo "  => you can add '$TARGET' to 'PATH' variable to execute 'sugar'"
         fi
     fi
 fi
 
+echo ""
 # sanity check
 if [ "$(command -v $BIN)" = "" ]; then
     # installation was completed, but sugar is not in the PATH
-    echo ""
-    echo "$(GRN "Installation complete:") restart your shell to update 'PATH' variable or type '$TARGET/$BIN' to start using it."
+    echo "✅ $(GRN "Installation complete:") restart your shell to update 'PATH' variable or type '$TARGET/$BIN' to start using it."
 else
     # success
-    echo "$(GRN "Installation successful:") type '$BIN' to start using it."
+    echo "✅ $(GRN "Installation successful:") type '$BIN' to start using it."
 fi
