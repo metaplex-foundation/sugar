@@ -36,11 +36,13 @@ PROCESSOR="$(uname -m)"
 
 case "$PROCESSOR" in
     arm* | aarch* | ppc* )
-        echo "Binary for $PROCESSOR architecture is not currently supported. Plese follow the instructions at:"
-        echo "  => $(CYN https://github.com/metaplex-foundation/sugar)"
-        echo ""
-        echo "to build Sugar from the source code."
-        exit 1
+        if [ "$OS_FLAVOUR" != Darwin ]; then
+            echo "Binary for $PROCESSOR architecture is not currently supported. Plese follow the instructions at:"
+            echo "  => $(CYN https://github.com/metaplex-foundation/sugar)"
+            echo ""
+            echo "to build Sugar from the source code."
+            exit 1
+        fi
         ;;
 
     *)
@@ -52,7 +54,14 @@ BIN="sugar"
 VERSION="ubuntu-latest"
 
 if [ "$OS_FLAVOUR" = Darwin ]; then
-    VERSION="macos-latest"
+    case "$PROCESSOR" in
+        arm* )
+            VERSION="macos-m1-latest"
+            ;;
+        *)
+            VERSION="macos-intel-latest"
+            ;;
+    esac
 fi
 
 DIST="$VERSION.zip"
