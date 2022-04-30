@@ -187,7 +187,7 @@ The main differences with the previous configuration file are:
 
 #### Upload Methods
 
-There are currently two upload (storage) methods available in Sugar: `"bundlr"` and `"aws"`. Uploading in Sugar is designed as a Rust trait to make it easier to for new methods to be added. We plan to release a developer guide for how to do this so we can support a wide-variety of upload methods.
+There are currently two upload (storage) methods available in Sugar: `"bundlr"` and `"aws"`. Uploading in Sugar is designed as a Rust trait to make it easier for new methods to be added. We plan to release a developer guide for how to do this so we can support a wide-variety of upload methods.
 
 ##### Bundlr
 
