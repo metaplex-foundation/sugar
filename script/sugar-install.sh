@@ -154,11 +154,30 @@ else
             echo "  => adding '$TARGET' to 'PATH' variable in '$ENV_FILE'"
             echo "export PATH=\"$HOME/bin:\$PATH\"" >> "$ENV_FILE"
         else
-            echo "  => add '$TARGET' to 'PATH' variable to execute 'sugar' from any directory:"
-            echo "     1. create a file named '$(basename $ENV_FILE)' in your directory '$(dirname $ENV_FILE)'"
-            echo "     2. add the following line to the file:"
-            echo ""
-            echo "           export PATH=\"$HOME/bin:\$PATH\""
+            echo "  => adding '$TARGET' to 'PATH' variable to execute 'sugar' from any directory."
+            echo "     - file '$(CYN $ENV_FILE)' was not found"
+            echo "" 
+            echo -n "$(CYN "Would you like to create '$ENV_FILE'? [Y/n]") (default 'n'): "
+            read CREATE
+
+            if [ -z "REPLACE" ]; then
+                CREATE="n"
+            fi
+
+            if [ "$CREATE" = Y ]; then
+                echo "  => adding '$TARGET' to 'PATH' variable in '$ENV_FILE'"
+                echo "export PATH=\"$HOME/bin:\$PATH\"" >> "$ENV_FILE"
+            else
+                echo ""
+                echo "     $(RED "[File creation cancelled]")"
+                echo ""
+                echo "     - to manually add '$TARGET' to 'PATH' you will need to:"
+                echo ""
+                echo "       1. create a file named '$(basename $ENV_FILE)' in your directory '$(dirname $ENV_FILE)'"
+                echo "       2. add the following line to the file:"
+                echo ""
+                echo "           export PATH=\"$HOME/bin:\$PATH\""
+            fi
         fi
     fi
 fi
