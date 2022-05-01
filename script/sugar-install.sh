@@ -65,6 +65,11 @@ if [ "$OS_FLAVOUR" = Darwin ]; then
 fi
 
 DIST="$VERSION.zip"
+
+if [ "$VERSION" = "macos-intel-latest" ]; then
+    DIST="macos-latest.zip"
+fi
+
 # creates a temporary directory to save the distribution file
 SOURCE="$(mktemp -d)"
 
@@ -74,6 +79,7 @@ echo ""
 # downloads the distribution file
 REMOTE="https://github.com/metaplex-foundation/sugar/releases/latest/download/"
 curl -L $REMOTE$DIST --output "$SOURCE/$DIST"
+abort_on_error $?
 
 SIZE=$(wc -c "$SOURCE/$DIST" | grep -oE "[0-9]+" | head -n 1)
 
