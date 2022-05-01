@@ -119,7 +119,7 @@ if [ ! "$(command -v $BIN)" = "" ]; then
 
     if [ "$REPLACE" = Y ]; then
         echo ""
-        echo "'$BIN' command will be moved to '$(dirname "$EXISTING")'."
+        echo "'$BIN' binary will be moved to '$(dirname "$EXISTING")'."
 
         mv "$SOURCE/$BIN-$VERSION" "$EXISTING"
         abort_on_error $?
@@ -142,7 +142,7 @@ else
         fi
     fi
 
-    echo -n "'$BIN' command will be moved to '$TARGET'."
+    echo "'$BIN' binary will be moved to '$TARGET'."
 
     mv "$SOURCE/$BIN-$VERSION" "$TARGET/$BIN"
     abort_on_error $?
@@ -151,12 +151,14 @@ else
         ENV_FILE="$HOME/.$(basename $SHELL)rc"
 
         if [ -f "$ENV_FILE" ]; then
-            echo ""
             echo "  => adding '$TARGET' to 'PATH' variable in '$ENV_FILE'"
             echo "export PATH=\"$HOME/bin:\$PATH\"" >> "$ENV_FILE"
         else
+            echo "  => add '$TARGET' to 'PATH' variable to execute 'sugar' from any directory:"
+            echo "     1. create a file named '$(basename $ENV_FILE)' in your directory '$(dirname $ENV_FILE)'"
+            echo "     2. add the following line to the file:"
             echo ""
-            echo "  => you can add '$TARGET' to 'PATH' variable to execute 'sugar'"
+            echo "           export PATH=\"$HOME/bin:\$PATH\""
         fi
     fi
 fi
