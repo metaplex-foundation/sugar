@@ -6,7 +6,6 @@ use anchor_client::solana_sdk::{
 use anchor_lang::prelude::AccountMeta;
 use anyhow::Result;
 use console::style;
-use ctrlc;
 use futures::future::select_all;
 use rand::rngs::OsRng;
 use spl_associated_token_account::get_associated_token_address;
@@ -218,6 +217,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
                 candy_pubkey,
                 &mut cache,
                 config_lines,
+                args.handler,
             )
             .await?;
 
@@ -435,6 +435,7 @@ async fn upload_config_lines(
     candy_pubkey: Pubkey,
     cache: &mut Cache,
     config_lines: Vec<Vec<(u32, ConfigLine)>>,
+    handler: Arc<AtomicBool>,
 ) -> Result<Vec<DeployError>> {
     println!(
         "Sending config line(s) in {} transaction(s): (Ctrl+C to abort)",
@@ -469,15 +470,8 @@ async fn upload_config_lines(
     }
 
     let mut errors = Vec::new();
-    let running = Arc::new(AtomicBool::new(true));
-    let r = running.clone();
 
-    ctrlc::set_handler(move || {
-        r.store(false, Ordering::SeqCst);
-    })
-    .expect("Error setting Ctrl-C handler");
-
-    while running.load(Ordering::SeqCst) && !handles.is_empty() {
+    while handler.load(Ordering::SeqCst) && !handles.is_empty() {
         match select_all(handles).await {
             (Ok(res), _index, remaining) => {
                 // independently if the upload was successful or not
