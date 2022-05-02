@@ -197,7 +197,7 @@ The main differences with the previous configuration file are:
   ```
   "endSettings": {
     "endSettingType": "Amount",
-    "value": 10
+    "number": 10
   }
   ```
 
