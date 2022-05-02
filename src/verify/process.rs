@@ -147,7 +147,7 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
         }
 
         println!(
-            "\nAll items checked out. You're good to go!\nhttps://www.solaneyes.com/address/{}",
+            "\nAll items checked out. You're good to go!\nSee your candy machine at: https://www.solaneyes.com/address/{}",
             cache.program.candy_machine
         );
     } else {
