@@ -632,6 +632,9 @@ if [ "${HIDDEN}" = "Y" ]; then
 fi
 
 if [ "$LAUNCH" = "Y" ]; then
+    echo ""
+    CYN "Executing Sugar launch: steps [1, 2, 3, 4]"
+    echo ""
     MAG ">>>"
     $SUGAR_BIN launch -c ${CONFIG_FILE} --keypair $WALLET_KEY --cache $CACHE_FILE -r $RPC $ASSETS_DIR
     EXIT_CODE=$?
