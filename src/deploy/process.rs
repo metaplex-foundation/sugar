@@ -84,8 +84,8 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         }
     }
 
-    let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
-    let client = Arc::new(setup_client(&sugar_config)?);
+    let sugar_config = Arc::new(sugar_setup(args.keypair, args.rpc_url)?);
+    let client = setup_client(&sugar_config)?;
     let config_data = get_config_data(&args.config)?;
 
     let candy_machine_address = &cache.program.candy_machine;
@@ -216,8 +216,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
             args.interrupted.store(false, Ordering::SeqCst);
 
             let errors = upload_config_lines(
-                client,
-                &sugar_config,
+                sugar_config,
                 candy_pubkey,
                 &mut cache,
                 config_lines,
@@ -452,8 +451,7 @@ fn initialize_candy_machine(
 
 /// Send the config lines to the candy machine program.
 async fn upload_config_lines(
-    client: Arc<Client>,
-    sugar_config: &SugarConfig,
+    sugar_config: Arc<SugarConfig>,
     candy_pubkey: Pubkey,
     cache: &mut Cache,
     config_lines: Vec<Vec<(u32, ConfigLine)>>,
@@ -485,10 +483,10 @@ async fn upload_config_lines(
     let mut handles = Vec::new();
 
     for tx in transactions.drain(0..cmp::min(transactions.len(), PARALLEL_LIMIT)) {
-        let tx_client = client.clone();
-        handles.push(tokio::spawn(async move {
-            add_config_lines(tx_client, tx).await
-        }));
+        let config = sugar_config.clone();
+        handles.push(tokio::spawn(
+            async move { add_config_lines(config, tx).await },
+        ));
     }
 
     let mut errors = Vec::new();
@@ -535,10 +533,10 @@ async fn upload_config_lines(
                 cache.sync_file()?;
 
                 for tx in transactions.drain(0..cmp::min(transactions.len(), PARALLEL_LIMIT / 2)) {
-                    let tx_client = client.clone();
-                    handles.push(tokio::spawn(async move {
-                        add_config_lines(tx_client, tx).await
-                    }));
+                    let config = sugar_config.clone();
+                    handles.push(tokio::spawn(
+                        async move { add_config_lines(config, tx).await },
+                    ));
                 }
             }
         }
@@ -563,7 +561,8 @@ async fn upload_config_lines(
 }
 
 /// Send the `add_config_lines` instruction to the candy machine program.
-async fn add_config_lines(client: Arc<Client>, tx_info: TxInfo) -> Result<Vec<u32>> {
+async fn add_config_lines(config: Arc<SugarConfig>, tx_info: TxInfo) -> Result<Vec<u32>> {
+    let client = setup_client(&config)?;
     let program = client.program(CANDY_MACHINE_ID);
 
     // this will be used to update the cache

@@ -21,7 +21,7 @@ use std::{str::FromStr, sync::Arc};
 
 use mpl_candy_machine::accounts as nft_accounts;
 use mpl_candy_machine::instruction as nft_instruction;
-use mpl_candy_machine::{CandyMachine, EndSettingType, ErrorCode, WhitelistMintMode};
+use mpl_candy_machine::{CandyError, CandyMachine, EndSettingType, WhitelistMintMode};
 
 use crate::cache::load_cache;
 use crate::candy_machine::ID as CANDY_MACHINE_ID;
@@ -141,7 +141,7 @@ pub fn mint(
             "Command-line mint disabled (gatekeeper settings in use)"
         ));
     } else if candy_machine_state.items_redeemed >= candy_machine_data.items_available {
-        return Err(anyhow!(ErrorCode::CandyMachineEmpty));
+        return Err(anyhow!(CandyError::CandyMachineEmpty));
     }
 
     if candy_machine_state.authority != payer {
@@ -165,21 +165,21 @@ pub fn mint(
                 // has the wl token when creating the transaction
                 mint_enabled = true;
             } else if !mint_enabled {
-                return Err(anyhow!(ErrorCode::CandyMachineNotLive));
+                return Err(anyhow!(CandyError::CandyMachineNotLive));
             }
         }
 
         if !mint_enabled {
             // no whitelist mint settings (or no presale) and we are earlier than
             // go live date
-            return Err(anyhow!(ErrorCode::CandyMachineNotLive));
+            return Err(anyhow!(CandyError::CandyMachineNotLive));
         }
 
         if let Some(end_settings) = &candy_machine_data.end_settings {
             match end_settings.end_setting_type {
                 EndSettingType::Date => {
                     if (end_settings.number as i64) < mint_date {
-                        return Err(anyhow!(ErrorCode::CandyMachineNotLive));
+                        return Err(anyhow!(CandyError::CandyMachineNotLive));
                     }
                 }
                 EndSettingType::Amount => {
@@ -277,7 +277,7 @@ pub fn mint(
             }
 
             if !token_found {
-                return Err(anyhow!(ErrorCode::NoWhitelistToken));
+                return Err(anyhow!(CandyError::NoWhitelistToken));
             }
         }
     }
