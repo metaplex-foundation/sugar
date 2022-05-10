@@ -2783,7 +2783,7 @@ dependencies = [
 [[package]]
 name = "mpl-candy-machine"
 version = "4.0.0"
-source = "git+https://github.com/metaplex-foundation/metaplex-program-library/?rev=35657d553371887a2a6e882fd22755c8f3698628#35657d553371887a2a6e882fd22755c8f3698628"
+source = "git+https://github.com/metaplex-foundation/metaplex-program-library/?branch=stegaBOB/enforce-cm-collections#f0fab5e02ca11237e35636ccf634c4cb4b1040bc"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
