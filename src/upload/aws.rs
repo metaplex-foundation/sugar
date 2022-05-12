@@ -20,10 +20,11 @@ use crate::{common::*, config::*, constants::PARALLEL_LIMIT, upload::*, utils::*
 struct ObjectInfo {
     asset_id: String,
     file_path: String,
-    media_link: String,
+    image_link: String,
     data_type: DataType,
     content_type: String,
     bucket: String,
+    animation_link: Option<String>,
 }
 
 pub struct AWSHandler {
@@ -50,11 +51,13 @@ impl AWSHandler {
     /// Send an object to AWS and wait for a response.
     async fn send_to_aws(aws_client: Arc<Client>, info: ObjectInfo) -> Result<(String, String)> {
         let data = match info.data_type {
-            DataType::Media => fs::read(&info.file_path)?,
+            DataType::Image => fs::read(&info.file_path)?,
+            DataType::Video => fs::read(&info.file_path)?,
             DataType::Metadata => {
                 // replaces the media link without modifying the original file to avoid
                 // changing the hash of the metadata file
-                get_updated_metadata(&info.file_path, &info.media_link)?.into_bytes()
+                get_updated_metadata(&info.file_path, &info.image_link, info.animation_link)?
+                    .into_bytes()
             }
         };
 
@@ -80,8 +83,9 @@ impl UploadHandler for AWSHandler {
         &self,
         _sugar_config: &SugarConfig,
         _assets: &HashMap<usize, AssetPair>,
-        _media_indices: &[usize],
+        _image_indices: &[usize],
         _metadata_indices: &[usize],
+        _animation_indices: &[usize],
     ) -> Result<()> {
         Ok(())
     }
@@ -103,8 +107,9 @@ impl UploadHandler for AWSHandler {
             let item = assets.get(index).unwrap();
             // chooses the file path based on the data type
             let file_path = match data_type {
-                DataType::Media => item.media.clone(),
+                DataType::Image => item.image.clone(),
                 DataType::Metadata => item.metadata.clone(),
+                DataType::Video => item.animation_url.unwrap().clone(),
             };
 
             let path = Path::new(&file_path);
@@ -125,8 +130,9 @@ impl UploadHandler for AWSHandler {
         };
 
         let content_type = match data_type {
-            DataType::Media => format!("image/{}", extension),
+            DataType::Image => format!("image/{}", extension),
             DataType::Metadata => "application/json".to_string(),
+            DataType::Video => format!("video/{}", extension),
         };
 
         println!("\nSending data: (Ctrl+C to abort)");
@@ -158,10 +164,11 @@ impl UploadHandler for AWSHandler {
                 file_path: String::from(
                     path.to_str().expect("Failed to convert path from unicode."),
                 ),
-                media_link: cache_item.media_link.clone(),
+                image_link: cache_item.image_link.clone(),
                 data_type: data_type.clone(),
                 content_type: content_type.clone(),
                 bucket: self.bucket.clone(),
+                animation_link: cache_item.animation_link.clone(),
             });
         }
 
@@ -190,8 +197,13 @@ impl UploadHandler for AWSHandler {
                         let item = cache.items.0.get_mut(&val.0).unwrap();
 
                         match data_type {
-                            DataType::Media => item.media_link = link,
+                            DataType::Image => item.image_link = link,
                             DataType::Metadata => item.metadata_link = link,
+                            DataType::Video => {
+                                if let Some(animation_link) = item.animation_link {
+                                    animation_link = link
+                                }
+                            }
                         }
                         // updates the progress bar
                         pb.inc(1);

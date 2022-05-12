@@ -24,7 +24,8 @@ pub struct UploadDataArgs<'a> {
 
 #[derive(Debug, Clone)]
 pub enum DataType {
-    Media,
+    Image,
+    Video,
     Metadata,
 }
 
@@ -33,19 +34,23 @@ pub struct AssetPair {
     pub name: String,
     pub metadata: String,
     pub metadata_hash: String,
-    pub media: String,
-    pub media_hash: String,
+    pub image: String,
+    pub image_hash: String,
+    pub animation_url: Option<String>,
+    pub animation_hash: Option<String>,
 }
 
 impl AssetPair {
     pub fn into_cache_item(self) -> CacheItem {
         CacheItem {
             name: self.name,
-            media_hash: self.media_hash,
-            media_link: String::new(),
+            image_hash: self.image_hash,
+            image_link: String::new(),
             metadata_hash: self.metadata_hash,
             metadata_link: String::new(),
             on_chain: false,
+            animation_hash: self.animation_hash,
+            animation_link: self.animation_url,
         }
     }
 }
@@ -112,26 +117,50 @@ pub fn get_asset_pairs(assets_dir: &str) -> Result<HashMap<usize, AssetPair>> {
     let mut asset_pairs: HashMap<usize, AssetPair> = HashMap::new();
 
     // number of files should be even
-    if num_files % 2 != 0 {
+    if num_files % 2 != 0 || num_files % 3 != 0 {
         return Err(UploadError::InvalidNumberOfFiles(num_files).into());
     }
+
+    let iteration_number = if num_files % 2 == 0 {
+        num_files / 2
+    } else {
+        num_files / 3
+    };
 
     // TODO: should we enforce that all files have the same extension?
     let extension = get_media_extension(assets_dir)?;
 
     // iterate over asset pairs
-    for i in 0..(num_files / 2) {
+    for i in 0..(iteration_number) {
         let metadata_file = PathBuf::from(assets_dir)
             .join(format!("{i}.json"))
             .to_str()
             .expect("Failed to convert metadata path from unicode.")
             .to_string();
 
-        let media_file = Path::new(assets_dir)
+        let image_file = Path::new(assets_dir)
             .join(format!("{i}.{extension}"))
             .to_str()
             .expect("Failed to convert media path from unicode.")
             .to_string();
+
+        let animation_file = if iteration_number % 3 == 0 {
+            Some(
+                Path::new(assets_dir)
+                    .join(format!("{i}.{extension}"))
+                    .to_str()
+                    .expect("Failed to convert media path from unicode.")
+                    .to_string(),
+            )
+        } else {
+            None
+        };
+
+        let animation_hash = if let Some(animation) = animation_file {
+            Some(encode(&animation)?)
+        } else {
+            None
+        };
 
         let m = File::open(&metadata_file)?;
         let metadata: Metadata = serde_json::from_reader(m)?;
@@ -141,8 +170,10 @@ pub fn get_asset_pairs(assets_dir: &str) -> Result<HashMap<usize, AssetPair>> {
             name,
             metadata: metadata_file.clone(),
             metadata_hash: encode(&metadata_file)?,
-            media: media_file.clone(),
-            media_hash: encode(&media_file)?,
+            image: image_file.clone(),
+            image_hash: encode(&image_file)?,
+            animation_url: animation_file,
+            animation_hash,
         };
 
         asset_pairs.insert(i, asset_pair);
@@ -168,7 +199,11 @@ fn encode(file: &str) -> Result<String> {
     Ok(HEXLOWER.encode(context.finish().as_ref()))
 }
 
-pub fn get_updated_metadata(metadata_file: &str, media_link: &str) -> Result<String> {
+pub fn get_updated_metadata(
+    metadata_file: &str,
+    media_link: &str,
+    animation_link: Option<String>,
+) -> Result<String> {
     let mut metadata: Metadata = {
         let m = OpenOptions::new().read(true).open(metadata_file)?;
         serde_json::from_reader(&m)?
@@ -176,6 +211,10 @@ pub fn get_updated_metadata(metadata_file: &str, media_link: &str) -> Result<Str
 
     metadata.image = media_link.to_string();
     metadata.properties.files[0].uri = media_link.to_string();
+
+    if animation_link.is_some() {
+        metadata.animation_url = animation_link;
+    }
 
     Ok(serde_json::to_string(&metadata).unwrap())
 }

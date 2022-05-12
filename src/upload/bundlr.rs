@@ -38,9 +38,10 @@ const MOCK_URI_SIZE: usize = 100;
 struct TxInfo {
     asset_id: String,
     file_path: String,
-    media_link: String,
+    image_link: String,
     data_type: DataType,
     tag: Vec<Tag>,
+    animation_link: Option<String>,
 }
 
 pub struct BundlrHandler {
@@ -199,11 +200,17 @@ impl BundlrHandler {
         tx_info: TxInfo,
     ) -> Result<(String, String)> {
         let data = match tx_info.data_type {
-            DataType::Media => fs::read(&tx_info.file_path)?,
+            DataType::Image => fs::read(&tx_info.file_path)?,
+            DataType::Video => fs::read(&tx_info.file_path)?,
             DataType::Metadata => {
                 // replaces the media link without modifying the original file to avoid
                 // changing the hash of the metadata file
-                get_updated_metadata(&tx_info.file_path, &tx_info.media_link)?.into_bytes()
+                get_updated_metadata(
+                    &tx_info.file_path,
+                    &tx_info.image_link,
+                    tx_info.animation_link.clone(),
+                )?
+                .into_bytes()
             }
         };
 
@@ -226,19 +233,34 @@ impl UploadHandler for BundlrHandler {
         &self,
         sugar_config: &SugarConfig,
         assets: &HashMap<usize, AssetPair>,
-        media_indices: &[usize],
+        image_indices: &[usize],
         metadata_indices: &[usize],
+        animation_indices: &[usize],
     ) -> Result<()> {
         // calculates the size of the files to upload
         let mut total_size = 0;
 
-        for index in media_indices {
+        for index in image_indices {
             let item = assets.get(index).unwrap();
-            let path = Path::new(&item.media);
+            let path = Path::new(&item.image);
             total_size += HEADER_SIZE + cmp::max(MINIMUM_SIZE, std::fs::metadata(path)?.len());
         }
 
         let mock_uri = "x".repeat(MOCK_URI_SIZE);
+
+        if !animation_indices.is_empty() {
+            for index in animation_indices {
+                let item = assets.get(&index).unwrap();
+                let path = Path::new(&item.animation_url.unwrap());
+                total_size += HEADER_SIZE + cmp::max(MINIMUM_SIZE, std::fs::metadata(path)?.len());
+            }
+        }
+
+        let mock_animation_url = if !animation_indices.is_empty() {
+            Some("x".repeat(MOCK_URI_SIZE))
+        } else {
+            None
+        };
 
         for index in metadata_indices {
             let item = assets.get(index).unwrap();
@@ -246,7 +268,7 @@ impl UploadHandler for BundlrHandler {
             total_size += HEADER_SIZE
                 + cmp::max(
                     MINIMUM_SIZE,
-                    get_updated_metadata(&item.metadata, &mock_uri)
+                    get_updated_metadata(&item.metadata, &mock_uri, mock_animation_url)
                         .expect("Failed to get updated metadata.")
                         .into_bytes()
                         .len() as u64,
@@ -339,8 +361,9 @@ impl UploadHandler for BundlrHandler {
             };
             // chooses the file path based on the data type
             let file_path = match data_type {
-                DataType::Media => item.media.clone(),
+                DataType::Image => item.image.clone(),
                 DataType::Metadata => item.metadata.clone(),
+                DataType::Video => item.animation_url.unwrap().clone(),
             };
 
             let path = Path::new(&file_path);
@@ -363,7 +386,8 @@ impl UploadHandler for BundlrHandler {
         let sugar_tag = Tag::new("App-Name".into(), format!("Sugar {}", crate_version!()));
 
         let media_tag = match data_type {
-            DataType::Media => Tag::new("Content-Type".into(), format!("image/{extension}")),
+            DataType::Image => Tag::new("Content-Type".into(), format!("image/{extension}")),
+            DataType::Video => Tag::new("Content-Type".into(), format!("video/{extension}")),
             DataType::Metadata => Tag::new("Content-Type".into(), "application/json".to_string()),
         };
 
@@ -393,9 +417,10 @@ impl UploadHandler for BundlrHandler {
             transactions.push(TxInfo {
                 asset_id: asset_id.to_string(),
                 file_path: String::from(path.to_str().expect("Failed to parse path from unicode.")),
-                media_link: cache_item.media_link.clone(),
+                image_link: cache_item.image_link.clone(),
                 data_type: data_type.clone(),
                 tag: vec![sugar_tag.clone(), media_tag.clone()],
+                animation_link: cache_item.animation_link.clone(),
             });
         }
 
@@ -424,8 +449,9 @@ impl UploadHandler for BundlrHandler {
                         let item = cache.items.0.get_mut(&val.0).unwrap();
 
                         match data_type {
-                            DataType::Media => item.media_link = link,
+                            DataType::Image => item.image_link = link,
                             DataType::Metadata => item.metadata_link = link,
+                            DataType::Video => item.animation_link = Some(link),
                         }
                         // updates the progress bar
                         pb.inc(1);
