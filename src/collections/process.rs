@@ -1,5 +1,12 @@
+use crate::cache::load_cache;
+use crate::candy_machine::ID as CANDY_MACHINE_ID;
+use crate::candy_machine::*;
+use crate::common::*;
+use crate::pdas::*;
+use crate::utils::*;
 use anchor_client::{
     solana_sdk::{
+        instruction::Instruction,
         program_pack::Pack,
         pubkey::Pubkey,
         signature::{Keypair, Signature, Signer},
@@ -11,6 +18,10 @@ use anchor_lang::prelude::AccountMeta;
 use anyhow::Result;
 use chrono::Utc;
 use console::style;
+use mpl_candy_machine::accounts as nft_accounts;
+use mpl_candy_machine::instruction as nft_instruction;
+use mpl_candy_machine::{CandyError, CandyMachine, EndSettingType, WhitelistMintMode};
+use rand::rngs::OsRng;
 use spl_associated_token_account::{create_associated_token_account, get_associated_token_address};
 use spl_token::{
     instruction::{initialize_mint, mint_to},
@@ -18,17 +29,6 @@ use spl_token::{
     ID as TOKEN_PROGRAM_ID,
 };
 use std::{str::FromStr, sync::Arc};
-
-use mpl_candy_machine::accounts as nft_accounts;
-use mpl_candy_machine::instruction as nft_instruction;
-use mpl_candy_machine::{CandyError, CandyMachine, EndSettingType, WhitelistMintMode};
-
-use crate::cache::load_cache;
-use crate::candy_machine::ID as CANDY_MACHINE_ID;
-use crate::candy_machine::*;
-use crate::common::*;
-use crate::pdas::*;
-use crate::utils::*;
 
 pub struct MintArgs {
     pub keypair: Option<String>,
@@ -236,38 +236,60 @@ pub fn mint(
         1,
     )?;
 
+    let mut additional_instructions: Vec<Instruction> = Vec::new();
+    let mut cleanup_instructions: Vec<Instruction> = Vec::new();
     let mut additional_accounts: Vec<AccountMeta> = Vec::new();
+    let mut additional_signers: Vec<Keypair> = Vec::new();
 
     // Check whitelist mint settings
     if let Some(wl_mint_settings) = &candy_machine_data.whitelist_mint_settings {
-        let whitelist_token_account = get_associated_token_address(&payer, &wl_mint_settings.mint);
+        let whitelist_token = get_associated_token_address(&wl_mint_settings.mint, &payer);
 
         additional_accounts.push(AccountMeta {
-            pubkey: whitelist_token_account,
+            pubkey: whitelist_token,
             is_signer: false,
             is_writable: true,
         });
 
         if wl_mint_settings.mode == WhitelistMintMode::BurnEveryTime {
+            let whitelist_burn_authority = Keypair::generate(&mut OsRng);
+
+            additional_accounts.push(AccountMeta {
+                pubkey: wl_mint_settings.mint,
+                is_signer: false,
+                is_writable: true,
+            });
+            additional_accounts.push(AccountMeta {
+                pubkey: whitelist_burn_authority.pubkey(),
+                is_signer: true,
+                is_writable: false,
+            });
+
             let mut token_found = false;
 
-            match program.rpc().get_account_data(&whitelist_token_account) {
+            match program.rpc().get_account_data(&whitelist_token) {
                 Ok(ata_data) => {
                     if !ata_data.is_empty() {
                         let account = Account::unpack_unchecked(&ata_data)?;
 
                         if account.amount > 0 {
-                            additional_accounts.push(AccountMeta {
-                                pubkey: wl_mint_settings.mint,
-                                is_signer: false,
-                                is_writable: true,
-                            });
+                            let approve_ix = spl_token::instruction::approve(
+                                &TOKEN_PROGRAM_ID,
+                                &whitelist_token,
+                                &whitelist_burn_authority.pubkey(),
+                                &payer,
+                                &[],
+                                1,
+                            )?;
+                            let revoke_ix = spl_token::instruction::revoke(
+                                &TOKEN_PROGRAM_ID,
+                                &whitelist_token,
+                                &payer,
+                                &[],
+                            )?;
 
-                            additional_accounts.push(AccountMeta {
-                                pubkey: payer,
-                                is_signer: true,
-                                is_writable: false,
-                            });
+                            additional_instructions.push(approve_ix);
+                            cleanup_instructions.push(revoke_ix);
 
                             token_found = true;
                         }
@@ -279,23 +301,51 @@ pub fn mint(
             if !token_found {
                 return Err(anyhow!(CandyError::NoWhitelistToken));
             }
+
+            additional_signers.push(whitelist_burn_authority);
         }
     }
 
     if let Some(token_mint) = candy_machine_state.token_mint {
-        let user_token_account_info = get_associated_token_address(&payer, &token_mint);
+        let transfer_authority = Keypair::generate(&mut OsRng);
+
+        let user_paying_account_address = get_associated_token_address(&token_mint, &payer);
 
         additional_accounts.push(AccountMeta {
-            pubkey: user_token_account_info,
+            pubkey: user_paying_account_address,
             is_signer: false,
             is_writable: true,
         });
 
         additional_accounts.push(AccountMeta {
-            pubkey: payer,
+            pubkey: transfer_authority.pubkey(),
             is_signer: true,
             is_writable: false,
-        })
+        });
+
+        let ata_exists = !program.rpc().get_account_data(&token_mint)?.is_empty();
+
+        if ata_exists {
+            let approve_ix = spl_token::instruction::approve(
+                &TOKEN_PROGRAM_ID,
+                &user_paying_account_address,
+                &transfer_authority.pubkey(),
+                &payer,
+                &[],
+                candy_machine_data.price,
+            )?;
+            let revoke_ix = spl_token::instruction::revoke(
+                &TOKEN_PROGRAM_ID,
+                &user_paying_account_address,
+                &payer,
+                &[],
+            )?;
+
+            additional_instructions.push(approve_ix);
+            cleanup_instructions.push(revoke_ix);
+        }
+
+        additional_signers.push(transfer_authority);
     }
 
     let metadata_pda = get_metadata_pda(&nft_mint.pubkey());
@@ -330,15 +380,40 @@ pub fn mint(
         })
         .args(nft_instruction::MintNft { creator_bump });
 
+    // Add additional instructions based on candy machine settings.
+    if !additional_instructions.is_empty() {
+        for instruction in additional_instructions {
+            builder = builder.instruction(instruction);
+        }
+    }
+
     if !additional_accounts.is_empty() {
         for account in additional_accounts {
             builder = builder.accounts(account);
         }
     }
 
+    if !additional_signers.is_empty() {
+        for signer in &additional_signers {
+            builder = builder.signer(signer);
+        }
+    }
+
     let sig = builder.send()?;
 
+    // Cleanup instructions, such as revoke token burn authority, require a separate transaction.
+    let mut builder = program.request();
+
+    if !cleanup_instructions.is_empty() {
+        for instruction in cleanup_instructions {
+            builder = builder.instruction(instruction);
+        }
+    }
+
+    let sig2 = builder.send()?;
+
     info!("Minted! TxId: {}", sig);
+    info!("Cleanup TxId: {}", sig2);
 
     Ok(sig)
 }
