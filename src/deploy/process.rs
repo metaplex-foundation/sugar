@@ -301,7 +301,7 @@ fn create_candy_machine_data(
         ));
     }
 
-    let price = parse_config_price(&client, &config)?;
+    let price = parse_config_price(client, config)?;
 
     let data = CandyMachineData {
         uuid,

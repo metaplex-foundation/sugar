@@ -192,7 +192,7 @@ fn create_candy_machine_data(
 
     let gatekeeper = config.gatekeeper.as_ref().map(|g| g.into_candy_format());
 
-    let price = parse_config_price(&client, &config)?;
+    let price = parse_config_price(client, config)?;
 
     println!("Price {}", price);
 
