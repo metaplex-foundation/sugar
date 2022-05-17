@@ -240,7 +240,6 @@ pub fn mint(
 
     // Check whitelist mint settings
     if let Some(wl_mint_settings) = &candy_machine_data.whitelist_mint_settings {
-        println!("Whitelist mode encountered");
         let whitelist_token_account = get_ata_for_mint(&wl_mint_settings.mint, &payer);
 
         additional_accounts.push(AccountMeta {
