@@ -159,8 +159,6 @@ pub fn mint(
             false
         };
 
-        println!("Is Mint enabled {mint_enabled}");
-
         if let Some(wl_mint_settings) = &candy_machine_data.whitelist_mint_settings {
             if wl_mint_settings.presale {
                 // we (temporarily) enable the mint - we will validate if the user

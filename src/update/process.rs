@@ -194,8 +194,6 @@ fn create_candy_machine_data(
 
     let price = parse_config_price(client, config)?;
 
-    println!("Price {}", price);
-
     let data = CandyMachineData {
         uuid: candy_machine.uuid,
         price,

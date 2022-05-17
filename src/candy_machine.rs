@@ -26,7 +26,6 @@ pub struct ConfigStatus {
 
 pub fn parse_config_price(client: &Client, config: &ConfigData) -> Result<u64> {
     let parsed_price = if let Some(spl_token) = config.spl_token {
-        println!("SPL TOKEN FOUND");
         let token_program = client.program(token_program_id());
         let token_mint = check_spl_token(&token_program, &spl_token.to_string())?;
 
