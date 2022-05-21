@@ -28,6 +28,14 @@ pub enum DataType {
     Metadata,
 }
 
+pub struct AssetInfo {
+    pub asset_id: String,
+    pub file_path: String,
+    pub media_link: String,
+    pub data_type: DataType,
+    pub content_type: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct AssetPair {
     pub name: String,

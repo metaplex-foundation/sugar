@@ -1,7 +1,9 @@
-use async_trait::async_trait;
 use console::style;
+use futures::future::select_all;
 use std::{
+    cmp,
     collections::HashSet,
+    ffi::OsStr,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -10,35 +12,12 @@ use std::{
 
 use crate::cache::{load_cache, Cache};
 use crate::common::*;
-use crate::config::{data::SugarConfig, get_config_data, UploadMethod};
-use crate::upload::bundlr::BundlrHandler;
+use crate::config::get_config_data;
+use crate::constants::PARALLEL_LIMIT;
+use crate::upload::storage::*;
 use crate::upload::*;
 use crate::utils::*;
 use crate::validate::format::Metadata;
-
-/// A trait for storage upload handlers.
-#[async_trait]
-pub trait UploadHandler {
-    /// Prepares the upload of the specified media/metadata files.
-    async fn prepare(
-        &self,
-        sugar_config: &SugarConfig,
-        assets: &HashMap<usize, AssetPair>,
-        media_indices: &[usize],
-        metadata_indices: &[usize],
-    ) -> Result<()>;
-
-    /// Upload the data to a (permanent) storage.
-    async fn upload_data(
-        &self,
-        sugar_config: &SugarConfig,
-        assets: &HashMap<usize, AssetPair>,
-        cache: &mut Cache,
-        indices: &[usize],
-        data_type: DataType,
-        interrupted: Arc<AtomicBool>,
-    ) -> Result<Vec<UploadError>>;
-}
 
 pub struct UploadArgs {
     pub assets_dir: String,
@@ -179,21 +158,20 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
         let pb = spinner_with_style();
         pb.set_message("Connecting...");
 
-        let handler = match config_data.upload_method {
-            UploadMethod::Bundlr => Box::new(
-                BundlrHandler::initialize(&get_config_data(&args.config)?, &sugar_config).await?,
-            ) as Box<dyn UploadHandler>,
-            UploadMethod::AWS => {
-                Box::new(AWSHandler::initialize(&get_config_data(&args.config)?).await?)
-                    as Box<dyn UploadHandler>
-            }
-        };
+        let storage = storage::initialize(&sugar_config, &config_data).await?;
 
         pb.finish_with_message("Connected");
 
-        handler
-            .prepare(&sugar_config, &asset_pairs, &indices.0, &indices.1)
-            .await?;
+        storage::prepare_upload(
+            &storage,
+            &sugar_config,
+            &asset_pairs,
+            vec![
+                (DataType::Media, &indices.0),
+                (DataType::Metadata, &indices.1),
+            ],
+        )
+        .await?;
 
         // clear the interruption handler value ahead of the upload
         args.interrupted.store(false, Ordering::SeqCst);
@@ -211,16 +189,15 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
 
         if !indices.0.is_empty() {
             errors.extend(
-                handler
-                    .upload_data(
-                        &sugar_config,
-                        &asset_pairs,
-                        &mut cache,
-                        &indices.0,
-                        DataType::Media,
-                        args.interrupted.clone(),
-                    )
-                    .await?,
+                upload_data(
+                    &asset_pairs,
+                    &mut cache,
+                    &indices.0,
+                    DataType::Media,
+                    &storage,
+                    args.interrupted.clone(),
+                )
+                .await?,
             );
 
             // updates the list of metadata indices since the media upload
@@ -250,16 +227,15 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
 
         if !indices.1.is_empty() {
             errors.extend(
-                handler
-                    .upload_data(
-                        &sugar_config,
-                        &asset_pairs,
-                        &mut cache,
-                        &indices.1,
-                        DataType::Metadata,
-                        args.interrupted.clone(),
-                    )
-                    .await?,
+                upload_data(
+                    &asset_pairs,
+                    &mut cache,
+                    &indices.1,
+                    DataType::Metadata,
+                    &storage,
+                    args.interrupted.clone(),
+                )
+                .await?,
             );
         }
     } else {
@@ -317,4 +293,154 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Upload the data to Bundlr.
+async fn upload_data(
+    assets: &HashMap<usize, AssetPair>,
+    cache: &mut Cache,
+    indices: &[usize],
+    data_type: DataType,
+    storage: &Storage,
+    interrupted: Arc<AtomicBool>,
+) -> Result<Vec<UploadError>> {
+    let mut extension = HashSet::with_capacity(1);
+    let mut paths = Vec::new();
+
+    for index in indices {
+        let item = match assets.get(index) {
+            Some(asset_index) => asset_index,
+            None => return Err(anyhow::anyhow!("Failed to get asset at index {}", index)),
+        };
+        // chooses the file path based on the data type
+        let file_path = match data_type {
+            DataType::Media => item.media.clone(),
+            DataType::Metadata => item.metadata.clone(),
+        };
+
+        let path = Path::new(&file_path);
+        let ext = path
+            .extension()
+            .and_then(OsStr::to_str)
+            .expect("Failed to convert extension from unicode");
+        extension.insert(String::from(ext));
+
+        paths.push(file_path);
+    }
+
+    // validates that all files have the same extension
+    let extension = if extension.len() == 1 {
+        extension.iter().next().unwrap()
+    } else {
+        return Err(anyhow!("Invalid file extension: {:?}", extension));
+    };
+
+    let content_type = match data_type {
+        DataType::Media => format!("image/{}", extension),
+        DataType::Metadata => "application/json".to_string(),
+    };
+
+    // uploading data
+
+    println!("\nSending data: (Ctrl+C to abort)");
+
+    let pb = progress_bar_with_style(paths.len() as u64);
+    let mut tasks = Vec::new();
+
+    for file_path in paths {
+        // path to the media/metadata file
+        let path = Path::new(&file_path);
+
+        // id of the asset (to be used to update the cache link)
+        let asset_id = String::from(
+            path.file_stem()
+                .and_then(OsStr::to_str)
+                .expect("Failed to convert path to unicode."),
+        );
+
+        let cache_item = match cache.items.0.get(&asset_id) {
+            Some(item) => item,
+            None => return Err(anyhow!("Failed to get config item at index {}", asset_id)),
+        };
+
+        tasks.push(AssetInfo {
+            asset_id: asset_id.to_string(),
+            file_path: String::from(path.to_str().expect("Failed to parse path from unicode.")),
+            media_link: cache_item.media_link.clone(),
+            data_type: data_type.clone(),
+            content_type: content_type.clone(),
+        });
+    }
+
+    let mut handles = Vec::new();
+
+    for task in tasks.drain(0..cmp::min(tasks.len(), PARALLEL_LIMIT)) {
+        handles.push(storage::upload_data(storage, task));
+    }
+
+    let mut errors = Vec::new();
+
+    while !interrupted.load(Ordering::SeqCst) && !handles.is_empty() {
+        match select_all(handles).await {
+            (Ok(res), _index, remaining) => {
+                // independently if the upload was successful or not
+                // we continue to try the remaining ones
+                handles = remaining;
+
+                if res.is_ok() {
+                    let val = res?;
+                    let link = val.clone().1;
+                    // cache item to update
+                    let item = cache.items.0.get_mut(&val.0).unwrap();
+
+                    match data_type {
+                        DataType::Media => item.media_link = link,
+                        DataType::Metadata => item.metadata_link = link,
+                    }
+                    // updates the progress bar
+                    pb.inc(1);
+                } else {
+                    // user will need to retry the upload
+                    errors.push(UploadError::SendDataFailed(format!(
+                        "Upload error: {:?}",
+                        res.err().unwrap()
+                    )));
+                }
+            }
+            (Err(err), _index, remaining) => {
+                errors.push(UploadError::SendDataFailed(format!(
+                    "Upload error: {:?}",
+                    err
+                )));
+                // ignoring all errors
+                handles = remaining;
+            }
+        }
+
+        if !tasks.is_empty() {
+            // if we are half way through, let spawn more transactions
+            if (PARALLEL_LIMIT - handles.len()) > (PARALLEL_LIMIT / 2) {
+                // syncs cache (checkpoint)
+                cache.sync_file()?;
+
+                for task in tasks.drain(0..cmp::min(tasks.len(), PARALLEL_LIMIT / 2)) {
+                    handles.push(storage::upload_data(storage, task));
+                }
+            }
+        }
+    }
+
+    if !errors.is_empty() {
+        pb.abandon_with_message(format!("{}", style("Upload failed ").red().bold()));
+    } else if !tasks.is_empty() {
+        pb.abandon_with_message(format!("{}", style("Upload aborted ").red().bold()));
+        return Err(UploadError::SendDataFailed("Not all files were uploaded.".to_string()).into());
+    } else {
+        pb.finish_with_message(format!("{}", style("Upload successful ").green().bold()));
+    }
+
+    // makes sure the cache file is updated
+    cache.sync_file()?;
+
+    Ok(errors)
 }

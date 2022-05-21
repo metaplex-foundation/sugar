@@ -1,11 +1,11 @@
 pub mod assets;
-pub mod aws;
-pub mod bundlr;
 pub mod errors;
+pub mod methods;
 pub mod process;
+pub mod storage;
 
 pub use assets::*;
-pub use aws::*;
-pub use bundlr::*;
 pub use errors::*;
+pub use methods::*;
 pub use process::*;
+pub use storage::*;
