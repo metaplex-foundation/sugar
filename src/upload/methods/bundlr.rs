@@ -1,15 +1,22 @@
-pub use anchor_client::solana_sdk::native_token::LAMPORTS_PER_SOL;
+use anchor_client::solana_sdk::native_token::LAMPORTS_PER_SOL;
+use async_trait::async_trait;
 use bundlr_sdk::{tags::Tag, Bundlr, SolanaSigner};
 use clap::crate_version;
 use console::style;
 use std::{cmp, fs, path::Path, sync::Arc};
-use tokio::time::{sleep, Duration};
+use tokio::{
+    task::JoinHandle,
+    time::{sleep, Duration},
+};
 
 use crate::candy_machine::ID as CANDY_MACHINE_ID;
 use crate::{
     common::*,
     config::*,
-    upload::assets::{get_updated_metadata, AssetInfo, AssetPair, DataType},
+    upload::{
+        assets::{get_updated_metadata, AssetInfo, AssetPair, DataType},
+        storage::StorageMethod,
+    },
     utils::*,
 };
 
@@ -177,7 +184,42 @@ impl BundlrMethod {
         Ok(required_amount)
     }
 
-    pub async fn prepare(
+    async fn send(
+        client: Arc<Bundlr<SolanaSigner>>,
+        tag: Tag,
+        asset_info: AssetInfo,
+    ) -> Result<(String, String)> {
+        let data = match asset_info.data_type {
+            DataType::Media => fs::read(&asset_info.file_path)?,
+            DataType::Metadata => {
+                // replaces the media link without modifying the original file to avoid
+                // changing the hash of the metadata file
+                get_updated_metadata(&asset_info.file_path, &asset_info.media_link)?.into_bytes()
+            }
+        };
+
+        let tags = vec![
+            tag,
+            Tag::new("Content-Type".into(), asset_info.content_type.clone()),
+        ];
+
+        let tx = client.create_transaction_with_tags(data, tags);
+        let response = client.send_transaction(tx).await?;
+        let id = response
+            .get("id")
+            .expect("Failed to convert transaction id to string.")
+            .as_str()
+            .expect("Failed to get an id from bundlr transaction.");
+
+        let link = format!("https://arweave.net/{}", id);
+
+        Ok((asset_info.asset_id, link))
+    }
+}
+
+#[async_trait]
+impl StorageMethod for BundlrMethod {
+    async fn prepare(
         &self,
         sugar_config: &SugarConfig,
         assets: &HashMap<usize, AssetPair>,
@@ -284,35 +326,10 @@ impl BundlrMethod {
         Ok(())
     }
 
-    pub async fn send(
-        client: Arc<Bundlr<SolanaSigner>>,
-        tag: Tag,
-        asset_info: AssetInfo,
-    ) -> Result<(String, String)> {
-        let data = match asset_info.data_type {
-            DataType::Media => fs::read(&asset_info.file_path)?,
-            DataType::Metadata => {
-                // replaces the media link without modifying the original file to avoid
-                // changing the hash of the metadata file
-                get_updated_metadata(&asset_info.file_path, &asset_info.media_link)?.into_bytes()
-            }
-        };
+    fn upload_data(&self, asset_info: AssetInfo) -> JoinHandle<Result<(String, String)>> {
+        let client = self.client.clone();
+        let tag = self.sugar_tag.clone();
 
-        let tags = vec![
-            tag,
-            Tag::new("Content-Type".into(), asset_info.content_type.clone()),
-        ];
-
-        let tx = client.create_transaction_with_tags(data, tags);
-        let response = client.send_transaction(tx).await?;
-        let id = response
-            .get("id")
-            .expect("Failed to convert transaction id to string.")
-            .as_str()
-            .expect("Failed to get an id from bundlr transaction.");
-
-        let link = format!("https://arweave.net/{}", id);
-
-        Ok((asset_info.asset_id, link))
+        tokio::spawn(async move { BundlrMethod::send(client, tag, asset_info).await })
     }
 }

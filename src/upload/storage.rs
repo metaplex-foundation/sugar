@@ -1,4 +1,5 @@
 use anyhow::Result;
+use async_trait::async_trait;
 use std::collections::HashMap;
 use tokio::task::JoinHandle;
 
@@ -8,47 +9,34 @@ use crate::upload::{
     methods::*,
 };
 
-pub enum Storage {
-    AWS(AWSMethod),
-    Bundlr(BundlrMethod),
+/// A trait for storage upload handlers.
+#[async_trait]
+pub trait StorageMethod {
+    /// Prepare the upload of the specified media/metadata files. This generally
+    /// involve checking if there is space/funds for the upload.
+    async fn prepare(
+        &self,
+        sugar_config: &SugarConfig,
+        assets: &HashMap<usize, AssetPair>,
+        asset_indices: Vec<(DataType, &[usize])>,
+    ) -> Result<()>;
+
+    /// Upload the asset to the storage and return a tuple (`asset id`, `url`) if
+    /// successful.
+    fn upload_data(&self, asset_info: AssetInfo) -> JoinHandle<Result<(String, String)>>;
 }
 
-pub async fn initialize(sugar_config: &SugarConfig, config_data: &ConfigData) -> Result<Storage> {
+pub async fn initialize(
+    sugar_config: &SugarConfig,
+    config_data: &ConfigData,
+) -> Result<Box<dyn StorageMethod>> {
     Ok(match config_data.upload_method {
-        UploadMethod::AWS => Storage::AWS(AWSMethod::initialize(config_data).await?),
+        UploadMethod::AWS => {
+            Box::new(AWSMethod::initialize(config_data).await?) as Box<dyn StorageMethod>
+        }
         UploadMethod::Bundlr => {
-            Storage::Bundlr(BundlrMethod::initialize(sugar_config, config_data).await?)
+            Box::new(BundlrMethod::initialize(sugar_config, config_data).await?)
+                as Box<dyn StorageMethod>
         }
     })
-}
-
-pub async fn prepare_upload(
-    storage: &Storage,
-    sugar_config: &SugarConfig,
-    assets: &HashMap<usize, AssetPair>,
-    asset_indices: Vec<(DataType, &[usize])>,
-) -> Result<()> {
-    match storage {
-        Storage::Bundlr(bundlr) => bundlr.prepare(sugar_config, assets, asset_indices).await,
-        _ => Ok(()),
-    }
-}
-
-pub fn upload_data(
-    storage: &Storage,
-    asset_info: AssetInfo,
-) -> JoinHandle<Result<(String, String)>> {
-    match storage {
-        Storage::AWS(aws) => {
-            let client = aws.aws_client.clone();
-            let bucket = aws.bucket.clone();
-            tokio::spawn(async move { AWSMethod::send(client, bucket, asset_info).await })
-        }
-        Storage::Bundlr(bundlr) => {
-            let client = bundlr.client.clone();
-            let tag = bundlr.sugar_tag.clone();
-
-            tokio::spawn(async move { BundlrMethod::send(client, tag, asset_info).await })
-        }
-    }
 }

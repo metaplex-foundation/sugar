@@ -1,8 +1,13 @@
+use async_trait::async_trait;
 use aws_sdk_s3::{types::ByteStream, Client};
 use bs58;
 use std::{fs, sync::Arc};
+use tokio::task::JoinHandle;
 
-use crate::upload::assets::{get_updated_metadata, AssetInfo, DataType};
+use crate::upload::{
+    assets::{get_updated_metadata, AssetInfo, AssetPair, DataType},
+    storage::StorageMethod,
+};
 use crate::{common::*, config::*};
 
 pub struct AWSMethod {
@@ -25,7 +30,7 @@ impl AWSMethod {
         }
     }
 
-    pub async fn send(
+    async fn send(
         client: Arc<Client>,
         bucket: String,
         asset_info: AssetInfo,
@@ -53,5 +58,24 @@ impl AWSMethod {
         let link = format!("https://{}.s3.amazonaws.com/{}", bucket, key);
 
         Ok((asset_info.asset_id, link))
+    }
+}
+
+#[async_trait]
+impl StorageMethod for AWSMethod {
+    async fn prepare(
+        &self,
+        _sugar_config: &SugarConfig,
+        _assets: &HashMap<usize, AssetPair>,
+        _asset_indices: Vec<(DataType, &[usize])>,
+    ) -> Result<()> {
+        // nothing to do, we are ready to upload
+        Ok(())
+    }
+
+    fn upload_data(&self, asset_info: AssetInfo) -> JoinHandle<Result<(String, String)>> {
+        let client = self.aws_client.clone();
+        let bucket = self.bucket.clone();
+        tokio::spawn(async move { AWSMethod::send(client, bucket, asset_info).await })
     }
 }

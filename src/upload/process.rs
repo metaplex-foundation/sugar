@@ -1,6 +1,7 @@
 use console::style;
 use futures::future::select_all;
 use std::{
+    borrow::Borrow,
     cmp,
     collections::HashSet,
     ffi::OsStr,
@@ -162,16 +163,16 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
 
         pb.finish_with_message("Connected");
 
-        storage::prepare_upload(
-            &storage,
-            &sugar_config,
-            &asset_pairs,
-            vec![
-                (DataType::Media, &indices.0),
-                (DataType::Metadata, &indices.1),
-            ],
-        )
-        .await?;
+        storage
+            .prepare(
+                &sugar_config,
+                &asset_pairs,
+                vec![
+                    (DataType::Media, &indices.0),
+                    (DataType::Metadata, &indices.1),
+                ],
+            )
+            .await?;
 
         // clear the interruption handler value ahead of the upload
         args.interrupted.store(false, Ordering::SeqCst);
@@ -194,7 +195,7 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
                     &mut cache,
                     &indices.0,
                     DataType::Media,
-                    &storage,
+                    storage.borrow(),
                     args.interrupted.clone(),
                 )
                 .await?,
@@ -232,7 +233,7 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
                     &mut cache,
                     &indices.1,
                     DataType::Metadata,
-                    &storage,
+                    storage.borrow(),
                     args.interrupted.clone(),
                 )
                 .await?,
@@ -301,7 +302,7 @@ async fn upload_data(
     cache: &mut Cache,
     indices: &[usize],
     data_type: DataType,
-    storage: &Storage,
+    storage: &dyn StorageMethod,
     interrupted: Arc<AtomicBool>,
 ) -> Result<Vec<UploadError>> {
     let mut extension = HashSet::with_capacity(1);
@@ -375,7 +376,7 @@ async fn upload_data(
     let mut handles = Vec::new();
 
     for task in tasks.drain(0..cmp::min(tasks.len(), PARALLEL_LIMIT)) {
-        handles.push(storage::upload_data(storage, task));
+        handles.push(storage.upload_data(task));
     }
 
     let mut errors = Vec::new();
@@ -424,7 +425,7 @@ async fn upload_data(
                 cache.sync_file()?;
 
                 for task in tasks.drain(0..cmp::min(tasks.len(), PARALLEL_LIMIT / 2)) {
-                    handles.push(storage::upload_data(storage, task));
+                    handles.push(storage.upload_data(task));
                 }
             }
         }
