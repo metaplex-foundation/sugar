@@ -23,22 +23,22 @@ pub async fn initialize(sugar_config: &SugarConfig, config_data: &ConfigData) ->
 }
 
 pub async fn prepare_upload(
-    dispatcher: &Storage,
+    storage: &Storage,
     sugar_config: &SugarConfig,
     assets: &HashMap<usize, AssetPair>,
     asset_indices: Vec<(DataType, &[usize])>,
 ) -> Result<()> {
-    match dispatcher {
+    match storage {
         Storage::Bundlr(bundlr) => bundlr.prepare(sugar_config, assets, asset_indices).await,
         _ => Ok(()),
     }
 }
 
 pub fn upload_data(
-    dispatcher: &Storage,
+    storage: &Storage,
     asset_info: AssetInfo,
 ) -> JoinHandle<Result<(String, String)>> {
-    match dispatcher {
+    match storage {
         Storage::AWS(aws) => {
             let client = aws.aws_client.clone();
             let bucket = aws.bucket.clone();
