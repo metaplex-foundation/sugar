@@ -29,14 +29,6 @@ pub enum DataType {
     Animation,
 }
 
-pub struct AssetInfo {
-    pub asset_id: String,
-    pub file_path: String,
-    pub media_link: String,
-    pub data_type: DataType,
-    pub content_type: String,
-}
-
 #[derive(Debug, Clone, Serialize)]
 pub struct AssetPair {
     pub name: String,
@@ -122,7 +114,8 @@ pub fn get_asset_pairs(assets_dir: &str) -> Result<HashMap<usize, AssetPair>> {
     let animation_exists_regex =
         Regex::new("^(.+)\\.((mp4)|(mov)|(webm))$").expect("Failed to create regex.");
 
-    // since there doesn't have to be video for each image/json pair, need to get rid of invalid file names before entering metadata filename loop
+    // since there doesn't have to be video for each image/json pair, need to get rid of
+    // invalid file names before entering metadata filename loop
     for x in paths_ref {
         if let Some(captures) = animation_exists_regex.captures(x) {
             if captures[1].parse::<usize>().is_err() {
@@ -175,7 +168,9 @@ pub fn get_asset_pairs(assets_dir: &str) -> Result<HashMap<usize, AssetPair>> {
             &img_filenames[0]
         };
 
-        // need a similar check for animation as above, this one checking if there is animation on specific index
+        // need a similar check for animation as above, this one checking if there is animation
+        // on specific index
+
         let animation_pattern = format!("^{}\\.((mp4)|(mov)|(webm))$", i);
         let animation_regex = RegexBuilder::new(&animation_pattern)
             .case_insensitive(true)
@@ -260,7 +255,7 @@ fn encode(file: &str) -> Result<String> {
 pub fn get_updated_metadata(
     metadata_file: &str,
     image_link: &str,
-    animation_link: Option<String>,
+    animation_link: &Option<String>,
 ) -> Result<String> {
     let mut metadata: Metadata = {
         let m = OpenOptions::new()
@@ -286,7 +281,7 @@ pub fn get_updated_metadata(
     }
 
     metadata.image = image_link.to_string();
-    metadata.animation_url = animation_link;
+    metadata.animation_url = animation_link.clone();
 
     Ok(serde_json::to_string(&metadata).unwrap())
 }

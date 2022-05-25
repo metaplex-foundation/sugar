@@ -5,8 +5,8 @@ use std::{fs, sync::Arc};
 use tokio::task::JoinHandle;
 
 use crate::upload::{
-    assets::{get_updated_metadata, AssetInfo, AssetPair, DataType},
-    storage::StorageMethod,
+    assets::{AssetPair, DataType},
+    storage::{AssetInfo, StorageMethod},
 };
 use crate::{common::*, config::*};
 
@@ -36,15 +36,12 @@ impl AWSMethod {
         asset_info: AssetInfo,
     ) -> Result<(String, String)> {
         let data = match asset_info.data_type {
-            DataType::Media => fs::read(&asset_info.file_path)?,
-            DataType::Metadata => {
-                // replaces the media link without modifying the original file to avoid
-                // changing the hash of the metadata file
-                get_updated_metadata(&asset_info.file_path, &asset_info.media_link)?.into_bytes()
-            }
+            DataType::Image => fs::read(&asset_info.content)?,
+            DataType::Metadata => asset_info.content.into_bytes(),
+            DataType::Animation => fs::read(&asset_info.content)?,
         };
 
-        let key = bs58::encode(&asset_info.file_path).into_string();
+        let key = bs58::encode(&asset_info.name).into_string();
 
         client
             .put_object()

@@ -5,9 +5,17 @@ use tokio::task::JoinHandle;
 
 use crate::config::{ConfigData, SugarConfig, UploadMethod};
 use crate::upload::{
-    assets::{AssetInfo, AssetPair, DataType},
+    assets::{AssetPair, DataType},
     methods::*,
 };
+
+pub struct AssetInfo {
+    pub asset_id: String,
+    pub name: String,
+    pub content: String,
+    pub data_type: DataType,
+    pub content_type: String,
+}
 
 /// A trait for storage upload handlers.
 #[async_trait]

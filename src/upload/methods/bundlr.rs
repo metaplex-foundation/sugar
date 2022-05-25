@@ -14,8 +14,8 @@ use crate::{
     common::*,
     config::*,
     upload::{
-        assets::{get_updated_metadata, AssetInfo, AssetPair, DataType},
-        storage::StorageMethod,
+        assets::{get_updated_metadata, AssetPair, DataType},
+        storage::{AssetInfo, StorageMethod},
     },
     utils::*,
 };
@@ -190,12 +190,9 @@ impl BundlrMethod {
         asset_info: AssetInfo,
     ) -> Result<(String, String)> {
         let data = match asset_info.data_type {
-            DataType::Media => fs::read(&asset_info.file_path)?,
-            DataType::Metadata => {
-                // replaces the media link without modifying the original file to avoid
-                // changing the hash of the metadata file
-                get_updated_metadata(&asset_info.file_path, &asset_info.media_link)?.into_bytes()
-            }
+            DataType::Image => fs::read(&asset_info.content)?,
+            DataType::Metadata => asset_info.content.into_bytes(),
+            DataType::Animation => fs::read(&asset_info.content)?,
         };
 
         let tags = vec![
@@ -230,12 +227,23 @@ impl StorageMethod for BundlrMethod {
 
         for (data_type, indices) in asset_indices {
             match data_type {
-                DataType::Media => {
+                DataType::Image => {
                     for index in indices {
                         let item = assets.get(index).unwrap();
-                        let path = Path::new(&item.media);
+                        let path = Path::new(&item.image);
                         total_size +=
                             HEADER_SIZE + cmp::max(MINIMUM_SIZE, std::fs::metadata(path)?.len());
+                    }
+                }
+                DataType::Animation => {
+                    for index in indices {
+                        let item = assets.get(index).unwrap();
+
+                        if let Some(animation) = &item.animation {
+                            let path = Path::new(animation);
+                            total_size += HEADER_SIZE
+                                + cmp::max(MINIMUM_SIZE, std::fs::metadata(path)?.len());
+                        }
                     }
                 }
                 DataType::Metadata => {
@@ -243,11 +251,16 @@ impl StorageMethod for BundlrMethod {
 
                     for index in indices {
                         let item = assets.get(index).unwrap();
+                        let animation = if item.animation.is_some() {
+                            Some(mock_uri.clone())
+                        } else {
+                            None
+                        };
+
                         total_size += HEADER_SIZE
                             + cmp::max(
                                 MINIMUM_SIZE,
-                                get_updated_metadata(&item.metadata, &mock_uri)
-                                    .expect("Failed to get updated metadata.")
+                                get_updated_metadata(&item.metadata, &mock_uri.clone(), &animation)?
                                     .into_bytes()
                                     .len() as u64,
                             );
