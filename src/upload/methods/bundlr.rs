@@ -15,7 +15,7 @@ use crate::{
     config::*,
     upload::{
         assets::{get_updated_metadata, AssetPair, DataType},
-        storage::{AssetInfo, StorageMethod},
+        storage::{AssetInfo, MOCK_URI_SIZE, StorageMethod},
     },
     utils::*,
 };
@@ -31,9 +31,6 @@ const HEADER_SIZE: u64 = 2000;
 
 /// Minimum file size for cost calculation
 const MINIMUM_SIZE: u64 = 10000;
-
-/// Size of the mock media URI for cost calculation
-const MOCK_URI_SIZE: usize = 100;
 
 pub struct BundlrMethod {
     pub client: Arc<Bundlr<SolanaSigner>>,

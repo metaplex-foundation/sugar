@@ -17,6 +17,9 @@ pub struct AssetInfo {
     pub content_type: String,
 }
 
+/// Size of the mock media URI for cost calculation
+pub const MOCK_URI_SIZE: usize = 100;
+
 /// A trait for storage upload handlers.
 #[async_trait]
 pub trait StorageMethod {
