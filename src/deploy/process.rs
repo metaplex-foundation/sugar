@@ -28,7 +28,7 @@ pub use mpl_token_metadata::state::{
 };
 
 use crate::candy_machine::uuid_from_pubkey;
-use crate::candy_machine::ID as CANDY_MACHINE_ID;
+use crate::candy_machine::CANDY_MACHINE_ID;
 use crate::common::*;
 use crate::config::{data::*, parser::get_config_data};
 use crate::deploy::data::*;

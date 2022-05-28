@@ -18,7 +18,7 @@ use std::{
 };
 use tokio::time::{sleep, Duration};
 
-use crate::candy_machine::ID as CANDY_MACHINE_ID;
+use crate::candy_machine::CANDY_MACHINE_ID;
 use crate::{common::*, config::*, constants::PARALLEL_LIMIT, upload::*, utils::*};
 
 /// The number os retries to fetch the Bundlr balance (MAX_RETRY * DELAY_UNTIL_RETRY ms limit)

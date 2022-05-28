@@ -24,7 +24,7 @@ use mpl_candy_machine::instruction as nft_instruction;
 use mpl_candy_machine::{CandyError, CandyMachine, EndSettingType, WhitelistMintMode};
 
 use crate::cache::load_cache;
-use crate::candy_machine::ID as CANDY_MACHINE_ID;
+use crate::candy_machine::CANDY_MACHINE_ID;
 use crate::candy_machine::*;
 use crate::common::*;
 use crate::pdas::*;
@@ -298,10 +298,10 @@ pub fn mint(
         })
     }
 
-    let metadata_pda = get_metadata_pda(&nft_mint.pubkey());
-    let master_edition_pda = get_master_edition_pda(&nft_mint.pubkey());
+    let metadata_pda = find_metadata_pda(&nft_mint.pubkey());
+    let master_edition_pda = find_master_edition_pda(&nft_mint.pubkey());
     let (candy_machine_creator_pda, creator_bump) =
-        get_candy_machine_creator_pda(&candy_machine_id);
+        find_candy_machine_creator_pda(&candy_machine_id);
 
     let mut builder = program
         .request()

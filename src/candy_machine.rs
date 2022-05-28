@@ -11,12 +11,14 @@ use crate::setup::setup_client;
 
 use crate::utils::check_spl_token;
 
-pub use mpl_candy_machine::ID;
+pub use mpl_candy_machine::ID as CANDY_MACHINE_ID;
 use spl_token::id as token_program_id;
 // To test a custom candy machine program, comment the line above and use the
 // following lines to declare the id to use:
 //use solana_program::declare_id;
 //declare_id!("<CANDY MACHINE ID>");
+
+// const program =
 
 #[derive(Debug)]
 pub struct ConfigStatus {
@@ -45,7 +47,7 @@ pub fn get_candy_machine_state(
     candy_machine_id: &Pubkey,
 ) -> Result<CandyMachine> {
     let client = setup_client(sugar_config)?;
-    let program = client.program(ID);
+    let program = client.program(CANDY_MACHINE_ID);
 
     let data = program.rpc().get_account_data(candy_machine_id)?;
     let candy_machine: CandyMachine = CandyMachine::try_deserialize(&mut data.as_slice())?;

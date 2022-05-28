@@ -241,7 +241,7 @@ pub enum CollectionSubcommands {
     Set {
         /// Address of collection mint to set the candy machine to.
         #[clap(long)]
-        collection_mint: Option<String>,
+        collection_mint: String,
 
         /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
         #[clap(short, long)]

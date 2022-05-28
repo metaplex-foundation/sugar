@@ -8,7 +8,7 @@ use std::str::FromStr;
 use mpl_candy_machine::instruction as nft_instruction;
 use mpl_candy_machine::{accounts as nft_accounts, CandyMachineData};
 
-use crate::candy_machine::ID as CANDY_MACHINE_ID;
+use crate::candy_machine::CANDY_MACHINE_ID;
 use crate::candy_machine::{get_candy_machine_state, parse_config_price};
 use crate::common::*;
 use crate::config::{data::*, parser::get_config_data};

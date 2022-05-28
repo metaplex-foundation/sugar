@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::pdas::get_candy_machine_creator_pda;
+use crate::pdas::find_candy_machine_creator_pda;
 use anchor_client::solana_sdk::pubkey::Pubkey;
 use anyhow::Result;
 use mpl_candy_machine::ConfigLine;
@@ -61,7 +61,7 @@ impl CacheProgram {
 
     pub fn new_from_cm(candy_machine: &Pubkey) -> Self {
         let (candy_machine_creator_pda, _creator_bump) =
-            get_candy_machine_creator_pda(candy_machine);
+            find_candy_machine_creator_pda(candy_machine);
         CacheProgram {
             candy_machine: candy_machine.to_string(),
             candy_machine_creator: candy_machine_creator_pda.to_string(),
