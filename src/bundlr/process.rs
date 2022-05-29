@@ -99,11 +99,6 @@ pub async fn process_bundlr(args: BundlrArgs) -> Result<()> {
             .await?;
             let signature = keypair.sign_message(&message);
 
-            // the verify seems to have an empty implementation
-            //if !SolanaSigner::verify(Bytes::from(keypair), message, signature)? {
-            //    return Err(BundlrError::InvalidSignature.into());
-            //};
-
             let mut data = HashMap::new();
             data.insert("publicKey", BASE64URL.encode(&keypair.pubkey().to_bytes()));
             data.insert("currency", "solana".to_string());
