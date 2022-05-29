@@ -287,6 +287,7 @@ impl HiddenSettings {
 pub enum UploadMethod {
     Bundlr,
     AWS,
+    ShadowDrive,
 }
 
 impl Default for UploadMethod {
@@ -302,6 +303,7 @@ impl FromStr for UploadMethod {
         match s.to_lowercase().as_str() {
             "bundlr" => Ok(UploadMethod::Bundlr),
             "aws" => Ok(UploadMethod::AWS),
+            "shdw" => Ok(UploadMethod::ShadowDrive),
             _ => Err(ConfigError::InvalidUploadMethod(s.to_string())),
         }
     }
@@ -312,6 +314,7 @@ impl ToString for UploadMethod {
         match self {
             UploadMethod::Bundlr => "bundlr".to_string(),
             UploadMethod::AWS => "aws".to_string(),
+            UploadMethod::ShadowDrive => "shdw".to_string(),
         }
     }
 }

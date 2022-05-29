@@ -55,7 +55,7 @@ impl StorageMethod for SHDWMethod {
 
         // load the storage account
 
-        let storage_pubkey = Pubkey::from_str("N4f6zftYsuu4yT7icsjLwh4i6pB1zvvKbseHj2NmSQw")?;
+        let storage_pubkey = Pubkey::from_str("DCG6qThfZE8xbM72RoFRLwRSrhNVjeWE1gVPPCGvLYSS")?;
 
         let storage = program.rpc().get_account_data(&storage_pubkey)?;
         let storage_account = StorageAccount::deserialize(&mut storage.as_slice())?;

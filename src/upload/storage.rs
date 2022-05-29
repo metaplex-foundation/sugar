@@ -49,5 +49,9 @@ pub async fn initialize(
             Box::new(BundlrMethod::initialize(sugar_config, config_data).await?)
                 as Box<dyn StorageMethod>
         }
+        UploadMethod::ShadowDrive => {
+            Box::new(SHDWMethod::initialize(sugar_config, config_data).await?)
+                as Box<dyn StorageMethod>
+        }
     })
 }
