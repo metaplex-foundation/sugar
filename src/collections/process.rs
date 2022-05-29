@@ -1,18 +1,12 @@
-use std::borrow::Borrow;
-use std::rc::Rc;
 use std::{str::FromStr, sync::Arc};
 
-use anchor_client::solana_sdk::signers::Signers;
 use anchor_client::solana_sdk::{pubkey::Pubkey, system_program, sysvar};
-use anchor_client::*;
 use anyhow::Result;
 use console::style;
 use mpl_candy_machine::instruction as nft_instruction;
 use mpl_candy_machine::{accounts as nft_accounts, CandyError};
 use mpl_token_metadata::error::MetadataError;
 use mpl_token_metadata::pda::find_collection_authority_account;
-use solana_client::rpc_client::RpcClient;
-use solana_client::rpc_config::RpcSendTransactionConfig;
 
 use crate::cache::load_cache;
 use crate::candy_machine::CANDY_MACHINE_ID;
