@@ -34,7 +34,6 @@ pub async fn process_bundlr(args: BundlrArgs) -> Result<()> {
     );
 
     let pb = spinner_with_style();
-    pb.enable_steady_tick(120);
     pb.set_message("Connecting...");
 
     let program = client.program(CANDY_MACHINE_ID);
@@ -72,6 +71,9 @@ pub async fn process_bundlr(args: BundlrArgs) -> Result<()> {
         if balance == 0 {
             println!("\nNo funds to withdraw.");
         } else if (balance - LIMIT) > 0 {
+            let pb = spinner_with_style();
+            pb.set_message("Connecting...");
+
             let balance = balance - LIMIT;
 
             // nonce
@@ -86,6 +88,7 @@ pub async fn process_bundlr(args: BundlrArgs) -> Result<()> {
             {
                 value
             } else {
+                pb.finish_and_clear();
                 return Err(anyhow!("Failed to retrieve nonce for withdraw"));
             };
 
@@ -109,6 +112,8 @@ pub async fn process_bundlr(args: BundlrArgs) -> Result<()> {
 
             let url = format!("{bundlr_node}/account/withdraw");
             let response = http_client.post(&url).json(&data).send().await?;
+
+            pb.finish_and_clear();
 
             if response.status() == 200 {
                 println!("\nWithdraw completed.");
