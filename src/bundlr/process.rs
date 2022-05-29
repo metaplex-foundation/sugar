@@ -1,7 +1,5 @@
 use anchor_client::solana_sdk::{native_token::LAMPORTS_PER_SOL, signer::Signer};
-use bundlr_sdk::{
-    deep_hash::deep_hash, deep_hash::DeepHashChunk, Signer as BundlrSigner, SolanaSigner,
-};
+use bundlr_sdk::{deep_hash::deep_hash, deep_hash::DeepHashChunk};
 use console::style;
 use data_encoding::BASE64URL;
 
@@ -43,7 +41,8 @@ pub async fn process_bundlr(args: BundlrArgs) -> Result<()> {
     let solana_cluster: Cluster = get_cluster(program.rpc())?;
 
     let http_client = reqwest::Client::new();
-    let address = sugar_config.keypair.pubkey().to_string();
+    let keypair = sugar_config.keypair;
+    let address = keypair.pubkey().to_string();
     let bundlr_node = match solana_cluster {
         Cluster::Devnet => BUNDLR_DEVNET,
         Cluster::Mainnet => BUNDLR_MAINNET,
@@ -74,15 +73,9 @@ pub async fn process_bundlr(args: BundlrArgs) -> Result<()> {
             println!("\nNo funds to withdraw.");
         } else if (balance - LIMIT) > 0 {
             let balance = balance - LIMIT;
-            let keypair = bs58::encode(sugar_config.keypair.to_bytes()).into_string();
-            let signer = SolanaSigner::from_base58(&keypair);
 
             // nonce
-
-            let url = format!(
-                "{}/account/withdrawals/{}/?address={}",
-                &bundlr_node, "solana", &address
-            );
+            let url = format!("{bundlr_node}/account/withdrawals/solana/?address={address}");
             let nonce = if let Some(value) = http_client
                 .get(&url)
                 .send()
@@ -104,7 +97,7 @@ pub async fn process_bundlr(args: BundlrArgs) -> Result<()> {
                 DeepHashChunk::Chunk(nonce.to_string().as_bytes().to_vec().into()),
             ]))
             .await?;
-            let signature = signer.sign(message)?;
+            let signature = keypair.sign_message(&message);
 
             // the verify seems to have an empty implementation
             //if !SolanaSigner::verify(Bytes::from(keypair), message, signature)? {
@@ -112,14 +105,14 @@ pub async fn process_bundlr(args: BundlrArgs) -> Result<()> {
             //};
 
             let mut data = HashMap::new();
-            data.insert("publicKey", BASE64URL.encode(keypair.as_bytes()));
+            data.insert("publicKey", BASE64URL.encode(&keypair.pubkey().to_bytes()));
             data.insert("currency", "solana".to_string());
             data.insert("amount", balance.to_string());
             data.insert("nonce", nonce.to_string());
             data.insert("signature", BASE64URL.encode(signature.as_ref()));
             data.insert("sigType", "2".to_string());
 
-            let url = format!("{}/account/withdraw", &bundlr_node);
+            let url = format!("{bundlr_node}/account/withdraw");
             let response = http_client.post(&url).json(&data).send().await?;
 
             if response.status() == 200 {
