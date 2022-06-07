@@ -287,7 +287,6 @@ async fn run() -> Result<()> {
             })
             .await?
         }
-        Commands::Collection { command } => (),
     }
 
     Ok(())
