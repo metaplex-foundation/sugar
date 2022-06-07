@@ -92,8 +92,10 @@ impl Default for CacheItems {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CacheItem {
     pub name: String,
+    #[serde(default = "String::default")]
     pub image_hash: String,
     pub image_link: String,
+    #[serde(default = "String::default")]
     pub metadata_hash: String,
     pub metadata_link: String,
     #[serde(rename = "onChain")]

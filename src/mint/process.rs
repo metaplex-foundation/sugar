@@ -1,3 +1,5 @@
+use std::{str::FromStr, sync::Arc};
+
 use anchor_client::{
     solana_sdk::{
         program_pack::Pack,
@@ -11,22 +13,24 @@ use anchor_lang::prelude::AccountMeta;
 use anyhow::Result;
 use chrono::Utc;
 use console::style;
+use mpl_candy_machine::accounts as nft_accounts;
+use mpl_candy_machine::instruction as nft_instruction;
+use mpl_candy_machine::{CandyError, CandyMachine, EndSettingType, WhitelistMintMode};
+use mpl_token_metadata::pda::find_collection_authority_account;
+use solana_client::rpc_client::RpcClient;
+use solana_client::rpc_config::RpcSendTransactionConfig;
 use spl_associated_token_account::{create_associated_token_account, get_associated_token_address};
 use spl_token::{
     instruction::{initialize_mint, mint_to},
     state::Account,
     ID as TOKEN_PROGRAM_ID,
 };
-use std::{str::FromStr, sync::Arc};
-
-use mpl_candy_machine::accounts as nft_accounts;
-use mpl_candy_machine::instruction as nft_instruction;
-use mpl_candy_machine::{CandyError, CandyMachine, EndSettingType, WhitelistMintMode};
 
 use crate::cache::load_cache;
 use crate::candy_machine::CANDY_MACHINE_ID;
 use crate::candy_machine::*;
 use crate::common::*;
+use crate::config::SugarConfig;
 use crate::pdas::*;
 use crate::utils::*;
 
@@ -92,6 +96,7 @@ pub fn process_mint(args: MintArgs) -> Result<()> {
             Arc::clone(&client),
             candy_pubkey,
             Arc::clone(&candy_machine_state),
+            &sugar_config,
         ) {
             Ok(signature) => format!("{} {}", style("Signature:").bold(), signature),
             Err(err) => {
@@ -110,6 +115,7 @@ pub fn process_mint(args: MintArgs) -> Result<()> {
                 Arc::clone(&client),
                 candy_pubkey,
                 Arc::clone(&candy_machine_state),
+                &sugar_config,
             ) {
                 pb.abandon_with_message(format!("{}", style("Mint failed ").red().bold()));
                 error!("{:?}", err);
@@ -129,6 +135,7 @@ pub fn mint(
     client: Arc<Client>,
     candy_machine_id: Pubkey,
     candy_machine_state: Arc<CandyMachine>,
+    sugar_config: &SugarConfig,
 ) -> Result<Signature> {
     let program = client.program(CANDY_MACHINE_ID);
     let payer = program.payer();
@@ -303,13 +310,8 @@ pub fn mint(
     let (candy_machine_creator_pda, creator_bump) =
         find_candy_machine_creator_pda(&candy_machine_id);
 
-    let mut builder = program
+    let mint_ix = program
         .request()
-        .instruction(create_mint_account_ix)
-        .instruction(init_mint_ix)
-        .instruction(create_assoc_account_ix)
-        .instruction(mint_to_ix)
-        .signer(&nft_mint)
         .accounts(nft_accounts::MintNFT {
             candy_machine: candy_machine_id,
             candy_machine_creator: candy_machine_creator_pda,
@@ -328,7 +330,17 @@ pub fn mint(
             recent_blockhashes: sysvar::recent_blockhashes::ID,
             instruction_sysvar_account: sysvar::instructions::ID,
         })
-        .args(nft_instruction::MintNft { creator_bump });
+        .args(nft_instruction::MintNft { creator_bump })
+        .instructions()?;
+
+    let mut builder = program
+        .request()
+        .instruction(create_mint_account_ix)
+        .instruction(init_mint_ix)
+        .instruction(create_assoc_account_ix)
+        .instruction(mint_to_ix)
+        .signer(&nft_mint)
+        .instruction(mint_ix[0].clone());
 
     if !additional_accounts.is_empty() {
         for account in additional_accounts {
@@ -336,7 +348,51 @@ pub fn mint(
         }
     }
 
-    let sig = builder.send()?;
+    if let Ok((collection_pda_pubkey, collection_pda)) =
+        get_collection_pda(&candy_machine_id, &program)
+    {
+        let collection_authority_record =
+            find_collection_authority_account(&collection_pda.mint, &collection_pda_pubkey).0;
+        builder = builder
+            .accounts(nft_accounts::SetCollectionDuringMint {
+                candy_machine: candy_machine_id,
+                metadata: metadata_pda,
+                payer,
+                collection_pda: collection_pda_pubkey,
+                token_metadata_program: mpl_token_metadata::ID,
+                instructions: sysvar::instructions::ID,
+                collection_mint: collection_pda.mint,
+                collection_metadata: find_metadata_pda(&collection_pda.mint),
+                collection_master_edition: find_master_edition_pda(&collection_pda.mint),
+                authority: payer,
+                collection_authority_record,
+            })
+            .args(nft_instruction::SetCollectionDuringMint {});
+    }
+
+    let ix = builder.instructions()?;
+    let rpc_client =
+        RpcClient::new_with_commitment(&sugar_config.rpc_url, CommitmentConfig::confirmed());
+    let latest_blockhash = rpc_client.get_latest_blockhash()?;
+    let txn = Transaction::new_signed_with_payer(
+        &ix,
+        Some(&payer),
+        &vec![&sugar_config.keypair, &nft_mint],
+        latest_blockhash,
+    );
+
+    let sig = rpc_client.send_and_confirm_transaction_with_spinner_and_config(
+        &txn,
+        rpc_client.commitment(),
+        RpcSendTransactionConfig {
+            skip_preflight: true,
+            preflight_commitment: None,
+            encoding: None,
+            max_retries: None,
+        },
+    )?;
+
+    // let sig = builder.send()?;
 
     info!("Minted! TxId: {}", sig);
 
