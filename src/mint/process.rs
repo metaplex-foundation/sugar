@@ -17,8 +17,6 @@ use mpl_candy_machine::accounts as nft_accounts;
 use mpl_candy_machine::instruction as nft_instruction;
 use mpl_candy_machine::{CandyError, CandyMachine, EndSettingType, WhitelistMintMode};
 use mpl_token_metadata::pda::find_collection_authority_account;
-use solana_client::rpc_client::RpcClient;
-use solana_client::rpc_config::RpcSendTransactionConfig;
 use spl_associated_token_account::{create_associated_token_account, get_associated_token_address};
 use spl_token::{
     instruction::{initialize_mint, mint_to},
@@ -30,7 +28,6 @@ use crate::cache::load_cache;
 use crate::candy_machine::CANDY_MACHINE_ID;
 use crate::candy_machine::*;
 use crate::common::*;
-use crate::config::SugarConfig;
 use crate::pdas::*;
 use crate::utils::*;
 
@@ -96,7 +93,6 @@ pub fn process_mint(args: MintArgs) -> Result<()> {
             Arc::clone(&client),
             candy_pubkey,
             Arc::clone(&candy_machine_state),
-            &sugar_config,
         ) {
             Ok(signature) => format!("{} {}", style("Signature:").bold(), signature),
             Err(err) => {
@@ -115,7 +111,6 @@ pub fn process_mint(args: MintArgs) -> Result<()> {
                 Arc::clone(&client),
                 candy_pubkey,
                 Arc::clone(&candy_machine_state),
-                &sugar_config,
             ) {
                 pb.abandon_with_message(format!("{}", style("Mint failed ").red().bold()));
                 error!("{:?}", err);
@@ -135,7 +130,6 @@ pub fn mint(
     client: Arc<Client>,
     candy_machine_id: Pubkey,
     candy_machine_state: Arc<CandyMachine>,
-    sugar_config: &SugarConfig,
 ) -> Result<Signature> {
     let program = client.program(CANDY_MACHINE_ID);
     let payer = program.payer();
@@ -370,29 +364,7 @@ pub fn mint(
             .args(nft_instruction::SetCollectionDuringMint {});
     }
 
-    let ix = builder.instructions()?;
-    let rpc_client =
-        RpcClient::new_with_commitment(&sugar_config.rpc_url, CommitmentConfig::confirmed());
-    let latest_blockhash = rpc_client.get_latest_blockhash()?;
-    let txn = Transaction::new_signed_with_payer(
-        &ix,
-        Some(&payer),
-        &vec![&sugar_config.keypair, &nft_mint],
-        latest_blockhash,
-    );
-
-    let sig = rpc_client.send_and_confirm_transaction_with_spinner_and_config(
-        &txn,
-        rpc_client.commitment(),
-        RpcSendTransactionConfig {
-            skip_preflight: true,
-            preflight_commitment: None,
-            encoding: None,
-            max_retries: None,
-        },
-    )?;
-
-    // let sig = builder.send()?;
+    let sig = builder.send()?;
 
     info!("Minted! TxId: {}", sig);
 

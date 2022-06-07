@@ -2662,7 +2662,8 @@ dependencies = [
 [[package]]
 name = "mpl-candy-machine"
 version = "4.0.0"
-source = "git+https://github.com/metaplex-foundation/metaplex-program-library/#94a8c0161038420503fa451bb7d2ff5759124998"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fed8c4280024581a6c8a3ca7d18a5103e8c8fd030e2164177b75afe3ab2a488"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
