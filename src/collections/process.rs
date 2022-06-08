@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc};
+use std::str::FromStr;
 
 use anchor_client::solana_sdk::{pubkey::Pubkey, system_program, sysvar};
 use anyhow::Result;
@@ -13,6 +13,7 @@ use crate::candy_machine::CANDY_MACHINE_ID;
 use crate::candy_machine::*;
 use crate::common::*;
 use crate::pdas::*;
+use crate::utils::spinner_with_style;
 
 pub struct SetCollectionArgs {
     pub collection_mint: String,
@@ -33,6 +34,7 @@ pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
     let client = setup_client(&sugar_config)?;
     let program = client.program(CANDY_MACHINE_ID);
     let payer = program.payer();
+
     // the candy machine id specified takes precedence over the one from the cache
     let candy_machine_id = match args.candy_machine {
         Some(candy_machine_id) => candy_machine_id,
@@ -42,27 +44,6 @@ pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
         }
     };
 
-    let candy_pubkey = match Pubkey::from_str(&candy_machine_id) {
-        Ok(candy_pubkey) => candy_pubkey,
-        Err(_) => {
-            let error = anyhow!("Failed to parse candy machine id: {}", candy_machine_id);
-            error!("{:?}", error);
-            return Err(error);
-        }
-    };
-
-    let candy_machine_state = Arc::new(get_candy_machine_state(&sugar_config, &candy_pubkey)?);
-
-    println!(
-        "{} {}Setting collection mint for candy machine",
-        style("[1/1]").bold().dim(),
-        CANDY_EMOJI
-    );
-    println!("Candy machine ID: {}", &candy_machine_id);
-
-    if !candy_machine_state.data.retain_authority {
-        return Err(anyhow!(CandyError::CandyCollectionRequiresRetainAuthority));
-    }
     let collection_mint_pubkey = match Pubkey::from_str(&args.collection_mint) {
         Ok(candy_pubkey) => candy_pubkey,
         Err(_) => {
@@ -75,8 +56,45 @@ pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
         }
     };
 
+    let candy_pubkey = match Pubkey::from_str(&candy_machine_id) {
+        Ok(candy_pubkey) => candy_pubkey,
+        Err(_) => {
+            let error = anyhow!("Failed to parse candy machine id: {}", candy_machine_id);
+            error!("{:?}", error);
+            return Err(error);
+        }
+    };
+
+    println!(
+        "{} {}Loading candy machine",
+        style("[1/2]").bold().dim(),
+        LOOKING_GLASS_EMOJI
+    );
+    println!("{} {}", style("Candy machine ID:").bold(), candy_machine_id);
+
+    let pb = spinner_with_style();
+    pb.set_message("Connecting...");
+
+    let candy_machine_state =
+        get_candy_machine_state(&sugar_config, &Pubkey::from_str(&candy_machine_id)?)?;
+
     let (collection_metadata_pubkey, collection_metadata) =
         get_metadata_pda(&collection_mint_pubkey, &program)?;
+
+    let (collection_edition_pubkey, collection_edition) =
+        get_master_edition_pda(&collection_mint_pubkey, &program)?;
+
+    pb.finish_with_message("Done");
+
+    println!(
+        "{} {}Setting collection mint for candy machine",
+        style("[2/2]").bold().dim(),
+        CANDY_EMOJI
+    );
+
+    if !candy_machine_state.data.retain_authority {
+        return Err(anyhow!(CandyError::CandyCollectionRequiresRetainAuthority));
+    }
 
     if collection_metadata.update_authority != payer {
         return Err(anyhow!(CustomCandyError::AuthorityMismatch(
@@ -84,9 +102,6 @@ pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
             payer.to_string()
         )));
     }
-
-    let (collection_edition_pubkey, collection_edition) =
-        get_master_edition_pda(&collection_mint_pubkey, &program)?;
 
     if collection_edition.max_supply != Some(0) {
         return Err(anyhow!(MetadataError::CollectionMustBeAUniqueMasterEdition));
@@ -97,12 +112,6 @@ pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
             "You can't modify the Candy Machine collection after items have been minted."
         ));
     }
-
-    info!(
-        "Setting collection to {} for candy machine: {}",
-        &args.collection_mint, &candy_machine_id
-    );
-    info!("Candy machine program id: {:?}", CANDY_MACHINE_ID);
 
     let collection_pda_pubkey = find_collection_pda(&candy_pubkey).0;
 
@@ -126,9 +135,17 @@ pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
         })
         .args(nft_instruction::SetCollection);
 
-    let sig = builder.send()?;
+    let pb = spinner_with_style();
+    pb.set_message("Sending set collection transaction...");
 
-    info!("Set collection! TxId: {}", sig);
+    let set_signature = builder.send()?;
+
+    pb.finish_with_message(format!(
+        "{} {}",
+        style("Set collection signature:").bold(),
+        set_signature
+    ));
+
     Ok(())
 }
 
@@ -155,13 +172,29 @@ pub fn process_remove_collection(args: RemoveCollectionArgs) -> Result<()> {
         }
     };
 
+    println!(
+        "{} {}Loading candy machine",
+        style("[1/2]").bold().dim(),
+        LOOKING_GLASS_EMOJI
+    );
+    println!("{} {}", style("Candy machine ID:").bold(), candy_machine_id);
+
+    let pb = spinner_with_style();
+    pb.set_message("Connecting...");
+
+    let candy_machine_state = get_candy_machine_state(&sugar_config, &candy_pubkey)?;
     let (collection_pda_pubkey, collection_pda) = get_collection_pda(&candy_pubkey, &program)?;
     let collection_mint_pubkey = collection_pda.mint;
-
-    let candy_machine_state = Arc::new(get_candy_machine_state(&sugar_config, &candy_pubkey)?);
-
     let (collection_metadata_pubkey, collection_metadata) =
         get_metadata_pda(&collection_mint_pubkey, &program)?;
+
+    pb.finish_with_message("Done");
+
+    println!(
+        "{} {}Removing collection mint for candy machine",
+        style("[2/2]").bold().dim(),
+        CANDY_EMOJI
+    );
 
     if collection_metadata.update_authority != payer {
         return Err(anyhow!(CustomCandyError::AuthorityMismatch(
@@ -170,24 +203,11 @@ pub fn process_remove_collection(args: RemoveCollectionArgs) -> Result<()> {
         )));
     }
 
-    println!(
-        "{} {}Removing collection mint for candy machine",
-        style("[1/1]").bold().dim(),
-        CANDY_EMOJI
-    );
-    println!("Candy machine ID: {}", &candy_machine_id);
-
     if candy_machine_state.items_redeemed > 0 {
         return Err(anyhow!(
             "You can't modify the Candy Machine collection after items have been minted."
         ));
     }
-
-    info!(
-        "Removing collection mint from candy machine: {}",
-        &candy_machine_id
-    );
-    info!("Candy machine program id: {:?}", CANDY_MACHINE_ID);
 
     let collection_authority_record =
         find_collection_authority_account(&collection_mint_pubkey, &collection_pda_pubkey).0;
@@ -205,8 +225,16 @@ pub fn process_remove_collection(args: RemoveCollectionArgs) -> Result<()> {
         })
         .args(nft_instruction::RemoveCollection);
 
-    let sig = builder.send()?;
+    let pb = spinner_with_style();
+    pb.set_message("Sending remove collection transaction...");
 
-    info!("Collection removed! TxId: {}", sig);
+    let remove_signature = builder.send()?;
+
+    pb.finish_with_message(format!(
+        "{} {}",
+        style("Remove collection signature:").bold(),
+        remove_signature
+    ));
+
     Ok(())
 }

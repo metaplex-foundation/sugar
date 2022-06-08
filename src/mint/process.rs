@@ -13,8 +13,8 @@ use anchor_lang::prelude::AccountMeta;
 use anyhow::Result;
 use chrono::Utc;
 use console::style;
-use mpl_candy_machine::accounts as nft_accounts;
 use mpl_candy_machine::instruction as nft_instruction;
+use mpl_candy_machine::{accounts as nft_accounts, CollectionPDA};
 use mpl_candy_machine::{CandyError, CandyMachine, EndSettingType, WhitelistMintMode};
 use mpl_token_metadata::pda::find_collection_authority_account;
 use spl_associated_token_account::{create_associated_token_account, get_associated_token_address};
@@ -28,6 +28,7 @@ use crate::cache::load_cache;
 use crate::candy_machine::CANDY_MACHINE_ID;
 use crate::candy_machine::*;
 use crate::common::*;
+use crate::config::Cluster;
 use crate::pdas::*;
 use crate::utils::*;
 
@@ -63,13 +64,29 @@ pub fn process_mint(args: MintArgs) -> Result<()> {
     };
 
     println!(
+        "{} {}Loading candy machine",
+        style("[1/2]").bold().dim(),
+        LOOKING_GLASS_EMOJI
+    );
+    println!("{} {}", style("Candy machine ID:").bold(), candy_machine_id);
+
+    let pb = spinner_with_style();
+    pb.set_message("Connecting...");
+
+    let candy_machine_state = Arc::new(get_candy_machine_state(&sugar_config, &candy_pubkey)?);
+
+    let collection_pda_info =
+        Arc::new(get_collection_pda(&candy_pubkey, &client.program(CANDY_MACHINE_ID)).ok());
+
+    pb.finish_with_message("Done");
+
+    println!(
         "{} {}Minting from candy machine",
-        style("[1/1]").bold().dim(),
+        style("[2/2]").bold().dim(),
         CANDY_EMOJI
     );
     println!("Candy machine ID: {}", &candy_machine_id);
 
-    let candy_machine_state = Arc::new(get_candy_machine_state(&sugar_config, &candy_pubkey)?);
     let number = args.number.unwrap_or(1);
     let available = candy_machine_state.data.items_available - candy_machine_state.items_redeemed;
 
@@ -93,6 +110,7 @@ pub fn process_mint(args: MintArgs) -> Result<()> {
             Arc::clone(&client),
             candy_pubkey,
             Arc::clone(&candy_machine_state),
+            Arc::clone(&collection_pda_info),
         ) {
             Ok(signature) => format!("{} {}", style("Signature:").bold(), signature),
             Err(err) => {
@@ -111,6 +129,7 @@ pub fn process_mint(args: MintArgs) -> Result<()> {
                 Arc::clone(&client),
                 candy_pubkey,
                 Arc::clone(&candy_machine_state),
+                Arc::clone(&collection_pda_info),
             ) {
                 pb.abandon_with_message(format!("{}", style("Mint failed ").red().bold()));
                 error!("{:?}", err);
@@ -130,6 +149,7 @@ pub fn mint(
     client: Arc<Client>,
     candy_machine_id: Pubkey,
     candy_machine_state: Arc<CandyMachine>,
+    collection_pda_info: Arc<Option<PdaInfo<CollectionPDA>>>,
 ) -> Result<Signature> {
     let program = client.program(CANDY_MACHINE_ID);
     let payer = program.payer();
@@ -342,17 +362,15 @@ pub fn mint(
         }
     }
 
-    if let Ok((collection_pda_pubkey, collection_pda)) =
-        get_collection_pda(&candy_machine_id, &program)
-    {
+    if let Some((collection_pda_pubkey, collection_pda)) = collection_pda_info.as_ref() {
         let collection_authority_record =
-            find_collection_authority_account(&collection_pda.mint, &collection_pda_pubkey).0;
+            find_collection_authority_account(&collection_pda.mint, collection_pda_pubkey).0;
         builder = builder
             .accounts(nft_accounts::SetCollectionDuringMint {
                 candy_machine: candy_machine_id,
                 metadata: metadata_pda,
                 payer,
-                collection_pda: collection_pda_pubkey,
+                collection_pda: *collection_pda_pubkey,
                 token_metadata_program: mpl_token_metadata::ID,
                 instructions: sysvar::instructions::ID,
                 collection_mint: collection_pda.mint,
@@ -365,6 +383,18 @@ pub fn mint(
     }
 
     let sig = builder.send()?;
+
+    if get_metadata_pda(&nft_mint.pubkey(), &program).is_err() {
+        let cluster_param = match get_cluster(program.rpc()).unwrap_or(Cluster::Mainnet) {
+            Cluster::Devnet => "?devnet",
+            Cluster::Mainnet => "",
+        };
+        return Err(anyhow!(
+            "Minting most likely failed with a bot tax. Check the transaction link for more details: https://explorer.solana.com/tx/{}{}",
+            sig.to_string(),
+            cluster_param,
+        ));
+    }
 
     info!("Minted! TxId: {}", sig);
 

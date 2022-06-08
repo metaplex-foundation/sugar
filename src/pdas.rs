@@ -9,13 +9,15 @@ use mpl_token_metadata::utils::try_from_slice_checked;
 
 use crate::candy_machine::CANDY_MACHINE_ID;
 
+pub type PdaInfo<T> = (Pubkey, T);
+
 pub fn find_metadata_pda(mint: &Pubkey) -> Pubkey {
     let (pda, _bump) = find_metadata_account(mint);
 
     pda
 }
 
-pub fn get_metadata_pda(mint: &Pubkey, program: &Program) -> Result<(Pubkey, Metadata)> {
+pub fn get_metadata_pda(mint: &Pubkey, program: &Program) -> Result<PdaInfo<Metadata>> {
     let metadata_pubkey = find_metadata_pda(mint);
     let metadata_account = program.rpc().get_account(&metadata_pubkey).map_err(|_| {
         anyhow!(
@@ -41,7 +43,7 @@ pub fn find_master_edition_pda(mint: &Pubkey) -> Pubkey {
 pub fn get_master_edition_pda(
     mint: &Pubkey,
     program: &Program,
-) -> Result<(Pubkey, MasterEditionV2)> {
+) -> Result<PdaInfo<MasterEditionV2>> {
     let master_edition_pubkey = find_master_edition_pda(mint);
     let master_edition_account =
         program
@@ -85,7 +87,7 @@ pub fn find_collection_pda(candy_machine_id: &Pubkey) -> (Pubkey, u8) {
 pub fn get_collection_pda(
     candy_machine: &Pubkey,
     program: &Program,
-) -> Result<(Pubkey, CollectionPDA)> {
+) -> Result<PdaInfo<CollectionPDA>> {
     let collection_pda_pubkey = find_collection_pda(candy_machine).0;
     program
         .account(collection_pda_pubkey)

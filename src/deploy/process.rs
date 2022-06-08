@@ -27,8 +27,8 @@ pub use mpl_token_metadata::state::{
     MAX_CREATOR_LIMIT, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH,
 };
 
-use crate::candy_machine::uuid_from_pubkey;
-use crate::candy_machine::CANDY_MACHINE_ID;
+use crate::cache::*;
+use crate::candy_machine::{parse_config_price, CANDY_MACHINE_ID};
 use crate::common::*;
 use crate::config::{data::*, parser::get_config_data};
 use crate::deploy::data::*;
@@ -36,7 +36,6 @@ use crate::deploy::errors::*;
 use crate::setup::{setup_client, sugar_setup};
 use crate::utils::*;
 use crate::validate::parser::{check_name, check_seller_fee_basis_points, check_symbol, check_url};
-use crate::{cache::*, candy_machine::parse_config_price};
 
 /// The maximum config line bytes per transaction.
 const MAX_TRANSACTION_BYTES: usize = 1000;
@@ -120,7 +119,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         let candy_keypair = Keypair::generate(&mut OsRng);
         let candy_pubkey = candy_keypair.pubkey();
 
-        let uuid = uuid_from_pubkey(&candy_pubkey);
+        let uuid = DEFAULT_UUID.to_string();
         let candy_data = create_candy_machine_data(&client, &config_data, uuid)?;
         let program = client.program(CANDY_MACHINE_ID);
 
