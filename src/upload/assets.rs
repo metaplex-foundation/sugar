@@ -235,7 +235,7 @@ pub fn get_asset_pairs(assets_dir: &str) -> Result<HashMap<usize, AssetPair>> {
     Ok(asset_pairs)
 }
 
-fn encode(file: &str) -> Result<String> {
+pub fn encode(file: &str) -> Result<String> {
     let input = File::open(file)?;
     let mut reader = BufReader::new(input);
     let mut context = Context::new(&SHA256);
