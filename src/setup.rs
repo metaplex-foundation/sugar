@@ -6,6 +6,7 @@ use anchor_client::{
     Client, Cluster,
 };
 use anyhow::{anyhow, Result};
+use std::rc::Rc;
 use tracing::error;
 
 use crate::config::data::SugarConfig;
@@ -18,7 +19,7 @@ pub fn setup_client(sugar_config: &SugarConfig) -> Result<Client> {
     let cluster = Cluster::Custom(rpc_url, ws_url);
 
     let key_bytes = sugar_config.keypair.to_bytes();
-    let payer = Keypair::from_bytes(&key_bytes)?;
+    let payer = Rc::new(Keypair::from_bytes(&key_bytes)?);
 
     let opts = CommitmentConfig::confirmed();
     Ok(Client::new_with_options(cluster, payer, opts))
@@ -43,7 +44,11 @@ pub fn sugar_setup(
             Ok(keypair) => keypair,
             Err(e) => {
                 error!("Failed to read keypair file: {}", e);
-                return Err(anyhow!("Failed to read keypair file: {}", e));
+                return Err(anyhow!(
+                    "Failed to read keypair file: {}, {}",
+                    keypair_path,
+                    e
+                ));
             }
         },
 

@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use bundlr_sdk::{tags::Tag, Bundlr, SolanaSigner};
 use clap::crate_version;
 use console::style;
+use solana_client::rpc_client::RpcClient;
 use std::{cmp, fs, path::Path, sync::Arc};
 use tokio::{
     task::JoinHandle,
@@ -15,7 +16,7 @@ use crate::{
     config::*,
     upload::{
         assets::{get_updated_metadata, AssetPair, DataType},
-        storage::{AssetInfo, MOCK_URI_SIZE, StorageMethod},
+        storage::{AssetInfo, StorageMethod, MOCK_URI_SIZE},
     },
     utils::*,
 };
@@ -106,7 +107,7 @@ impl BundlrMethod {
 
     /// Add fund to the Bundlr address.
     async fn fund_bundlr_address(
-        program: &Program,
+        rpc_client: RpcClient,
         http_client: &HttpClient,
         bundlr_address: &Pubkey,
         node: &str,
@@ -114,7 +115,7 @@ impl BundlrMethod {
         amount: u64,
     ) -> Result<Response> {
         let ix = system_instruction::transfer(&payer.pubkey(), bundlr_address, amount);
-        let recent_blockhash = program.rpc().get_latest_blockhash()?;
+        let recent_blockhash = rpc_client.get_latest_blockhash()?;
         let payer_pubkey = payer.pubkey();
 
         let tx = Transaction::new_signed_with_payer(
@@ -132,12 +133,10 @@ impl BundlrMethod {
             amount as f64 / LAMPORTS_PER_SOL as f64
         );
 
-        let sig = program
-            .rpc()
-            .send_and_confirm_transaction_with_spinner_and_commitment(
-                &tx,
-                CommitmentConfig::confirmed(),
-            )?;
+        let sig = rpc_client.send_and_confirm_transaction_with_spinner_and_commitment(
+            &tx,
+            CommitmentConfig::confirmed(),
+        )?;
 
         println!("{} {sig}", style("Signature:").bold());
 
@@ -283,12 +282,15 @@ impl StorageMethod for BundlrMethod {
 
         // funds the bundlr wallet for media upload
 
-        let client = setup_client(sugar_config)?;
-        let program = client.program(CANDY_MACHINE_ID);
+        let rpc_client = {
+            let client = setup_client(sugar_config)?;
+            let program = client.program(CANDY_MACHINE_ID);
+            program.rpc()
+        };
 
         if lamports_fee > balance {
             BundlrMethod::fund_bundlr_address(
-                &program,
+                rpc_client,
                 &http_client,
                 &self.pubkey,
                 &self.node,
