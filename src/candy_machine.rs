@@ -15,8 +15,6 @@ use crate::utils::check_spl_token;
 //use solana_program::declare_id;
 //declare_id!("<CANDY MACHINE ID>");
 
-// const program =
-
 #[derive(Debug)]
 pub struct ConfigStatus {
     pub index: u32,
