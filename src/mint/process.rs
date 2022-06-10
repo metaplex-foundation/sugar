@@ -17,6 +17,7 @@ use mpl_candy_machine::instruction as nft_instruction;
 use mpl_candy_machine::{accounts as nft_accounts, CollectionPDA};
 use mpl_candy_machine::{CandyError, CandyMachine, EndSettingType, WhitelistMintMode};
 use mpl_token_metadata::pda::find_collection_authority_account;
+use solana_client::rpc_response::Response;
 use spl_associated_token_account::{create_associated_token_account, get_associated_token_address};
 use spl_token::{
     instruction::{initialize_mint, mint_to},
@@ -384,7 +385,10 @@ pub fn mint(
 
     let sig = builder.send()?;
 
-    if get_metadata_pda(&nft_mint.pubkey(), &program).is_err() {
+    if let Err(_) | Ok(Response { value: None, .. }) = program
+        .rpc()
+        .get_account_with_commitment(&metadata_pda, CommitmentConfig::processed())
+    {
         let cluster_param = match get_cluster(program.rpc()).unwrap_or(Cluster::Mainnet) {
             Cluster::Devnet => "?devnet",
             Cluster::Mainnet => "",
