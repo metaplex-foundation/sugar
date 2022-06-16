@@ -16,7 +16,7 @@ pub struct ValidateArgs {
     pub assets_dir: String,
     pub strict: bool,
 }
-
+/// TODO(thlorenz): validating assets + metadata should happen client side as well
 pub fn process_validate(args: ValidateArgs) -> Result<()> {
     // loading assets
     println!(

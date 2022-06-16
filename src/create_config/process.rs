@@ -39,7 +39,7 @@ pub struct CreateConfigArgs {
     pub config: Option<String>,
     pub assets_dir: String,
 }
-
+/// TODO(thlorenz): should be reimplemented in TS, similarly to plex to allow doing this from the browser
 pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     let mut config_data: ConfigData = ConfigData::default();
     let theme = ColorfulTheme {

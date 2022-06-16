@@ -23,7 +23,7 @@ pub struct UpdateArgs {
     pub config: String,
     pub candy_machine: Option<String>,
 }
-
+/// TODO(thlorenz): out of scope for v1 as already handled by sdk
 pub fn process_update(args: UpdateArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = setup_client(&sugar_config)?;

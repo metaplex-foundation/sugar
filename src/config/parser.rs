@@ -6,7 +6,7 @@ use tracing::error;
 
 use crate::config::data::*;
 use crate::config::errors::ConfigError;
-
+/// TODO(thlorenz): CandyMachine config will include all candy machine setup and metadata for assets only the info for that asset
 pub fn get_config_data(config_path: &str) -> Result<ConfigData, ConfigError> {
     // checks that the config file exists and it is readable
     let f = match OpenOptions::new().read(true).open(config_path) {

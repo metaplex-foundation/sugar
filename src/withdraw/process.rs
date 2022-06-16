@@ -35,7 +35,7 @@ pub struct WithdrawArgs {
     pub rpc_url: Option<String>,
     pub list: bool,
 }
-
+/// TODO(thlorenz): out of scope for v1, better handled via sdk
 pub fn process_withdraw(args: WithdrawArgs) -> Result<()> {
     // (1) Setting up connection
 

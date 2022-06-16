@@ -33,6 +33,7 @@ use crate::config::Cluster;
 use crate::pdas::*;
 use crate::utils::*;
 
+/// TODO(thlorenz): are people minting from CLI?
 pub struct MintArgs {
     pub keypair: Option<String>,
     pub rpc_url: Option<String>,

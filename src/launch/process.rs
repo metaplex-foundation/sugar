@@ -21,7 +21,7 @@ pub struct LaunchArgs {
     pub strict: bool,
     pub interrupted: Arc<AtomicBool>,
 }
-
+/// TODO(thlorenz): not part of API as it just aggregates steps which the service will do
 pub async fn process_launch(args: LaunchArgs) -> Result<()> {
     println!("Starting Sugar launch... {}", LAUNCH_EMOJI);
 

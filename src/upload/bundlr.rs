@@ -133,7 +133,7 @@ impl BundlrHandler {
             &[payer],
             recent_blockhash,
         );
-
+        /// TODO(thlorenz): all logs and spinner updates need to emit events instead
         println!("Funding address:");
         println!("  -> pubkey: {}", payer_pubkey);
         println!(

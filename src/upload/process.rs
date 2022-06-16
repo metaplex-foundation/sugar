@@ -55,7 +55,7 @@ pub struct AssetType {
     pub metadata: Vec<usize>,
     pub animation: Vec<usize>,
 }
-
+/// TODO(thlorenz): this is a lengthy process, how will it work serverless?
 pub async fn process_upload(args: UploadArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let config_data = get_config_data(&args.config)?;
@@ -72,6 +72,7 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
     pb.set_message("Reading files...");
 
     let asset_pairs = get_asset_pairs(&args.assets_dir)?;
+    /// TODO(thlorenz): will the cache items make sense in a service?
     // creates/loads the cache
     let mut cache = load_cache(&args.cache, true)?;
 

@@ -48,7 +48,8 @@ struct TxInfo {
     payer: Keypair,
     chunk: Vec<(u32, ConfigLine)>,
 }
-
+/// TODO(thlorenz): needs to operate directly on uploaded zip file
+/// TODO(thlorenz): should somehow validate assets + metadata in that zip before uploading
 pub async fn process_deploy(args: DeployArgs) -> Result<()> {
     // loads the cache file (this needs to have been created by
     // the upload command)

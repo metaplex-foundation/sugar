@@ -23,7 +23,9 @@ pub struct OnChainItem {
     pub name: String,
     pub uri: String,
 }
-
+/// TODO(thlorenz): needs to happen server side after upload completed and notify user of status
+/// TODO(thlorenz): what do we do if this doesnt check out? 
+/// Just tell the user? Try to fix it? Start over?
 pub fn process_verify(args: VerifyArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
 

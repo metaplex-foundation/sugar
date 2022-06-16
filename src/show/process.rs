@@ -18,7 +18,7 @@ pub struct ShowArgs {
     pub cache: String,
     pub candy_machine: Option<String>,
 }
-
+/// TODO(thlorenz): not needed as part of service
 pub fn process_show(args: ShowArgs) -> Result<()> {
     println!(
         "{} {}Looking up candy machine",
