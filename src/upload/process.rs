@@ -1,8 +1,6 @@
 use console::style;
-use futures::future::select_all;
 use std::{
     borrow::Borrow,
-    cmp,
     collections::HashSet,
     ffi::OsStr,
     sync::{
@@ -13,8 +11,7 @@ use std::{
 
 use crate::cache::{load_cache, Cache};
 use crate::common::*;
-use crate::config::get_config_data;
-use crate::constants::PARALLEL_LIMIT;
+use crate::config::{get_config_data, SugarConfig};
 use crate::upload::*;
 use crate::utils::*;
 use crate::validate::format::Metadata;
@@ -193,7 +190,7 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
         let pb = spinner_with_style();
         pb.set_message("Connecting...");
 
-        let storage = storage::initialize(&sugar_config, &config_data).await?;
+        let storage = uploader::initialize(&sugar_config, &config_data).await?;
 
         pb.finish_with_message("Connected");
 
@@ -232,6 +229,7 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
         if !indices.image.is_empty() {
             errors.extend(
                 upload_data(
+                    &sugar_config,
                     &asset_pairs,
                     &mut cache,
                     &indices.image,
@@ -272,6 +270,7 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
         if !indices.animation.is_empty() {
             errors.extend(
                 upload_data(
+                    &sugar_config,
                     &asset_pairs,
                     &mut cache,
                     &indices.animation,
@@ -316,6 +315,7 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
         if !indices.metadata.is_empty() {
             errors.extend(
                 upload_data(
+                    &sugar_config,
                     &asset_pairs,
                     &mut cache,
                     &indices.metadata,
@@ -380,7 +380,7 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
 
             message
         } else {
-            "Incorrect number of asset pairs".to_string()
+            "Not all files were uploaded.".to_string()
         };
 
         return Err(UploadError::Incomplete(message).into());
@@ -389,20 +389,21 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
     Ok(())
 }
 
-/// Upload the data to Bundlr.
+/// Upload the data to the selected storage.
 async fn upload_data(
-    assets: &HashMap<usize, AssetPair>,
+    sugar_config: &SugarConfig,
+    asset_pairs: &HashMap<usize, AssetPair>,
     cache: &mut Cache,
     indices: &[usize],
     data_type: DataType,
-    storage: &dyn StorageMethod,
+    uploader: &dyn Uploader,
     interrupted: Arc<AtomicBool>,
 ) -> Result<Vec<UploadError>> {
     let mut extension = HashSet::with_capacity(1);
     let mut paths = Vec::new();
 
     for index in indices {
-        let item = match assets.get(index) {
+        let item = match asset_pairs.get(index) {
             Some(asset_index) => asset_index,
             None => return Err(anyhow::anyhow!("Failed to get asset at index {}", index)),
         };
@@ -450,7 +451,8 @@ async fn upload_data(
     println!("\nSending data: (Ctrl+C to abort)");
 
     let pb = progress_bar_with_style(paths.len() as u64);
-    let mut tasks = Vec::new();
+
+    let mut assets = Vec::new();
 
     for file_path in paths {
         // path to the media/metadata file
@@ -461,6 +463,12 @@ async fn upload_data(
             path.file_stem()
                 .and_then(OsStr::to_str)
                 .expect("Failed to convert path to unicode."),
+        );
+
+        let file_name = String::from(
+            path.file_name()
+                .and_then(OsStr::to_str)
+                .expect("Filed to get file name."),
         );
 
         let cache_item = match cache.items.0.get(&asset_id) {
@@ -479,79 +487,28 @@ async fn upload_data(
             _ => file_path.clone(),
         };
 
-        tasks.push(AssetInfo {
+        assets.push(AssetInfo {
             asset_id: asset_id.to_string(),
-            name: file_path,
+            name: file_name,
             content,
             data_type: data_type.clone(),
             content_type: content_type.clone(),
         });
     }
 
-    let mut handles = Vec::new();
-
-    for task in tasks.drain(0..cmp::min(tasks.len(), PARALLEL_LIMIT)) {
-        handles.push(storage.upload_data(task));
-    }
-
-    let mut errors = Vec::new();
-
-    while !interrupted.load(Ordering::SeqCst) && !handles.is_empty() {
-        match select_all(handles).await {
-            (Ok(res), _index, remaining) => {
-                // independently if the upload was successful or not
-                // we continue to try the remaining ones
-                handles = remaining;
-
-                if res.is_ok() {
-                    let val = res?;
-                    let link = val.clone().1;
-                    // cache item to update
-                    let item = cache.items.0.get_mut(&val.0).unwrap();
-
-                    match data_type {
-                        DataType::Image => item.image_link = link,
-                        DataType::Metadata => item.metadata_link = link,
-                        DataType::Animation => item.animation_link = Some(link),
-                    }
-                    // updates the progress bar
-                    pb.inc(1);
-                } else {
-                    // user will need to retry the upload
-                    errors.push(UploadError::SendDataFailed(format!(
-                        "Upload error: {:?}",
-                        res.err().unwrap()
-                    )));
-                }
-            }
-            (Err(err), _index, remaining) => {
-                errors.push(UploadError::SendDataFailed(format!(
-                    "Upload error: {:?}",
-                    err
-                )));
-                // ignoring all errors
-                handles = remaining;
-            }
-        }
-
-        if !tasks.is_empty() {
-            // if we are half way through, let spawn more transactions
-            if (PARALLEL_LIMIT - handles.len()) > (PARALLEL_LIMIT / 2) {
-                // syncs cache (checkpoint)
-                cache.sync_file()?;
-
-                for task in tasks.drain(0..cmp::min(tasks.len(), PARALLEL_LIMIT / 2)) {
-                    handles.push(storage.upload_data(task));
-                }
-            }
-        }
-    }
+    let errors = uploader
+        .upload(
+            sugar_config,
+            cache,
+            data_type,
+            &mut assets,
+            &pb,
+            interrupted,
+        )
+        .await?;
 
     if !errors.is_empty() {
         pb.abandon_with_message(format!("{}", style("Upload failed ").red().bold()));
-    } else if !tasks.is_empty() {
-        pb.abandon_with_message(format!("{}", style("Upload aborted ").red().bold()));
-        return Err(UploadError::SendDataFailed("Not all files were uploaded.".to_string()).into());
     } else {
         pb.finish_with_message(format!("{}", style("Upload successful ").green().bold()));
     }

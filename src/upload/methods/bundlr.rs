@@ -16,7 +16,7 @@ use crate::{
     config::*,
     upload::{
         assets::{get_updated_metadata, AssetPair, DataType},
-        storage::{AssetInfo, StorageMethod, MOCK_URI_SIZE},
+        uploader::{AssetInfo, ParallelUploader, Prepare, MOCK_URI_SIZE},
     },
     utils::*,
 };
@@ -211,7 +211,7 @@ impl BundlrMethod {
 }
 
 #[async_trait]
-impl StorageMethod for BundlrMethod {
+impl Prepare for BundlrMethod {
     async fn prepare(
         &self,
         sugar_config: &SugarConfig,
@@ -337,11 +337,13 @@ impl StorageMethod for BundlrMethod {
 
         Ok(())
     }
+}
 
-    fn upload_data(&self, asset_info: AssetInfo) -> JoinHandle<Result<(String, String)>> {
+#[async_trait]
+impl ParallelUploader for BundlrMethod {
+    fn upload_asset(&self, asset_info: AssetInfo) -> JoinHandle<Result<(String, String)>> {
         let client = self.client.clone();
         let tag = self.sugar_tag.clone();
-
         tokio::spawn(async move { BundlrMethod::send(client, tag, asset_info).await })
     }
 }

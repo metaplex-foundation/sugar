@@ -6,7 +6,7 @@ use tokio::task::JoinHandle;
 
 use crate::upload::{
     assets::{AssetPair, DataType},
-    storage::{AssetInfo, StorageMethod},
+    uploader::{AssetInfo, ParallelUploader, Prepare},
 };
 use crate::{common::*, config::*};
 
@@ -59,18 +59,21 @@ impl AWSMethod {
 }
 
 #[async_trait]
-impl StorageMethod for AWSMethod {
+impl Prepare for AWSMethod {
     async fn prepare(
         &self,
         _sugar_config: &SugarConfig,
-        _assets: &HashMap<usize, AssetPair>,
+        _asset_pairs: &HashMap<usize, AssetPair>,
         _asset_indices: Vec<(DataType, &[usize])>,
     ) -> Result<()> {
-        // nothing to do, we are ready to upload
+        // nothing to do here
         Ok(())
     }
+}
 
-    fn upload_data(&self, asset_info: AssetInfo) -> JoinHandle<Result<(String, String)>> {
+#[async_trait]
+impl ParallelUploader for AWSMethod {
+    fn upload_asset(&self, asset_info: AssetInfo) -> JoinHandle<Result<(String, String)>> {
         let client = self.aws_client.clone();
         let bucket = self.bucket.clone();
         tokio::spawn(async move { AWSMethod::send(client, bucket, asset_info).await })
