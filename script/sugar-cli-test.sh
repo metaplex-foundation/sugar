@@ -9,7 +9,7 @@
 # STORAGE="arweave-sol"
 #
 # ENV_URL="devnet"
-# RPC="https://psytrbhymqlkfrhudd.dev.genesysgo.net:8899/"
+# RPC="https://devnet.genesysgo.net/"
 # STORAGE="arweave"
 #
 # ITEMS=10
@@ -73,6 +73,7 @@ function default_settings() {
     INFURA_ID="null"
     INFURA_SECRET="null"
     AWS_BUCKET="null"
+    SHDW_STORAGE="null"
 }
 
 function max_settings() {
@@ -90,6 +91,7 @@ function max_settings() {
     INFURA_ID="null"
     INFURA_SECRET="null"
     AWS_BUCKET="null"
+    SHDW_STORAGE="null"
 }
 
 function mainnet_env() {
@@ -100,7 +102,7 @@ function mainnet_env() {
 
 function devnet_env() {
     ENV_URL="devnet"
-    RPC="https://psytrbhymqlkfrhudd.dev.genesysgo.net:8899/"
+    RPC="https://devnet.genesysgo.net/"
     STORAGE="bundlr"
 }
 
@@ -249,6 +251,15 @@ if [ -z ${AWS_BUCKET+x} ]; then
     if [ "$STORAGE" = "aws" ]; then
         echo -n $(CYN "AWS bucket name: ")
         read AWS_BUCKET
+    fi
+fi
+
+if [ -z ${SHDW_STORAGE+x} ]; then
+    SHDW_STORAGE="null"
+
+    if [ "$STORAGE" = "shdw" ]; then
+        echo -n $(CYN "SHDW storage address: ")
+        read SHDW_STORAGE
     fi
 fi
 
@@ -541,6 +552,7 @@ cat >$CONFIG_FILE <<-EOM
     "ipfsInfuraProjectId": "${INFURA_ID}",
     "ipfsInfuraSecret": "${INFURA_SECRET}",
     "awsS3Bucket": "${AWS_BUCKET}",
+    "shdwStorage": "${SHDW_STORAGE}",
     "retainAuthority": false,
     "isMutable": true,
     "creators": [
@@ -572,6 +584,7 @@ ARWEAVE_JWK="$ARWEAVE_JWK"
 INFURA_ID="$INFURA_ID"
 INFURA_SECRET="$INFURA_SECRET"
 AWS_BUCKET="$AWS_BUCKET"
+SHDW_STORAGE="$SHDW_STORAGE"
 
 ENV_URL="$ENV_URL"
 RPC="$RPC"
