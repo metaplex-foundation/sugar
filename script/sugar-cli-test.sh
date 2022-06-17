@@ -534,6 +534,12 @@ else
     HIDDEN_SETTINGS="null"
 fi
 
+SHDW=null
+
+if [ ! "$SHDW_STORAGE" = "null" ]; then
+    SHDW="${SHDW_STORAGE}"
+fi
+
 cat >$CONFIG_FILE <<-EOM
 {
     "price": 0.1,
@@ -552,7 +558,7 @@ cat >$CONFIG_FILE <<-EOM
     "ipfsInfuraProjectId": "${INFURA_ID}",
     "ipfsInfuraSecret": "${INFURA_SECRET}",
     "awsS3Bucket": "${AWS_BUCKET}",
-    "shdwStorage": "${SHDW_STORAGE}",
+    "shdwStorage": $SHDW,
     "retainAuthority": false,
     "isMutable": true,
     "creators": [
