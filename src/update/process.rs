@@ -176,7 +176,6 @@ fn create_candy_machine_data(
     candy_machine: CandyMachineData,
 ) -> Result<CandyMachineData> {
     info!("{:?}", config.go_live_date);
-    println!("{:#?}", candy_machine);
     let go_live_date = Some(go_live_date_as_timestamp(&config.go_live_date)?);
 
     let end_settings = config.end_settings.as_ref().map(|s| s.into_candy_format());
