@@ -176,6 +176,7 @@ fn create_candy_machine_data(
     candy_machine: CandyMachineData,
 ) -> Result<CandyMachineData> {
     info!("{:?}", config.go_live_date);
+    println!("{:#?}", candy_machine);
     let go_live_date = Some(go_live_date_as_timestamp(&config.go_live_date)?);
 
     let end_settings = config.end_settings.as_ref().map(|s| s.into_candy_format());
@@ -194,17 +195,24 @@ fn create_candy_machine_data(
 
     let price = parse_config_price(client, config)?;
 
+    let creators = config
+        .creators
+        .clone()
+        .into_iter()
+        .map(|c| c.into_candy_format())
+        .collect::<Result<Vec<mpl_candy_machine::Creator>>>()?;
+
     let data = CandyMachineData {
         uuid: candy_machine.uuid,
         price,
-        symbol: candy_machine.symbol,
-        seller_fee_basis_points: candy_machine.seller_fee_basis_points,
+        symbol: config.symbol.clone(),
+        seller_fee_basis_points: config.seller_fee_basis_points,
         max_supply: 0,
         is_mutable: config.is_mutable,
         retain_authority: config.retain_authority,
         go_live_date,
         end_settings,
-        creators: candy_machine.creators,
+        creators,
         whitelist_mint_settings,
         hidden_settings,
         items_available: config.number,
