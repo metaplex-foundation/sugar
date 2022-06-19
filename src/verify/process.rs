@@ -9,6 +9,7 @@ use crate::candy_machine::CANDY_MACHINE_ID;
 use crate::common::*;
 use crate::config::Cluster;
 use crate::constants::{CANDY_EMOJI, PAPER_EMOJI};
+use crate::pdas::get_collection_pda;
 use crate::utils::*;
 use crate::verify::VerifyError;
 
@@ -31,7 +32,7 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
     // the upload command)
     let mut cache = load_cache(&args.cache, false)?;
 
-    if cache.items.0.is_empty() {
+    if cache.items.is_empty() {
         println!(
             "{}",
             style("No cache items found - run 'upload' to create the cache file first.")
@@ -73,6 +74,7 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
         }
     };
     let candy_machine: CandyMachine = CandyMachine::try_deserialize(&mut data.as_slice())?;
+    let collection_info = get_collection_pda(&candy_machine_pubkey, &program).ok();
 
     pb.finish_with_message("Completed");
 
@@ -83,8 +85,8 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
     );
 
     if candy_machine.data.hidden_settings.is_none() {
-        let num_items = cache.items.0.len();
-        let cache_items = &mut cache.items.0;
+        let num_items = candy_machine.data.items_available;
+        let cache_items = &mut cache.items;
         let mut errors = Vec::new();
 
         println!("Verifying {} config line(s): (Ctrl+C to abort)", num_items);
@@ -161,6 +163,23 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
         // nothing else todo, there are no config lines in a candy machine
         // with hidden settings
         println!("\nHidden settings enabled. You're good to go!");
+    }
+
+    let collection_item: Option<&CacheItem> = cache.items.get("-1");
+    let collection_in_cache: bool = cache.items.get("-1").is_some();
+    let collection_needs_upload = if let Some(collection_item) = cache.items.get("-1") {
+        !collection_item.on_chain
+    } else {
+        false
+    };
+
+    if let Some((collection_pda_pubkey, collection_pda_account)) = collection_info {
+        if !collection_in_cache {
+            println!("hi");
+        } else if collection_needs_upload {
+            println!("hello");
+        }
+    } else if let Some(collection_item) = collection_item {
     }
 
     Ok(())

@@ -28,13 +28,14 @@ pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = setup_client(&sugar_config)?;
     let program = client.program(CANDY_MACHINE_ID);
+    let cache_option: Option<Cache> = None;
 
     // the candy machine id specified takes precedence over the one from the cache
     let candy_machine_id = match args.candy_machine {
         Some(candy_machine_id) => candy_machine_id,
         None => {
-            let cache = load_cache(&args.cache, false)?;
-            cache.program.candy_machine
+            let cache_option = Some(load_cache(&args.cache, false)?);
+            cache_option.unwrap().program.candy_machine
         }
     };
 
@@ -81,7 +82,7 @@ pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
     println!(
         "{} {}Setting collection mint for candy machine",
         style("[2/2]").bold().dim(),
-        CANDY_EMOJI
+        COLLECTION_EMOJI
     );
 
     let pb = spinner_with_style();
@@ -95,6 +96,12 @@ pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
         &collection_metadata_info,
         &collection_edition_info,
     )?;
+
+    if let Some(mut cache) = cache_option {
+        cache.items.remove("-1");
+        cache.program.collection_mint = collection_mint_pubkey.to_string();
+        cache.sync_file()?;
+    }
 
     pb.finish_with_message(format!(
         "{} {}",

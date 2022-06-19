@@ -88,7 +88,7 @@ pub const LOOKING_GLASS_EMOJI: Emoji<'_, '_> = Emoji("🔍 ", "");
 
 pub const CANDY_EMOJI: Emoji<'_, '_> = Emoji("🍬 ", "");
 
-pub const COMPUTER_EMOJI: Emoji<'_, '_> = Emoji("🖥  ", "");
+pub const COMPUTER_EMOJI: Emoji<'_, '_> = Emoji("🖥 ", "");
 
 pub const PAPER_EMOJI: Emoji<'_, '_> = Emoji("📝 ", "");
 
@@ -100,10 +100,12 @@ pub const UPLOAD_EMOJI: Emoji<'_, '_> = Emoji("📤 ", "");
 
 pub const WITHDRAW_EMOJI: Emoji<'_, '_> = Emoji("🏧 ", "");
 
-pub const ASSETS_EMOJI: Emoji<'_, '_> = Emoji("🗂  ", "");
+pub const ASSETS_EMOJI: Emoji<'_, '_> = Emoji("🗂 ", "");
 
 pub const COMPLETE_EMOJI: Emoji<'_, '_> = Emoji("✅ ", "");
 
-pub const LAUNCH_EMOJI: Emoji<'_, '_> = Emoji("💃 ", "");
+pub const LAUNCH_EMOJI: Emoji<'_, '_> = Emoji("🚀 ", "");
+
+pub const COLLECTION_EMOJI: Emoji<'_, '_> = Emoji("📦 ", "");
 
 pub const ERROR_EMOJI: Emoji<'_, '_> = Emoji("🛑 ", "");
