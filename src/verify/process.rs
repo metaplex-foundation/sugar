@@ -160,26 +160,49 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
             cluster
         );
     } else {
-        // nothing else todo, there are no config lines in a candy machine
+        // nothing else to do, there are no config lines in a candy machine
         // with hidden settings
         println!("\nHidden settings enabled. You're good to go!");
     }
 
-    let collection_item: Option<&CacheItem> = cache.items.get("-1");
+    let collection_mint_cache = cache.program.collection_mint;
     let collection_in_cache: bool = cache.items.get("-1").is_some();
-    let collection_needs_upload = if let Some(collection_item) = cache.items.get("-1") {
+    let collection_needs_deploy = if let Some(collection_item) = cache.items.get("-1") {
         !collection_item.on_chain
     } else {
         false
     };
 
-    if let Some((collection_pda_pubkey, collection_pda_account)) = collection_info {
-        if !collection_in_cache {
-            println!("hi");
-        } else if collection_needs_upload {
-            println!("hello");
+    //TODO: figure out the best way to handle these errors
+    if let Some((_, collection_pda_account)) = collection_info {
+        if collection_pda_account.mint.to_string() != collection_mint_cache {
+            return Err(anyhow!(
+                "Collection mint in cache {} doesn't match on chain collection mint {}!",
+                collection_mint_cache,
+                collection_pda_account.mint.to_string()
+            ));
         }
-    } else if let Some(collection_item) = collection_item {
+        if !collection_in_cache {
+            return Err(anyhow!(
+                "Missing collection mint in cache but it exists on chain!"
+            ));
+        } else if collection_needs_deploy {
+            return Err(anyhow!(
+                "Collection mint in cache doesn't match on chain collection mint!"
+            ));
+        }
+    } else {
+        if collection_in_cache {
+            return Err(anyhow!(
+                "Collection NFT is uploaded but is not deployed on chain!"
+            ));
+        }
+        if collection_mint_cache != String::new() {
+            return Err(anyhow!(
+                "No collection set on chain but collection mint {} exists in cache",
+                collection_mint_cache
+            ));
+        }
     }
 
     Ok(())
