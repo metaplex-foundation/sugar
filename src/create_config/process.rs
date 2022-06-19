@@ -69,6 +69,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             Ok(())
         }
     };
+
     let number_validator = |input: &String| -> Result<(), String> {
         if input.parse::<u64>().is_err() {
             Err(format!("Couldn't parse input of '{}' to a number.", input))
@@ -98,6 +99,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             Ok(())
         }
     };
+
     let symbol_validator = |input: &String| -> Result<(), String> {
         if input.len() > 10 {
             Err(String::from("Symbol must be 10 characters or less."))
@@ -105,6 +107,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             Ok(())
         }
     };
+
     let seller_fee_basis_points_validator = |input: &String| -> Result<(), String> {
         let value = match input.parse::<u16>() {
             Ok(value) => value,
@@ -127,7 +130,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     // checks if we have an assets dir and count the number of files
     // assumes 0 in case of error since assets_dir is optional
-    let num_files = match list_files(&args.assets_dir) {
+    let num_files = match list_files(&args.assets_dir, false) {
         Ok(number) => number.len(),
         _ => 0,
     };
