@@ -41,10 +41,7 @@ pub struct BundlrMethod {
 }
 
 impl BundlrMethod {
-    pub async fn initialize(
-        sugar_config: &SugarConfig,
-        config_data: &ConfigData,
-    ) -> Result<BundlrMethod> {
+    pub async fn new(sugar_config: &SugarConfig, config_data: &ConfigData) -> Result<Self> {
         let client = setup_client(sugar_config)?;
         let program = client.program(CANDY_MACHINE_ID);
         let solana_cluster: Cluster = get_cluster(program.rpc())?;
@@ -80,7 +77,7 @@ impl BundlrMethod {
 
         let sugar_tag = Tag::new("App-Name".into(), format!("Sugar {}", crate_version!()));
 
-        Ok(BundlrMethod {
+        Ok(Self {
             client: Arc::new(bundlr_client),
             pubkey: bundlr_pubkey,
             sugar_tag,

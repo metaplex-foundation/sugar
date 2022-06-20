@@ -156,23 +156,20 @@ impl<T: ParallelUploader> Uploader for T {
     }
 }
 
-/// Factory function for uploader objects. This function returns an initializes uploader trait object.
+/// Factory function for uploader objects.
 ///
-/// The storage uploader is selected based on the configuration `UploadMethod`.
+/// Returns a new uploader trait object based on the configuration `uploadMethod`.
 pub async fn initialize(
     sugar_config: &SugarConfig,
     config_data: &ConfigData,
 ) -> Result<Box<dyn Uploader>> {
     Ok(match config_data.upload_method {
-        UploadMethod::AWS => {
-            Box::new(AWSMethod::initialize(config_data).await?) as Box<dyn Uploader>
-        }
+        UploadMethod::AWS => Box::new(AWSMethod::new(config_data).await?) as Box<dyn Uploader>,
         UploadMethod::Bundlr => {
-            Box::new(BundlrMethod::initialize(sugar_config, config_data).await?)
-                as Box<dyn Uploader>
+            Box::new(BundlrMethod::new(sugar_config, config_data).await?) as Box<dyn Uploader>
         }
         UploadMethod::ShadowDrive => {
-            Box::new(SHDWMethod::initialize(sugar_config, config_data)?) as Box<dyn Uploader>
+            Box::new(SHDWMethod::new(sugar_config, config_data)?) as Box<dyn Uploader>
         }
     })
 }

@@ -16,12 +16,12 @@ pub struct AWSMethod {
 }
 
 impl AWSMethod {
-    pub async fn initialize(config_data: &ConfigData) -> Result<AWSMethod> {
+    pub async fn new(config_data: &ConfigData) -> Result<Self> {
         let shared_config = aws_config::load_from_env().await;
         let client = Client::new(&shared_config);
 
         if let Some(aws_s3_bucket) = &config_data.aws_s3_bucket {
-            Ok(AWSMethod {
+            Ok(Self {
                 aws_client: Arc::new(client),
                 bucket: aws_s3_bucket.to_string(),
             })
