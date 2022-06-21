@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use console::style;
 use futures::future::select_all;
-use reqwest::{header, Client};
+use reqwest::{header, Client, StatusCode};
 use std::{
     cmp,
     collections::HashSet,
@@ -76,9 +76,15 @@ impl NftStorageHandler {
                 .timeout(Duration::from_secs(TIMEOUT))
                 .build()?;
 
-            Ok(NftStorageHandler {
-                client: Arc::new(client),
-            })
+            let url = format!("{}/", NFT_STORAGE_API_URL);
+            let response = client.get(url).send().await?;
+
+            match response.status() {
+                StatusCode::OK => Ok(NftStorageHandler {
+                    client: Arc::new(client),
+                }),
+                code => Err(anyhow!("Could not initialize nft.storage client: {code}")),
+            }
         } else {
             Err(anyhow!(
                 "Missing 'nftStorageAuthToken' value in config file."
