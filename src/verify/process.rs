@@ -165,43 +165,46 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
         println!("\nHidden settings enabled. You're good to go!");
     }
 
-    let collection_mint_cache = cache.program.collection_mint;
-    let collection_in_cache: bool = cache.items.get("-1").is_some();
+    let collection_mint_cache = cache.program.collection_mint.clone();
     let collection_needs_deploy = if let Some(collection_item) = cache.items.get("-1") {
         !collection_item.on_chain
     } else {
         false
     };
+    let collection_item = cache.items.get_mut("-1");
 
-    //TODO: figure out the best way to handle these errors
     if let Some((_, collection_pda_account)) = collection_info {
         if collection_pda_account.mint.to_string() != collection_mint_cache {
+            println!("\nInvalid collection state found");
+            cache.program.collection_mint = collection_pda_account.mint.to_string();
+            if let Some(collection_item) = collection_item {
+                collection_item.on_chain = false;
+            }
+            cache.sync_file()?;
+            println!("Cache updated - re-run `deploy`.");
             return Err(anyhow!(
                 "Collection mint in cache {} doesn't match on chain collection mint {}!",
                 collection_mint_cache,
                 collection_pda_account.mint.to_string()
             ));
-        }
-        if !collection_in_cache {
-            return Err(anyhow!(
-                "Missing collection mint in cache but it exists on chain!"
-            ));
         } else if collection_needs_deploy {
-            return Err(anyhow!(
-                "Collection mint in cache doesn't match on chain collection mint!"
-            ));
+            println!("\nInvalid collection state found - re-run `deploy`.");
+            return Err(CacheError::InvalidState.into());
         }
     } else {
-        if collection_in_cache {
-            return Err(anyhow!(
-                "Collection NFT is uploaded but is not deployed on chain!"
-            ));
-        }
+        let mut error_found = false;
         if collection_mint_cache != String::new() {
-            return Err(anyhow!(
-                "No collection set on chain but collection mint {} exists in cache",
-                collection_mint_cache
-            ));
+            error_found = true;
+            cache.program.collection_mint = String::new();
+        }
+        if let Some(collection_item) = collection_item {
+            error_found = true;
+            collection_item.on_chain = false;
+        }
+        if error_found {
+            cache.sync_file()?;
+            println!("\nInvalid collection state found - re-run `deploy`.");
+            return Err(CacheError::InvalidState.into());
         }
     }
 
