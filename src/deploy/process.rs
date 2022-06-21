@@ -11,9 +11,6 @@ use anchor_client::solana_sdk::{
 };
 use anyhow::Result;
 use console::style;
-pub use mpl_token_metadata::state::{
-    MAX_CREATOR_LIMIT, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH,
-};
 use rand::rngs::OsRng;
 use spl_associated_token_account::get_associated_token_address;
 
@@ -82,7 +79,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
     let num_items = config_data.number;
     let hidden = config_data.hidden_settings.is_some();
     let collection_in_cache = cache.items.get("-1").is_some();
-    let collection_needs_upload = if let Some(collection_item) = cache.items.get("-1") {
+    let collection_needs_deploy = if let Some(collection_item) = cache.items.get("-1") {
         !collection_item.on_chain
     } else {
         false
@@ -99,7 +96,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         check_seller_fee_basis_points(config_data.seller_fee_basis_points)?;
     }
 
-    let total_steps = 2 + (collection_needs_upload as u8) - (hidden as u8);
+    let total_steps = 2 + (collection_needs_deploy as u8) - (hidden as u8);
 
     let candy_pubkey = if candy_machine_address.is_empty() {
         println!(
@@ -245,16 +242,13 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
     }
 
     //TODO: finish collection stuff
-
-    // if let Some(collection_item) = cache.items.get("-1") {
-    //     println!(
-    //         "\n{} {}Creating and setting the collection NFT for candy machine",
-    //         style(format!("[3/{}]", total_steps)).bold().dim(),
-    //         COLLECTION_EMOJI
-    //     );
-    // } else {
-    //     println!("\nCandy machine with hidden settings deployed.");
-    // }
+    if collection_needs_deploy {
+        println!(
+            "\n{} {}Creating and setting the collection NFT for candy machine",
+            style(format!("[3/{}]", total_steps)).bold().dim(),
+            COLLECTION_EMOJI
+        );
+    }
 
     Ok(())
 }
