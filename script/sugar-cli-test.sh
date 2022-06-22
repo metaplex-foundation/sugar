@@ -9,7 +9,7 @@
 # STORAGE="arweave-sol"
 #
 # ENV_URL="devnet"
-# RPC="https://psytrbhymqlkfrhudd.dev.genesysgo.net:8899/"
+# RPC="https://devnet.genesysgo.net:/"
 # STORAGE="arweave"
 #
 # ITEMS=10
@@ -102,7 +102,7 @@ function mainnet_env() {
 
 function devnet_env() {
     ENV_URL="devnet"
-    RPC="https://psytrbhymqlkfrhudd.dev.genesysgo.net:8899/"
+    RPC="https://devnet.genesysgo.net/"
     STORAGE="bundlr"
 }
 
@@ -202,6 +202,8 @@ fi
 while getopts r: flag; do
     case "${flag}" in
         r) RPC=${OPTARG} ;;
+        p) SUGAR_BIN="cargo run --release --bin sugar --" ;;
+        *) ;;
     esac
 done
 
