@@ -15,7 +15,7 @@ use rand::rngs::OsRng;
 use spl_associated_token_account::get_associated_token_address;
 
 use crate::cache::*;
-use crate::candy_machine::CANDY_MACHINE_ID;
+use crate::candy_machine::{get_candy_machine_state, CANDY_MACHINE_ID};
 use crate::common::*;
 use crate::config::parser::get_config_data;
 use crate::deploy::errors::*;
@@ -80,6 +80,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
     let num_items = config_data.number;
     let hidden = config_data.hidden_settings.is_some();
     let collection_in_cache = cache.items.get("-1").is_some();
+    let mut item_redeemed = false;
 
     if num_items != (cache.items.len() as u64) - (collection_in_cache as u64) {
         return Err(anyhow!(
@@ -171,7 +172,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
             CANDY_EMOJI
         );
 
-        match Pubkey::from_str(candy_machine_address) {
+        let candy_pubkey = match Pubkey::from_str(candy_machine_address) {
             Ok(pubkey) => pubkey,
             Err(_err) => {
                 error!(
@@ -183,7 +184,20 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
                 )
                 .into());
             }
+        };
+
+        match get_candy_machine_state(&Arc::clone(&sugar_config), &candy_pubkey) {
+            Ok(candy_state) => {
+                if candy_state.items_redeemed > 0 {
+                    item_redeemed = true;
+                }
+            }
+            Err(_) => {
+                return Err(anyhow!("Candy machine from cache does't exist on chain!"));
+            }
         }
+
+        candy_pubkey
     };
 
     println!("{} {}", style("Candy machine ID:").bold(), candy_pubkey);
@@ -244,7 +258,9 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
             COLLECTION_EMOJI
         );
 
-        if collection_item.on_chain {
+        if item_redeemed {
+            println!("\nAn item has already been minted and thus cannot modify the candy machine collection. Skipping...");
+        } else if collection_item.on_chain {
             println!("\nCollection mint already deployed.");
         } else {
             let pb = spinner_with_style();
