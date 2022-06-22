@@ -83,6 +83,9 @@ impl NftStorageHandler {
                 StatusCode::OK => Ok(NftStorageHandler {
                     client: Arc::new(client),
                 }),
+                StatusCode::UNAUTHORIZED => {
+                    Err(anyhow!("Invalid nft.storage authentication token."))
+                }
                 code => Err(anyhow!("Could not initialize nft.storage client: {code}")),
             }
         } else {
