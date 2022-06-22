@@ -143,6 +143,7 @@ async fn run() -> Result<()> {
             rpc_url,
             cache,
             strict,
+            skip_collection_prompt,
         } => {
             process_launch(LaunchArgs {
                 assets_dir,
@@ -151,6 +152,7 @@ async fn run() -> Result<()> {
                 rpc_url,
                 cache,
                 strict,
+                skip_collection_prompt,
                 interrupted: interrupted.clone(),
             })
             .await?
@@ -215,9 +217,15 @@ async fn run() -> Result<()> {
             })
             .await?
         }
-        Commands::Validate { assets_dir, strict } => {
-            process_validate(ValidateArgs { assets_dir, strict })?
-        }
+        Commands::Validate {
+            assets_dir,
+            strict,
+            skip_collection_prompt,
+        } => process_validate(ValidateArgs {
+            assets_dir,
+            strict,
+            skip_collection_prompt,
+        })?,
         Commands::Withdraw {
             candy_machine,
             keypair,

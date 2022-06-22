@@ -664,7 +664,7 @@ if [ "$LAUNCH" = "Y" ]; then
     CYN "Executing Sugar launch: steps [1, 2, 3, 4]"
     echo ""
     MAG ">>>"
-    $SUGAR_BIN launch -c ${CONFIG_FILE} --keypair $WALLET_KEY --cache $CACHE_FILE -r $RPC $ASSETS_DIR
+    $SUGAR_BIN launch -c ${CONFIG_FILE} --keypair $WALLET_KEY --cache $CACHE_FILE -r $RPC $ASSETS_DIR --skip-collection-prompt
     EXIT_CODE=$?
     MAG "<<<"
     
@@ -677,7 +677,7 @@ else
     CYN "1. Validating JSON metadata files"
     echo ""
     MAG ">>>"
-    $SUGAR_BIN validate $ASSETS_DIR
+    $SUGAR_BIN validate $ASSETS_DIR --skip-collection-prompt
     EXIT_CODE=$?
     MAG "<<<"
 

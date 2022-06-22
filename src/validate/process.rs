@@ -17,6 +17,7 @@ use crate::validate::*;
 pub struct ValidateArgs {
     pub assets_dir: String,
     pub strict: bool,
+    pub skip_collection_prompt: bool,
 }
 
 pub fn process_validate(args: ValidateArgs) -> Result<()> {
@@ -35,31 +36,33 @@ pub fn process_validate(args: ValidateArgs) -> Result<()> {
         return Err(ValidateError::MissingOrEmptyAssetsDirectory.into());
     }
 
-    let collection_path = assets_dir.join("collection.json");
-    if !collection_path.is_file() {
-        println!(
-            "{}{}",
-            style("MISSING COLLECTION FILES IN ASSETS FOLDER\n")
-                .bold()
-                .yellow(),
-            style(
-                "Check https://docs.metaplex.com/sugar/collections for the proper format \
-                if you want a collection to be set automatically."
-            )
-            .italic()
-            .yellow()
-        );
+    if !args.skip_collection_prompt {
+        let collection_path = assets_dir.join("collection.json");
+        if !collection_path.is_file() {
+            println!(
+                "{}{}",
+                style("MISSING COLLECTION FILES IN ASSETS FOLDER\n")
+                    .bold()
+                    .yellow(),
+                style(
+                    "Check https://docs.metaplex.com/sugar/collections for the proper format \
+                    if you want a collection to be set automatically."
+                )
+                .italic()
+                .yellow()
+            );
 
-        let theme = ColorfulTheme {
-            success_prefix: style("✔".to_string()).yellow().force_styling(true),
-            values_style: Style::new().yellow(),
-            ..get_dialoguer_theme()
-        };
+            let theme = ColorfulTheme {
+                success_prefix: style("✔".to_string()).yellow().force_styling(true),
+                values_style: Style::new().yellow(),
+                ..get_dialoguer_theme()
+            };
 
-        if !Confirm::with_theme(&theme).with_prompt("Do you want to continue without automatically setting the candy machine collection?").interact()? {
-            return Err(anyhow!("Operation aborted"));
+            if !Confirm::with_theme(&theme).with_prompt("Do you want to continue without automatically setting the candy machine collection?").interact()? {
+                return Err(anyhow!("Operation aborted"));
+            }
+            println!();
         }
-        println!();
     }
 
     let path = assets_dir.join("*.json");

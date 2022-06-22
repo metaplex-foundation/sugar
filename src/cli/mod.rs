@@ -58,6 +58,10 @@ pub enum Commands {
         /// Strict mode: validate against JSON metadata standard exactly
         #[clap(long)]
         strict: bool,
+
+        /// Skip collection validate prompt
+        #[clap(long)]
+        skip_collection_prompt: bool,
     },
     /// Mint one NFT from candy machine
     Mint {
@@ -179,6 +183,10 @@ pub enum Commands {
         /// Strict mode: validate against JSON metadata standard exactly
         #[clap(long)]
         strict: bool,
+
+        /// Skip collection prompt
+        #[clap(long)]
+        skip_collection_prompt: bool,
     },
 
     /// Verify uploaded data
