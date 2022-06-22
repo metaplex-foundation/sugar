@@ -20,7 +20,8 @@ use crate::common::*;
 use crate::config::parser::get_config_data;
 use crate::deploy::errors::*;
 use crate::deploy::{
-    create_candy_machine_data, generate_config_lines, initialize_candy_machine, upload_config_lines,
+    create_and_set_collection, create_candy_machine_data, generate_config_lines,
+    initialize_candy_machine, upload_config_lines,
 };
 use crate::setup::{setup_client, sugar_setup};
 use crate::utils::*;
@@ -79,11 +80,6 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
     let num_items = config_data.number;
     let hidden = config_data.hidden_settings.is_some();
     let collection_in_cache = cache.items.get("-1").is_some();
-    let collection_needs_deploy = if let Some(collection_item) = cache.items.get("-1") {
-        !collection_item.on_chain
-    } else {
-        false
-    };
 
     if num_items != (cache.items.len() as u64) - (collection_in_cache as u64) {
         return Err(anyhow!(
@@ -96,7 +92,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         check_seller_fee_basis_points(config_data.seller_fee_basis_points)?;
     }
 
-    let total_steps = 2 + (collection_needs_deploy as u8) - (hidden as u8);
+    let total_steps = 2 + (collection_in_cache as u8) - (hidden as u8);
 
     let candy_pubkey = if candy_machine_address.is_empty() {
         println!(
@@ -208,7 +204,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
             args.interrupted.store(false, Ordering::SeqCst);
 
             let errors = upload_config_lines(
-                sugar_config,
+                Arc::clone(&sugar_config),
                 candy_pubkey,
                 &mut cache,
                 config_lines,
@@ -241,13 +237,29 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         println!("\nCandy machine with hidden settings deployed.");
     }
 
-    //TODO: finish collection stuff
-    if collection_needs_deploy {
+    if let Some(collection_item) = cache.items.get_mut("-1") {
         println!(
             "\n{} {}Creating and setting the collection NFT for candy machine",
             style(format!("[3/{}]", total_steps)).bold().dim(),
             COLLECTION_EMOJI
         );
+
+        if collection_item.on_chain {
+            println!("\nCollection mint already deployed.");
+        } else {
+            let pb = spinner_with_style();
+            pb.set_message("Sending create and set collection NFT transaction...");
+
+            let (_, collection_mint) =
+                create_and_set_collection(client, candy_pubkey, &mut cache, config_data)?;
+
+            pb.finish_and_clear();
+            println!(
+                "{} {}",
+                style("Collection mint ID:").bold(),
+                collection_mint
+            );
+        }
     }
 
     Ok(())

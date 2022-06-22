@@ -193,7 +193,10 @@ pub async fn upload_config_lines(
         )
         .into());
     } else {
-        pb.finish_with_message(format!("{}", style("Deploy successful ").green().bold()));
+        pb.finish_with_message(format!(
+            "{}",
+            style("Write config lines successful ").green().bold()
+        ));
     }
 
     // makes sure the cache file is updated
