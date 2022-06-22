@@ -86,7 +86,6 @@ pub fn process_mint(args: MintArgs) -> Result<()> {
         style("[2/2]").bold().dim(),
         CANDY_EMOJI
     );
-    println!("Candy machine ID: {}", &candy_machine_id);
 
     let number = args.number.unwrap_or(1);
     let available = candy_machine_state.data.items_available - candy_machine_state.items_redeemed;
