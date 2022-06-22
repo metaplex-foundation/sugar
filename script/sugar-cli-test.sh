@@ -199,7 +199,7 @@ if [ -z ${RPC+x} ]; then
     RPC="https://api.${ENV_URL}.solana.com"
 fi
 
-while getopts r: flag; do
+while getopts r:p flag; do
     case "${flag}" in
         r) RPC=${OPTARG} ;;
         p) SUGAR_BIN="cargo run --release --bin sugar --" ;;
