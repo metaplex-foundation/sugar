@@ -257,26 +257,23 @@ async fn run() -> Result<()> {
             cache,
             candy_machine,
         })?,
-        Commands::Collection { command } => match command {
-            CollectionSubcommands::Set {
-                collection_mint,
-                keypair,
-                rpc_url,
-                cache,
-                candy_machine,
-            } => process_set_collection(SetCollectionArgs {
-                collection_mint,
-                keypair,
-                rpc_url,
-                cache,
-                candy_machine,
-            })?,
-            CollectionSubcommands::Remove {
-                keypair,
-                rpc_url,
-                cache,
-                candy_machine,
-            } => process_remove_collection(RemoveCollectionArgs {
+        Commands::Collection {
+            keypair,
+            rpc_url,
+            cache,
+            candy_machine,
+            command,
+        } => match command {
+            CollectionSubcommands::Set { collection_mint } => {
+                process_set_collection(SetCollectionArgs {
+                    collection_mint,
+                    keypair,
+                    rpc_url,
+                    cache,
+                    candy_machine,
+                })?
+            }
+            CollectionSubcommands::Remove => process_remove_collection(RemoveCollectionArgs {
                 keypair,
                 rpc_url,
                 cache,
