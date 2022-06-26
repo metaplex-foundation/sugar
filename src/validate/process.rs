@@ -39,13 +39,17 @@ pub fn process_validate(args: ValidateArgs) -> Result<()> {
     if !args.skip_collection_prompt {
         let collection_path = assets_dir.join("collection.json");
         if !collection_path.is_file() {
+            let warning = format!(
+                "+----------------------------------------------+\n\
+                 | {} MISSING COLLECTION FILES IN ASSETS FOLDER |\n\
+                 +----------------------------------------------+",
+                WARNING_EMOJI
+            );
             println!(
-                "{}{}",
-                style("MISSING COLLECTION FILES IN ASSETS FOLDER\n")
-                    .bold()
-                    .yellow(),
+                "\n{}\n{}\n",
+                style(warning).bold().yellow(),
                 style(
-                    "Check https://docs.metaplex.com/sugar/collections for the proper format \
+                    "Check https://docs.metaplex.com/sugar/collections for the requirements \
                     if you want a collection to be set automatically."
                 )
                 .italic()
