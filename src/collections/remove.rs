@@ -64,7 +64,7 @@ pub fn process_remove_collection(args: RemoveCollectionArgs) -> Result<()> {
     pb.finish_with_message("Done");
 
     println!(
-        "{} {}Removing collection mint for candy machine",
+        "\n{} {}Removing collection mint for candy machine",
         style("[2/2]").bold().dim(),
         CANDY_EMOJI
     );

@@ -80,7 +80,7 @@ pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
     pb.finish_with_message("Done");
 
     println!(
-        "{} {}Setting collection mint for candy machine",
+        "\n{} {}Setting collection mint for candy machine",
         style("[2/2]").bold().dim(),
         COLLECTION_EMOJI
     );

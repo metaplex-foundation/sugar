@@ -82,7 +82,7 @@ pub fn process_mint(args: MintArgs) -> Result<()> {
     pb.finish_with_message("Done");
 
     println!(
-        "{} {}Minting from candy machine",
+        "\n{} {}Minting from candy machine",
         style("[2/2]").bold().dim(),
         CANDY_EMOJI
     );
