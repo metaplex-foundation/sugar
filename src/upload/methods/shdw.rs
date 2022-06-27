@@ -78,6 +78,18 @@ struct UploadResponse {
     transaction_signature: String,
 }
 
+#[derive(Serialize, Deserialize)]
+struct ObjectDataResponse {
+    file_data: FileData,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all(serialize = "kebab-case", deserialize = "kebab-case"))]
+struct FileData {
+    file_account_pubkey: String,
+    owner_account_pubkey: String,
+}
+
 impl SHDWMethod {
     pub fn new(sugar_config: &SugarConfig, config_data: &ConfigData) -> Result<Self> {
         let seed = &[
@@ -299,103 +311,107 @@ impl SHDWMethod {
             let status = response.status();
 
             if status.is_success() {
-                let text = response.json::<HashMap<String, String>>().await?;
-                if let Some(pubkey) = text.get("owner-account-pubkey") {
-                    let owner = Pubkey::from_str(pubkey)?;
+                let body = response.json::<Value>().await?;
+                let ObjectDataResponse {
+                    file_data:
+                        FileData {
+                            file_account_pubkey,
+                            owner_account_pubkey,
+                        },
+                }: ObjectDataResponse = serde_json::from_value(body)?;
 
-                    if sugar_config.keypair.pubkey() == owner {
-                        let file_account =
-                            Pubkey::from_str(text.get("file-account-pubkey").unwrap())?;
+                let owner = Pubkey::from_str(&owner_account_pubkey)?;
 
-                        let data = match asset_info.data_type {
-                            DataType::Image => fs::read(&asset_info.content)?,
-                            DataType::Metadata => asset_info.content.clone().into_bytes(),
-                            DataType::Animation => fs::read(&asset_info.content)?,
+                if sugar_config.keypair.pubkey() == owner {
+                    let file_account = Pubkey::from_str(&file_account_pubkey)?;
+
+                    let data = match asset_info.data_type {
+                        DataType::Image => fs::read(&asset_info.content)?,
+                        DataType::Metadata => asset_info.content.clone().into_bytes(),
+                        DataType::Animation => fs::read(&asset_info.content)?,
+                    };
+                    let mut context = Context::new(&SHA256);
+                    context.update(&data);
+                    let hash = HEXLOWER.encode(context.finish().as_ref());
+
+                    let encoded = {
+                        let client = setup_client(sugar_config)?;
+                        let program = client.program(shadow_drive_user_staking::ID);
+                        let edit_instruction = EditFileInstruction {
+                            sha256_hash: hash,
+                            size: data.len() as u64,
                         };
-                        let mut context = Context::new(&SHA256);
-                        context.update(&data);
-                        let hash = HEXLOWER.encode(context.finish().as_ref());
-
-                        let encoded = {
-                            let client = setup_client(sugar_config)?;
-                            let program = client.program(shadow_drive_user_staking::ID);
-                            let edit_instruction = EditFileInstruction {
-                                sha256_hash: hash,
-                                size: data.len() as u64,
-                            };
-                            let accounts = EditFileAccount {
-                                storage_config,
-                                storage_account: self.storage_pubkey,
-                                file: file_account,
-                                owner: self.storage_account.owner_1,
-                                uploader: UPLOADER,
-                                token_mint: TOKEN_MINT,
-                                system_program: system_program::id(),
-                            };
-                            let instruction = Instruction {
-                                program_id: shadow_drive_user_staking::ID,
-                                data: edit_instruction.data(),
-                                accounts: accounts.to_account_metas(None),
-                            };
-
-                            let mut tx = Transaction::new_with_payer(
-                                &[instruction],
-                                Some(&sugar_config.keypair.pubkey()),
-                            );
-                            let blockhash = program.rpc().get_latest_blockhash()?;
-                            tx.partial_sign(&[&sugar_config.keypair], blockhash);
-                            // serializes the transaction
-                            serialize_and_encode(&tx, UiTransactionEncoding::Base64)?
+                        let accounts = EditFileAccount {
+                            storage_config,
+                            storage_account: self.storage_pubkey,
+                            file: file_account,
+                            owner: self.storage_account.owner_1,
+                            uploader: UPLOADER,
+                            token_mint: TOKEN_MINT,
+                            system_program: system_program::id(),
+                        };
+                        let instruction = Instruction {
+                            program_id: shadow_drive_user_staking::ID,
+                            data: edit_instruction.data(),
+                            accounts: accounts.to_account_metas(None),
                         };
 
-                        let file = Part::bytes(data)
-                            .file_name(asset_info.name.clone())
-                            .mime_str(asset_info.content_type.as_str())?;
-                        let form = Form::new()
-                            .part("file", file)
-                            .part("transaction", Part::text(encoded));
+                        let mut tx = Transaction::new_with_payer(
+                            &[instruction],
+                            Some(&sugar_config.keypair.pubkey()),
+                        );
+                        let blockhash = program.rpc().get_latest_blockhash()?;
+                        tx.partial_sign(&[&sugar_config.keypair], blockhash);
+                        // serializes the transaction
+                        serialize_and_encode(&tx, UiTransactionEncoding::Base64)?
+                    };
 
-                        let response = http_client
-                            .post(format!("{SHDW_DRIVE_ENDPOINT}/edit"))
-                            .multipart(form)
-                            .send()
-                            .await?;
-                        let status = response.status();
-                        if status.is_success() {
-                            let text = response.json::<HashMap<String, String>>().await?;
-                            // updates the cache content
-                            if let Some(location) = text.get("finalized_location") {
-                                let id = asset_info.asset_id.clone();
-                                let uri = location.to_string();
-                                // cache item to update
-                                let item = cache.items.0.get_mut(&id).unwrap();
-                                match data_type {
-                                    DataType::Image => item.image_link = uri,
-                                    DataType::Metadata => item.metadata_link = uri,
-                                    DataType::Animation => item.animation_link = Some(uri),
-                                }
-                                // syncs cache (checkpoint)
-                                cache.sync_file()?;
-                                // updates the progress bar
-                                progress.inc(1);
+                    let file = Part::bytes(data)
+                        .file_name(asset_info.name.clone())
+                        .mime_str(asset_info.content_type.as_str())?;
+                    let form = Form::new()
+                        .part("file", file)
+                        .part("transaction", Part::text(encoded));
+
+                    let response = http_client
+                        .post(format!("{SHDW_DRIVE_ENDPOINT}/edit"))
+                        .multipart(form)
+                        .send()
+                        .await?;
+                    let status = response.status();
+
+                    if status.is_success() {
+                        let text = response.json::<HashMap<String, String>>().await?;
+                        // updates the cache content
+                        if let Some(location) = text.get("finalized_location") {
+                            let id = asset_info.asset_id.clone();
+                            let uri = location.to_string();
+                            // cache item to update
+                            let item = cache.items.0.get_mut(&id).unwrap();
+                            match data_type {
+                                DataType::Image => item.image_link = uri,
+                                DataType::Metadata => item.metadata_link = uri,
+                                DataType::Animation => item.animation_link = Some(uri),
                             }
-                        } else {
-                            let error = response.json::<HashMap<String, String>>().await?;
-                            let message = if let Some(m) = error.get("error") {
-                                m.to_string()
-                            } else {
-                                format!("Error uploading batch (http status {})", status)
-                            };
-                            errors.push(UploadError::SendDataFailed(message));
+                            // syncs cache (checkpoint)
+                            cache.sync_file()?;
+                            // updates the progress bar
+                            progress.inc(1);
                         }
                     } else {
-                        errors.push(UploadError::SendDataFailed(
-                            "Permission denied (not a file owner)".to_string(),
-                        ));
+                        let error = response.json::<HashMap<String, String>>().await?;
+                        let message = if let Some(m) = error.get("error") {
+                            m.to_string()
+                        } else {
+                            format!("Error uploading batch (http status {})", status)
+                        };
+                        errors.push(UploadError::SendDataFailed(message));
                     }
                 } else {
-                    errors.push(UploadError::SendDataFailed("Missing owner".to_string()));
-                };
+                    errors.push(UploadError::SendDataFailed(
+                        "Permission denied (not a file owner)".to_string(),
+                    ));
+                }
             } else {
                 let error = response.json::<HashMap<String, String>>().await?;
                 let message = if let Some(m) = error.get("error") {
