@@ -582,7 +582,7 @@ fi
 SHDW=null
 
 if [ ! "$SHDW_STORAGE" = "null" ]; then
-    SHDW="${SHDW_STORAGE}"
+    SHDW="\"${SHDW_STORAGE}\""
 fi
 
 cat >$CONFIG_FILE <<-EOM
