@@ -10,7 +10,7 @@ use tokio::{
     time::{sleep, Duration},
 };
 
-use crate::candy_machine::ID as CANDY_MACHINE_ID;
+use crate::candy_machine::CANDY_MACHINE_ID;
 use crate::{
     common::*,
     config::*,
@@ -146,7 +146,7 @@ impl BundlrMethod {
     }
 
     /// Return the Bundlr balance.
-    async fn get_bundlr_balance(
+    pub async fn get_bundlr_balance(
         http_client: &HttpClient,
         address: &str,
         node: &str,
@@ -212,8 +212,8 @@ impl Prepare for BundlrMethod {
     async fn prepare(
         &self,
         sugar_config: &SugarConfig,
-        assets: &HashMap<usize, AssetPair>,
-        asset_indices: Vec<(DataType, &[usize])>,
+        assets: &HashMap<isize, AssetPair>,
+        asset_indices: Vec<(DataType, &[isize])>,
     ) -> Result<()> {
         // calculates the size of the files to upload
         let mut total_size = 0;

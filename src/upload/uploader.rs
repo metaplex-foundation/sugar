@@ -48,8 +48,8 @@ pub trait Prepare {
     async fn prepare(
         &self,
         sugar_config: &SugarConfig,
-        asset_pairs: &HashMap<usize, AssetPair>,
-        asset_indices: Vec<(DataType, &[usize])>,
+        asset_pairs: &HashMap<isize, AssetPair>,
+        asset_indices: Vec<(DataType, &[isize])>,
     ) -> Result<()>;
 }
 
@@ -170,6 +170,9 @@ pub async fn initialize(
         }
         UploadMethod::ShadowDrive => {
             Box::new(SHDWMethod::new(sugar_config, config_data)?) as Box<dyn Uploader>
+        }
+        UploadMethod::NftStorage => {
+            Box::new(NftStorageMethod::initialize(config_data).await?) as Box<dyn Uploader>
         }
     })
 }

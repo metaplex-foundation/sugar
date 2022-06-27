@@ -394,9 +394,9 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
 /// Upload the data to the selected storage.
 async fn upload_data(
     sugar_config: &SugarConfig,
-    asset_pairs: &HashMap<usize, AssetPair>,
+    asset_pairs: &HashMap<isize, AssetPair>,
     cache: &mut Cache,
-    indices: &[usize],
+    indices: &[isize],
     data_type: DataType,
     uploader: &dyn Uploader,
     interrupted: Arc<AtomicBool>,
@@ -459,24 +459,12 @@ async fn upload_data(
     for file_path in paths {
         // path to the media/metadata file
         let path = Path::new(&file_path);
-
-        // id of the asset (to be used to update the cache link)
-        let asset_id = String::from(
-            path.file_stem()
-                .and_then(OsStr::to_str)
-                .expect("Failed to convert path to unicode."),
-        );
-
         let file_name = String::from(
             path.file_name()
                 .and_then(OsStr::to_str)
                 .expect("Filed to get file name."),
         );
-
-        let cache_item = match cache.items.0.get(&asset_id) {
-            Some(item) => item,
-            None => return Err(anyhow!("Failed to get config item at index {}", asset_id)),
-        };
+        let (asset_id, cache_item) = get_cache_item(path, cache)?;
 
         let content = match data_type {
             // replaces the media link without modifying the original file to avoid

@@ -74,7 +74,7 @@ pub fn get_cache_item<'a>(path: &Path, cache: &'a mut Cache) -> Result<(String, 
     let cache_item: &CacheItem = cache
         .items
         .get(&asset_id)
-        .ok_or_else(|| anyhow!("Failed to get config item at index: {}", asset_id))?;
+        .ok_or_else(|| anyhow!("Failed to get config item at index '{}'", asset_id))?;
 
     Ok((asset_id, cache_item))
 }

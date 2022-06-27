@@ -420,8 +420,8 @@ impl Prepare for SHDWMethod {
     async fn prepare(
         &self,
         _sugar_config: &SugarConfig,
-        assets: &HashMap<usize, AssetPair>,
-        asset_indices: Vec<(DataType, &[usize])>,
+        assets: &HashMap<isize, AssetPair>,
+        asset_indices: Vec<(DataType, &[isize])>,
     ) -> Result<()> {
         // calculates the size of the files to upload
 

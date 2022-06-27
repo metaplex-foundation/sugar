@@ -63,8 +63,8 @@ impl Prepare for AWSMethod {
     async fn prepare(
         &self,
         _sugar_config: &SugarConfig,
-        _asset_pairs: &HashMap<usize, AssetPair>,
-        _asset_indices: Vec<(DataType, &[usize])>,
+        _asset_pairs: &HashMap<isize, AssetPair>,
+        _asset_indices: Vec<(DataType, &[isize])>,
     ) -> Result<()> {
         // nothing to do here
         Ok(())
