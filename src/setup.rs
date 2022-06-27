@@ -21,7 +21,7 @@ pub fn setup_client(sugar_config: &SugarConfig) -> Result<Client> {
     let key_bytes = sugar_config.keypair.to_bytes();
     let signer = Rc::new(Keypair::from_bytes(&key_bytes)?);
 
-    let opts = CommitmentConfig::confirmed();
+    let opts = CommitmentConfig::finalized();
     Ok(Client::new_with_options(cluster, signer, opts))
 }
 
