@@ -1,12 +1,11 @@
+use crate::common::*;
+use crate::pdas::find_candy_machine_creator_pda;
 use anchor_client::solana_sdk::pubkey::Pubkey;
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
-use std::{fs, io::Write, path::Path};
-
 use mpl_candy_machine::ConfigLine;
-
-use crate::common::*;
-use crate::mint::pdas::get_candy_machine_creator_pda;
+use serde::{Deserialize, Serialize};
+use std::ops::{Deref, DerefMut};
+use std::{fs, io::Write, path::Path};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Cache {
@@ -51,6 +50,8 @@ pub struct CacheProgram {
     pub candy_machine: String,
     #[serde(rename = "candyMachineCreator")]
     pub candy_machine_creator: String,
+    #[serde(rename = "collectionMint")]
+    pub collection_mint: String,
 }
 
 impl CacheProgram {
@@ -58,15 +59,17 @@ impl CacheProgram {
         CacheProgram {
             candy_machine: String::new(),
             candy_machine_creator: String::new(),
+            collection_mint: String::new(),
         }
     }
 
     pub fn new_from_cm(candy_machine: &Pubkey) -> Self {
         let (candy_machine_creator_pda, _creator_bump) =
-            get_candy_machine_creator_pda(candy_machine);
+            find_candy_machine_creator_pda(candy_machine);
         CacheProgram {
             candy_machine: candy_machine.to_string(),
             candy_machine_creator: candy_machine_creator_pda.to_string(),
+            collection_mint: String::new(),
         }
     }
 }
@@ -79,6 +82,19 @@ impl Default for CacheProgram {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CacheItems(pub IndexMap<String, CacheItem>);
+
+impl Deref for CacheItems {
+    type Target = IndexMap<String, CacheItem>; // Our wrapper struct will coerce into Option
+    fn deref(&self) -> &IndexMap<String, CacheItem> {
+        &self.0 // We just extract the inner element
+    }
+}
+
+impl DerefMut for CacheItems {
+    fn deref_mut(&mut self) -> &mut IndexMap<String, CacheItem> {
+        &mut self.0
+    }
+}
 
 impl CacheItems {
     pub fn new() -> Self {
@@ -94,8 +110,10 @@ impl Default for CacheItems {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CacheItem {
     pub name: String,
+    #[serde(default = "String::default")]
     pub image_hash: String,
     pub image_link: String,
+    #[serde(default = "String::default")]
     pub metadata_hash: String,
     pub metadata_link: String,
     #[serde(rename = "onChain")]

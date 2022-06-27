@@ -8,7 +8,7 @@ use std::str::FromStr;
 use mpl_candy_machine::instruction as nft_instruction;
 use mpl_candy_machine::{accounts as nft_accounts, CandyMachineData};
 
-use crate::candy_machine::ID as CANDY_MACHINE_ID;
+use crate::candy_machine::CANDY_MACHINE_ID;
 use crate::candy_machine::{get_candy_machine_state, parse_config_price};
 use crate::common::*;
 use crate::config::{data::*, parser::get_config_data};
@@ -178,14 +178,14 @@ fn create_candy_machine_data(
     info!("{:?}", config.go_live_date);
     let go_live_date = Some(go_live_date_as_timestamp(&config.go_live_date)?);
 
-    let end_settings = &config.end_settings.as_ref().map(|s| s.into_candy_format());
+    let end_settings = config.end_settings.as_ref().map(|s| s.into_candy_format());
 
-    let whitelist_mint_settings = &config
+    let whitelist_mint_settings = config
         .whitelist_mint_settings
         .as_ref()
         .map(|s| s.into_candy_format());
 
-    let hidden_settings = &config
+    let hidden_settings = config
         .hidden_settings
         .as_ref()
         .map(|s| s.into_candy_format());
@@ -194,19 +194,26 @@ fn create_candy_machine_data(
 
     let price = parse_config_price(client, config)?;
 
+    let creators = config
+        .creators
+        .clone()
+        .into_iter()
+        .map(|c| c.into_candy_format())
+        .collect::<Result<Vec<mpl_candy_machine::Creator>>>()?;
+
     let data = CandyMachineData {
         uuid: candy_machine.uuid,
         price,
-        symbol: candy_machine.symbol,
-        seller_fee_basis_points: candy_machine.seller_fee_basis_points,
+        symbol: config.symbol.clone(),
+        seller_fee_basis_points: config.seller_fee_basis_points,
         max_supply: 0,
         is_mutable: config.is_mutable,
         retain_authority: config.retain_authority,
         go_live_date,
-        end_settings: end_settings.clone(),
-        creators: candy_machine.creators,
-        whitelist_mint_settings: whitelist_mint_settings.clone(),
-        hidden_settings: hidden_settings.clone(),
+        end_settings,
+        creators,
+        whitelist_mint_settings,
+        hidden_settings,
         items_available: config.number,
         gatekeeper,
     };

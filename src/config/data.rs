@@ -68,6 +68,9 @@ pub struct ConfigData {
     #[serde(serialize_with = "to_option_string")]
     pub aws_s3_bucket: Option<String>,
 
+    #[serde(serialize_with = "to_option_string")]
+    pub nft_storage_auth_token: Option<String>,
+
     #[serde(deserialize_with = "to_option_pubkey")]
     #[serde(serialize_with = "to_option_string")]
     pub shdw_storage: Option<Pubkey>,
@@ -292,6 +295,7 @@ pub enum UploadMethod {
     Bundlr,
     AWS,
     ShadowDrive,
+    NftStorage,
 }
 
 impl Default for UploadMethod {
@@ -308,6 +312,7 @@ impl FromStr for UploadMethod {
             "bundlr" => Ok(UploadMethod::Bundlr),
             "aws" => Ok(UploadMethod::AWS),
             "shdw" => Ok(UploadMethod::ShadowDrive),
+            "nft_storage" => Ok(UploadMethod::NftStorage),
             _ => Err(ConfigError::InvalidUploadMethod(s.to_string())),
         }
     }
@@ -319,6 +324,7 @@ impl ToString for UploadMethod {
             UploadMethod::Bundlr => "bundlr".to_string(),
             UploadMethod::AWS => "aws".to_string(),
             UploadMethod::ShadowDrive => "shdw".to_string(),
+            UploadMethod::NftStorage => "nft_storage".to_string(),
         }
     }
 }

@@ -1,6 +1,3 @@
-use anyhow::{anyhow, Result};
-use clap::Parser;
-use console::style;
 use std::{
     fs::OpenOptions,
     path::PathBuf,
@@ -10,11 +7,19 @@ use std::{
         Arc,
     },
 };
+
+use anyhow::{anyhow, Result};
+use clap::Parser;
+use console::style;
 use tracing::subscriber::set_global_default;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::{self, filter::LevelFilter, prelude::*, EnvFilter};
 
-use sugar_cli::cli::{Cli, Commands};
+use sugar_cli::bundlr::{process_bundlr, BundlrArgs};
+use sugar_cli::cli::{Cli, CollectionSubcommands, Commands};
+use sugar_cli::collections::{
+    process_remove_collection, process_set_collection, RemoveCollectionArgs, SetCollectionArgs,
+};
 use sugar_cli::constants::{COMPLETE_EMOJI, ERROR_EMOJI};
 use sugar_cli::create_config::{process_create_config, CreateConfigArgs};
 use sugar_cli::deploy::{process_deploy, DeployArgs};
@@ -138,6 +143,7 @@ async fn run() -> Result<()> {
             rpc_url,
             cache,
             strict,
+            skip_collection_prompt,
         } => {
             process_launch(LaunchArgs {
                 assets_dir,
@@ -146,6 +152,7 @@ async fn run() -> Result<()> {
                 rpc_url,
                 cache,
                 strict,
+                skip_collection_prompt,
                 interrupted: interrupted.clone(),
             })
             .await?
@@ -210,9 +217,15 @@ async fn run() -> Result<()> {
             })
             .await?
         }
-        Commands::Validate { assets_dir, strict } => {
-            process_validate(ValidateArgs { assets_dir, strict })?
-        }
+        Commands::Validate {
+            assets_dir,
+            strict,
+            skip_collection_prompt,
+        } => process_validate(ValidateArgs {
+            assets_dir,
+            strict,
+            skip_collection_prompt,
+        })?,
         Commands::Withdraw {
             candy_machine,
             keypair,
@@ -244,6 +257,41 @@ async fn run() -> Result<()> {
             cache,
             candy_machine,
         })?,
+        Commands::Collection {
+            keypair,
+            rpc_url,
+            cache,
+            candy_machine,
+            command,
+        } => match command {
+            CollectionSubcommands::Set { collection_mint } => {
+                process_set_collection(SetCollectionArgs {
+                    collection_mint,
+                    keypair,
+                    rpc_url,
+                    cache,
+                    candy_machine,
+                })?
+            }
+            CollectionSubcommands::Remove => process_remove_collection(RemoveCollectionArgs {
+                keypair,
+                rpc_url,
+                cache,
+                candy_machine,
+            })?,
+        },
+        Commands::Bundlr {
+            keypair,
+            rpc_url,
+            action,
+        } => {
+            process_bundlr(BundlrArgs {
+                keypair,
+                rpc_url,
+                action,
+            })
+            .await?
+        }
     }
 
     Ok(())

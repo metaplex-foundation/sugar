@@ -20,6 +20,9 @@ pub enum CacheError {
 
     #[error("Failed to parse cache file with error: {0}")]
     CacheFileWrongFormat(String),
+
+    #[error("Invalid cache state found.")]
+    InvalidState,
 }
 
 #[derive(Debug, Error)]
@@ -35,6 +38,12 @@ pub enum ReadFilesError {
 
     #[error("File open errors, check log file for details.")]
     FileOpenErrors,
+}
+
+#[derive(Debug, Error)]
+pub enum CustomCandyError {
+    #[error("Payer key '{0}' does not equal the Candy Machine authority pubkey '{1}'")]
+    AuthorityMismatch(String, String),
 }
 
 #[derive(Debug)]

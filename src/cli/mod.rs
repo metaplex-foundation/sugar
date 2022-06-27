@@ -58,6 +58,10 @@ pub enum Commands {
         /// Strict mode: validate against JSON metadata standard exactly
         #[clap(long)]
         strict: bool,
+
+        /// Skip collection validate prompt
+        #[clap(long)]
+        skip_collection_prompt: bool,
     },
     /// Mint one NFT from candy machine
     Mint {
@@ -179,6 +183,10 @@ pub enum Commands {
         /// Strict mode: validate against JSON metadata standard exactly
         #[clap(long)]
         strict: bool,
+
+        /// Skip collection prompt
+        #[clap(long)]
+        skip_collection_prompt: bool,
     },
 
     /// Verify uploaded data
@@ -213,4 +221,61 @@ pub enum Commands {
         /// Address of candy machine
         candy_machine: Option<String>,
     },
+
+    /// Interact with the bundlr network
+    Bundlr {
+        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
+        #[clap(short, long)]
+        keypair: Option<String>,
+
+        /// RPC Url
+        #[clap(short, long)]
+        rpc_url: Option<String>,
+
+        #[clap(subcommand)]
+        action: BundlrAction,
+    },
+
+    /// Manage the collection on the candy machine
+    Collection {
+        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
+        #[clap(short, long)]
+        keypair: Option<String>,
+
+        /// RPC Url
+        #[clap(short, long)]
+        rpc_url: Option<String>,
+
+        /// Path to the cache file, defaults to "cache.json"
+        #[clap(long, default_value = DEFAULT_CACHE)]
+        cache: String,
+
+        /// Address of candy machine to update.
+        #[clap(long)]
+        candy_machine: Option<String>,
+
+        #[clap(subcommand)]
+        command: CollectionSubcommands,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum CollectionSubcommands {
+    /// Set the collection mint on the candy machine
+    Set {
+        /// Address of collection mint to set the candy machine to.
+        #[clap(long)]
+        collection_mint: String,
+    },
+
+    /// Remove the collection from the candy machine
+    Remove,
+}
+
+#[derive(Subcommand)]
+pub enum BundlrAction {
+    /// Retrieve the balance on bundlr
+    Balance,
+    /// Withdraw funds from bundlr
+    Withdraw,
 }

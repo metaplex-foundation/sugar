@@ -1,9 +1,9 @@
 use anchor_lang::prelude::Pubkey;
 use anyhow::{anyhow, Result};
 use chrono::DateTime;
-use console::{style, Style};
+use console::style;
 use dialoguer::Confirm;
-use dialoguer::{theme::ColorfulTheme, Input, MultiSelect, Select};
+use dialoguer::{Input, MultiSelect, Select};
 use std::{
     default::Default,
     fs::{File, OpenOptions},
@@ -13,7 +13,7 @@ use std::{
 };
 use url::Url;
 
-use crate::candy_machine::ID as CANDY_MACHINE_ID;
+use crate::candy_machine::CANDY_MACHINE_ID;
 use crate::config::{
     parse_string_as_date, ConfigData, Creator, EndSettingType, EndSettings, GatekeeperConfig,
     HiddenSettings, UploadMethod, WhitelistMintMode, WhitelistMintSettings,
@@ -21,14 +21,14 @@ use crate::config::{
 use crate::constants::*;
 use crate::setup::{setup_client, sugar_setup};
 use crate::upload::list_files;
-use crate::utils::{check_spl_token, check_spl_token_account};
+use crate::utils::{check_spl_token, check_spl_token_account, get_dialoguer_theme};
 use crate::validate::Metadata;
 
 /// Default name of the first metadata file.
 const DEFAULT_METADATA: &str = "0.json";
 
 /// Default value to represent an invalid seller fee basis points.
-const INVALID_SELLER_FEE: u16 = std::u16::MAX;
+const INVALID_SELLER_FEE: u16 = u16::MAX;
 
 /// Date mask for formatting input.
 const DATE_MASK: &str = "%Y-%m-%d %H:%M:%S %z";
@@ -42,12 +42,7 @@ pub struct CreateConfigArgs {
 
 pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     let mut config_data: ConfigData = ConfigData::default();
-    let theme = ColorfulTheme {
-        prompt_style: Style::new(),
-        checked_item_prefix: style("✔".to_string()).green().force_styling(true),
-        unchecked_item_prefix: style("✔".to_string()).black().force_styling(true),
-        ..Default::default()
-    };
+    let theme = get_dialoguer_theme();
 
     // validators
 
@@ -69,6 +64,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             Ok(())
         }
     };
+
     let number_validator = |input: &String| -> Result<(), String> {
         if input.parse::<u64>().is_err() {
             Err(format!("Couldn't parse input of '{}' to a number.", input))
@@ -98,6 +94,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             Ok(())
         }
     };
+
     let symbol_validator = |input: &String| -> Result<(), String> {
         if input.len() > 10 {
             Err(String::from("Symbol must be 10 characters or less."))
@@ -105,6 +102,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             Ok(())
         }
     };
+
     let seller_fee_basis_points_validator = |input: &String| -> Result<(), String> {
         let value = match input.parse::<u16>() {
             Ok(value) => value,
@@ -127,7 +125,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     // checks if we have an assets dir and count the number of files
     // assumes 0 in case of error since assets_dir is optional
-    let num_files = match list_files(&args.assets_dir) {
+    let num_files = match list_files(&args.assets_dir, false) {
         Ok(number) => number.len(),
         _ => 0,
     };
@@ -554,7 +552,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     // upload method
 
-    let upload_options = vec!["Bundlr", "AWS"];
+    let upload_options = vec!["Bundlr", "AWS", "NFT Storage"];
     config_data.upload_method = match Select::with_theme(&theme)
         .with_prompt("What upload method do you want to use?")
         .items(&upload_options)
@@ -564,6 +562,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     {
         0 => UploadMethod::Bundlr,
         1 => UploadMethod::AWS,
+        2 => UploadMethod::NftStorage,
         _ => UploadMethod::Bundlr,
     };
 
@@ -571,6 +570,15 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         config_data.aws_s3_bucket = Some(
             Input::with_theme(&theme)
                 .with_prompt("What is the AWS S3 bucket name?")
+                .interact()
+                .unwrap(),
+        );
+    }
+
+    if config_data.upload_method == UploadMethod::NftStorage {
+        config_data.nft_storage_auth_token = Some(
+            Input::with_theme(&theme)
+                .with_prompt("What is the NFT Storage authentication token?")
                 .interact()
                 .unwrap(),
         );

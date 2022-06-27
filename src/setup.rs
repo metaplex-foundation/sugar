@@ -19,10 +19,10 @@ pub fn setup_client(sugar_config: &SugarConfig) -> Result<Client> {
     let cluster = Cluster::Custom(rpc_url, ws_url);
 
     let key_bytes = sugar_config.keypair.to_bytes();
-    let payer = Rc::new(Keypair::from_bytes(&key_bytes)?);
+    let signer = Rc::new(Keypair::from_bytes(&key_bytes)?);
 
-    let opts = CommitmentConfig::finalized();
-    Ok(Client::new_with_options(cluster, payer, opts))
+    let opts = CommitmentConfig::confirmed();
+    Ok(Client::new_with_options(cluster, signer, opts))
 }
 
 pub fn sugar_setup(
