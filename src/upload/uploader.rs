@@ -33,7 +33,7 @@ pub const MOCK_URI_SIZE: usize = 100;
 /// For example, for image files, the `content` contains the path of the file on the
 /// file system. In the case of json metadata files, the `content` contains the string
 /// representation of the json metadata.
-/// 
+///
 pub struct AssetInfo {
     /// Id of the asset in the cache.
     pub asset_id: String,
@@ -68,7 +68,7 @@ pub trait Prepare {
     /// The `asset_pairs` contain the complete information of the assets, but only the assets specified in the
     /// `asset_indices` will be uploaded. E.g., if index `1` is only present in the `DataType::Image` indices' array,
     /// only the image of asset `1` will the uploaded.
-    /// 
+    ///
     async fn prepare(
         &self,
         sugar_config: &SugarConfig,
@@ -82,12 +82,12 @@ pub trait Prepare {
 /// This trait should be implemented directly by upload methods that require full control on how the upload
 /// is performed. For methods that support parallel uploads (threading), consider implementing
 /// [`ParallelUploader`](ParallelUploader) instead.
-/// 
+///
 #[async_trait]
 pub trait Uploader: Prepare {
     /// Returns a vector [`UploadError`](super::errors::UploadError) with the errors (if any) after uploading all
     /// assets to the storage.
-    /// 
+    ///
     /// This function will be called to upload each type of asset separately.
     ///
     /// # Arguments
@@ -100,33 +100,33 @@ pub trait Uploader: Prepare {
     ///                the console
     /// * `interrupted` - Reference to the shared interruption handler [`flag`](std::sync::atomic::AtomicBool)
     ///                   to receive notifications
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// Implementations are expected to use the `interrupted` to control when the user aborts the upload process.
     /// In general, this would involve using it as a control of a loop:
-    /// 
-    /// ```no_run
+    ///
+    /// ```ignore
     /// while !interrupted.load(Ordering::SeqCst) {
     ///     // continue with the upload
     /// }
     /// ```
-    /// 
+    ///
     /// After uploading an asset, its information need to be updated in the cache and the cache
     /// [`sync`](crate::cache::Cache#method.sync_file)ed to the file system. Syncing the cache to the file system
     /// might be slow for large collections, therefore it should be done as frequent as practical to avoid slowing
     /// down the upload process and, at the same time, minimizing the chances of information loss in case
     /// the user aborts the upload.
-    /// 
-    /// ```no_run
+    ///
+    /// ```ignore
     /// ...
     /// // once an asset has been upload
-    /// 
+    ///
     /// let id = asset_info.asset_id.clone();
     /// let uri = "URI of the asset after upload";
     /// // cache item to update
     /// let item = cache.items.get_mut(&id).unwrap();
-    /// 
+    ///
     /// match data_type {
     ///     DataType::Image => item.image_link = uri,
     ///     DataType::Metadata => item.metadata_link = uri,
@@ -134,13 +134,13 @@ pub trait Uploader: Prepare {
     /// }
     /// // updates the progress bar
     /// progress.inc(1);
-    /// 
+    ///
     /// ...
-    /// 
+    ///
     /// // after several uploads
     /// cache.sync_file()?;
     /// ```
-    /// 
+    ///
     async fn upload(
         &self,
         sugar_config: &SugarConfig,
@@ -153,38 +153,38 @@ pub trait Uploader: Prepare {
 }
 
 /// Types that can upload assets in parallel.
-/// 
+///
 /// This trait abstracts the threading logic and allows methods to focus on the logic of uploading a single
 /// asset (file).
 #[async_trait]
 pub trait ParallelUploader: Uploader + Send + Sync {
     /// Returns a [`JoinHandle`](tokio::task::JoinHandle) to the task responsible to upload the specified asset.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `asset` - The [`asset`](AssetInfo) to upload
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// In most cases, the function will return the value from [`tokio::spawn`](tokio::spawn):
-    /// 
-    /// ```no_run
+    ///
+    /// ```ignore
     /// tokio::spawn(async move {
     ///     // code responsible to upload a single asset
     /// });
     /// ```
-    /// 
+    ///
     fn upload_asset(&self, asset: AssetInfo) -> JoinHandle<Result<(String, String)>>;
 }
 
 /// Default implementation of the trait ['Uploader'](Uploader) for all ['ParallelUploader'](ParallelUploader).
-/// 
+///
 #[async_trait]
 impl<T: ParallelUploader> Uploader for T {
     /// Uploads assets in parallel. It creates `PARALLEL_LIMIT`[PARALLEL_LIMIT] tasks at a time to avoid
     /// reaching the limit of concurrent files open and it syncs the cache file at every `PARALLEL_LIMIT / 2`
     /// step.
-    /// 
+    ///
     async fn upload(
         &self,
         _sugar_config: &SugarConfig,
@@ -261,9 +261,9 @@ impl<T: ParallelUploader> Uploader for T {
 }
 
 /// Returns a new uploader trait object based on the configuration `uploadMethod`.
-/// 
+///
 /// This function acts as a *factory* function for uploader objects.
-/// 
+///
 pub async fn initialize(
     sugar_config: &SugarConfig,
     config_data: &ConfigData,

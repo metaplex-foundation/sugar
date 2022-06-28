@@ -81,9 +81,7 @@ impl NftStorageMethod {
             auth_value.set_sensitive(true);
             headers.insert(header::AUTHORIZATION, auth_value);
 
-            let client = client_builder
-                .default_headers(headers)
-                .build()?;
+            let client = client_builder.default_headers(headers).build()?;
 
             let url = format!("{}/", NFT_STORAGE_API_URL);
             let response = client.get(url).send().await?;
