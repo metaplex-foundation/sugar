@@ -22,29 +22,53 @@ use crate::upload::{
     UploadError,
 };
 
-/// Size of the mock media URI for cost calculation
+// Size of the mock media URI for cost calculations.
 pub const MOCK_URI_SIZE: usize = 100;
 
 /// Struct representing an asset ready for upload. An `AssetInfo` can represent
 /// a physical file, in which case the `content` will correspond to the name
-/// of the file, or an in-memory asset, in which case the `content` will correspond
+/// of the file; or an in-memory asset, in which case the `content` will correspond
 /// to the content of the asset.
 ///
-/// For example, for image files, the `content` contains the name of the file on the
-/// file system. In the case of the json metadata file, the `content` contains the json
-/// string of the metadata.
+/// For example, for image files, the `content` contains the path of the file on the
+/// file system. In the case of json metadata files, the `content` contains the string
+/// representation of the json metadata.
+/// 
 pub struct AssetInfo {
+    /// Id of the asset in the cache.
     pub asset_id: String,
+    /// Name (file name) of the asset.
     pub name: String,
+    /// Content of the asset - either a file path of the string representation fo the content.
     pub content: String,
+    /// Type of the asset.
     pub data_type: DataType,
+    /// MIME content type.
     pub content_type: String,
 }
 
+/// Types that can be prepared to upload assets (files).
+///
+/// All implementation of [`Uploader`](Uploader) need to implement this trait.
 #[async_trait]
 pub trait Prepare {
-    /// Prepare the upload of the specified media/metadata files. This generally
-    /// involve checking if there is space/funds for the upload.
+    /// Prepare the upload of the specified media/metadata files, e.g.:
+    /// - check if any file exceeds a size limit;
+    /// - check if there is storage space for the upload;
+    /// - check/add funds for the upload.
+    ///
+    /// The `prepare` receives the information of all files that will be upload.
+    ///
+    /// # Arguments
+    ///
+    /// * `sugar_config` - The current sugar configuration
+    /// * `asset_pairs` - Mapping of `index` to an `AssetPair`
+    /// * `asset_indices` - Vector with the information of which asset pair indices will be upload grouped by type.
+    ///
+    /// The `asset_pairs` contain the complete information of the assets, but only the assets specified in the
+    /// `asset_indices` will be uploaded. E.g., if index `1` is only present in the `DataType::Image` indices' array,
+    /// only the image of asset `1` will the uploaded.
+    /// 
     async fn prepare(
         &self,
         sugar_config: &SugarConfig,
@@ -53,12 +77,70 @@ pub trait Prepare {
     ) -> Result<()>;
 }
 
-/// A trait for storage upload handlers. This trait should be implemented directly by
-/// upload methods that do not support parallel uploads (threading).
+/// Types that can upload assets (files).
+///
+/// This trait should be implemented directly by upload methods that require full control on how the upload
+/// is performed. For methods that support parallel uploads (threading), consider implementing
+/// [`ParallelUploader`](ParallelUploader) instead.
+/// 
 #[async_trait]
 pub trait Uploader: Prepare {
-    /// Upload all assets to the storage. This function will be called to upload
-    /// each type of asset separately.
+    /// Returns a vector [`UploadError`](super::errors::UploadError) with the errors (if any) after uploading all
+    /// assets to the storage.
+    /// 
+    /// This function will be called to upload each type of asset separately.
+    ///
+    /// # Arguments
+    ///
+    /// * `sugar_config` - The current sugar configuration
+    /// * `cache` - Asset [`cache`](crate::cache::Cache) object (mutable)
+    /// * `data_type` - Type of the asset being uploaded
+    /// * `assets` - Vector of [`assets`](AssetInfo) to upload (mutable)
+    /// * `progress` - Reference to the [`progress bar`](indicatif::ProgressBar) to provide feedback to
+    ///                the console
+    /// * `interrupted` - Reference to the shared interruption handler [`flag`](std::sync::atomic::AtomicBool)
+    ///                   to receive notifications
+    /// 
+    /// # Examples
+    /// 
+    /// Implementations are expected to use the `interrupted` to control when the user aborts the upload process.
+    /// In general, this would involve using it as a control of a loop:
+    /// 
+    /// ```no_run
+    /// while !interrupted.load(Ordering::SeqCst) {
+    ///     // continue with the upload
+    /// }
+    /// ```
+    /// 
+    /// After uploading an asset, its information need to be updated in the cache and the cache
+    /// [`sync`](crate::cache::Cache#method.sync_file)ed to the file system. Syncing the cache to the file system
+    /// might be slow for large collections, therefore it should be done as frequent as practical to avoid slowing
+    /// down the upload process and, at the same time, minimizing the chances of information loss in case
+    /// the user aborts the upload.
+    /// 
+    /// ```no_run
+    /// ...
+    /// // once an asset has been upload
+    /// 
+    /// let id = asset_info.asset_id.clone();
+    /// let uri = "URI of the asset after upload";
+    /// // cache item to update
+    /// let item = cache.items.get_mut(&id).unwrap();
+    /// 
+    /// match data_type {
+    ///     DataType::Image => item.image_link = uri,
+    ///     DataType::Metadata => item.metadata_link = uri,
+    ///     DataType::Animation => item.animation_link = Some(uri),
+    /// }
+    /// // updates the progress bar
+    /// progress.inc(1);
+    /// 
+    /// ...
+    /// 
+    /// // after several uploads
+    /// cache.sync_file()?;
+    /// ```
+    /// 
     async fn upload(
         &self,
         sugar_config: &SugarConfig,
@@ -70,17 +152,39 @@ pub trait Uploader: Prepare {
     ) -> Result<Vec<UploadError>>;
 }
 
-/// A trait for parallel storage upload handlers. THis trait should be implemented by
-/// methods that support parallel uploads (threading). In this case, the return of
-/// the `upload` method should be a `JoinHandle` to the thread that is responsible to upload
-/// the asset.
+/// Types that can upload assets in parallel.
+/// 
+/// This trait abstracts the threading logic and allows methods to focus on the logic of uploading a single
+/// asset (file).
 #[async_trait]
 pub trait ParallelUploader: Uploader + Send + Sync {
-    fn upload_asset(&self, assets: AssetInfo) -> JoinHandle<Result<(String, String)>>;
+    /// Returns a [`JoinHandle`](tokio::task::JoinHandle) to the task responsible to upload the specified asset.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `asset` - The [`asset`](AssetInfo) to upload
+    /// 
+    /// # Example
+    /// 
+    /// In most cases, the function will return the value from [`tokio::spawn`](tokio::spawn):
+    /// 
+    /// ```no_run
+    /// tokio::spawn(async move {
+    ///     // code responsible to upload a single asset
+    /// });
+    /// ```
+    /// 
+    fn upload_asset(&self, asset: AssetInfo) -> JoinHandle<Result<(String, String)>>;
 }
 
+/// Default implementation of the trait ['Uploader'](Uploader) for all ['ParallelUploader'](ParallelUploader).
+/// 
 #[async_trait]
 impl<T: ParallelUploader> Uploader for T {
+    /// Uploads assets in parallel. It creates `PARALLEL_LIMIT`[PARALLEL_LIMIT] tasks at a time to avoid
+    /// reaching the limit of concurrent files open and it syncs the cache file at every `PARALLEL_LIMIT / 2`
+    /// step.
+    /// 
     async fn upload(
         &self,
         _sugar_config: &SugarConfig,
@@ -156,9 +260,10 @@ impl<T: ParallelUploader> Uploader for T {
     }
 }
 
-/// Factory function for uploader objects.
-///
 /// Returns a new uploader trait object based on the configuration `uploadMethod`.
+/// 
+/// This function acts as a *factory* function for uploader objects.
+/// 
 pub async fn initialize(
     sugar_config: &SugarConfig,
     config_data: &ConfigData,
@@ -172,7 +277,7 @@ pub async fn initialize(
             Box::new(SHDWMethod::new(sugar_config, config_data)?) as Box<dyn Uploader>
         }
         UploadMethod::NftStorage => {
-            Box::new(NftStorageMethod::initialize(config_data).await?) as Box<dyn Uploader>
+            Box::new(NftStorageMethod::new(config_data).await?) as Box<dyn Uploader>
         }
     })
 }
