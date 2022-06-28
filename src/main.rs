@@ -26,6 +26,7 @@ use sugar_cli::deploy::{process_deploy, DeployArgs};
 use sugar_cli::launch::{process_launch, LaunchArgs};
 use sugar_cli::mint::{process_mint, MintArgs};
 use sugar_cli::show::{process_show, ShowArgs};
+use sugar_cli::sign::{process_sign, SignArgs};
 use sugar_cli::update::{process_update, UpdateArgs};
 use sugar_cli::upload::{process_upload, UploadArgs};
 use sugar_cli::validate::{process_validate, ValidateArgs};
@@ -292,6 +293,19 @@ async fn run() -> Result<()> {
             })
             .await?
         }
+        Commands::Sign {
+            keypair,
+            rpc_url,
+            cache,
+            mint,
+            candy_machine,
+        } => process_sign(SignArgs {
+            keypair,
+            rpc_url,
+            cache,
+            mint,
+            candy_machine,
+        })?,
     }
 
     Ok(())
