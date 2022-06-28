@@ -545,7 +545,6 @@ impl Uploader for SHDWMethod {
                         "Skipping upload of file '{}' (http status code {})",
                         asset_info.name, status
                     );
-                    println!("Error status: {}", status);
                 }
             };
         }
