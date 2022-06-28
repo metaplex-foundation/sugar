@@ -12,20 +12,20 @@ use std::{
         Arc,
     },
 };
-use tokio::time::Duration;
+use tokio::time::{sleep, Duration};
 
 use crate::{common::*, config::*, upload::*};
 
+// API end point.
 const NFT_STORAGE_API_URL: &str = "https://api.nft.storage";
+// Storage end point.
 const NFT_STORAGE_GATEWAY_URL: &str = "https://nftstorage.link/ipfs";
 // Request time window (ms) to avoid the rate limit.
-//const REQUEST_WAIT: u64 = 1000;
-// Number of concurrent requests.
-//const LIMIT: usize = 1;
-// Response timeout (seconds).
-const TIMEOUT: u64 = 20;
+const REQUEST_WAIT: u64 = 10000;
 // File size limit (100mb).
 const FILE_SIZE_LIMIT: u64 = 100 * 1024 * 1024;
+// Number of files per request limit.
+const FILE_COUNT_LIMIT: u64 = 100;
 
 pub enum NftStorageError {
     ApiError(Value),
@@ -71,7 +71,7 @@ pub struct NftStorageMethod {
 
 impl NftStorageMethod {
     /// Initialize a new NftStorageHandler.
-    pub async fn initialize(config_data: &ConfigData) -> Result<Self> {
+    pub async fn new(config_data: &ConfigData) -> Result<Self> {
         if let Some(auth_token) = &config_data.nft_storage_auth_token {
             let client_builder = Client::builder();
 
@@ -83,7 +83,6 @@ impl NftStorageMethod {
 
             let client = client_builder
                 .default_headers(headers)
-                .timeout(Duration::from_secs(TIMEOUT))
                 .build()?;
 
             let url = format!("{}/", NFT_STORAGE_API_URL);
@@ -173,6 +172,7 @@ impl Uploader for NftStorageMethod {
         let mut batches: Vec<Vec<&AssetInfo>> = Vec::new();
         let mut current: Vec<&AssetInfo> = Vec::new();
         let mut upload_size = 0;
+        let mut upload_count = 0;
 
         for asset_info in assets {
             let size = match data_type {
@@ -186,13 +186,15 @@ impl Uploader for NftStorageMethod {
                 }
             };
 
-            if (upload_size + size) > FILE_SIZE_LIMIT {
+            if (upload_size + size) > FILE_SIZE_LIMIT || (upload_count + 1) > FILE_COUNT_LIMIT {
                 batches.push(current);
                 current = Vec::new();
                 upload_size = 0;
+                upload_count = 0;
             }
 
             upload_size += size;
+            upload_count += 1;
             current.push(asset_info);
         }
         // adds the last chunk (if there is one)
@@ -201,6 +203,8 @@ impl Uploader for NftStorageMethod {
         }
 
         let mut errors = Vec::new();
+        // sets the length of the progress bar as the number of batches
+        progress.set_length(batches.len() as u64);
 
         while !interrupted.load(Ordering::SeqCst) && !batches.is_empty() {
             let batch = batches.remove(0);
@@ -249,11 +253,11 @@ impl Uploader for NftStorageMethod {
                         DataType::Metadata => item.metadata_link = uri,
                         DataType::Animation => item.animation_link = Some(uri),
                     }
-                    // updates the progress bar
-                    progress.inc(1);
                 }
                 // syncs cache (checkpoint)
                 cache.sync_file()?;
+                // updates the progress bar
+                progress.inc(1);
             } else {
                 let body = response.json::<Value>().await?;
                 let StoreNftError {
@@ -262,9 +266,13 @@ impl Uploader for NftStorageMethod {
                 }: StoreNftError = serde_json::from_value(body)?;
 
                 errors.push(UploadError::SendDataFailed(format!(
-                    "Error uploading batch (http status {}): {}",
+                    "Error uploading batch ({}): {}",
                     status, message
                 )));
+            }
+            if !batches.is_empty() {
+                // wait to minimize the chance of getting caught by the rate limit
+                sleep(Duration::from_millis(REQUEST_WAIT)).await;
             }
         }
 
