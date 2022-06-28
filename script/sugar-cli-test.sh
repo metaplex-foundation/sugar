@@ -9,7 +9,7 @@
 # STORAGE="bundlr"
 #
 # ENV_URL="devnet"
-# RPC="https://devnet.genesysgo.net:/"
+# RPC="https://devnet.genesysgo.net/"
 # STORAGE="bundlr"
 #
 # ITEMS=10
@@ -74,7 +74,6 @@ function default_settings() {
     INFURA_ID="null"
     INFURA_SECRET="null"
     AWS_BUCKET="null"
-    SHDW_STORAGE="null"
     NFT_STORAGE_TOKEN="null"
 }
 
@@ -93,7 +92,6 @@ function max_settings() {
     INFURA_ID="null"
     INFURA_SECRET="null"
     AWS_BUCKET="null"
-    SHDW_STORAGE="null"
     NFT_STORAGE_TOKEN="null"
 }
 
@@ -219,15 +217,13 @@ if [ -z ${STORAGE+x} ]; then
     CYN "Storage type:"
     echo "1. bundlr (default)"
     echo "2. aws"
-    echo "3. shdw"
-    echo "4. nft.storage"
-    echo  -n "$(CYN "Select the storage type [1-4]") (default 1): "
+    echo "3. nft_storage"
+    echo  -n "$(CYN "Select the storage type [1-3]") (default 1): "
     read Input
     case "$Input" in
         1) STORAGE="bundlr" ;;
         2) STORAGE="aws" ;;
-        3) STORAGE="shdw" ;;
-        4) STORAGE="nft_storage"
+        3) STORAGE="nft_storage"
     esac
 fi
 
@@ -258,15 +254,6 @@ if [ -z ${AWS_BUCKET+x} ]; then
     if [ "$STORAGE" = "aws" ]; then
         echo -n $(CYN "AWS bucket name: ")
         read AWS_BUCKET
-    fi
-fi
-
-if [ -z ${SHDW_STORAGE+x} ]; then
-    SHDW_STORAGE="null"
-
-    if [ "$STORAGE" = "shdw" ]; then
-        echo -n $(CYN "SHDW storage address: ")
-        read SHDW_STORAGE
     fi
 fi
 
@@ -579,12 +566,6 @@ else
     HIDDEN_SETTINGS="null"
 fi
 
-SHDW=null
-
-if [ ! "$SHDW_STORAGE" = "null" ]; then
-    SHDW="\"${SHDW_STORAGE}\""
-fi
-
 cat >$CONFIG_FILE <<-EOM
 {
     "price": 0.1,
@@ -603,7 +584,6 @@ cat >$CONFIG_FILE <<-EOM
     "ipfsInfuraProjectId": "${INFURA_ID}",
     "ipfsInfuraSecret": "${INFURA_SECRET}",
     "awsS3Bucket": "${AWS_BUCKET}",
-    "shdwStorage": $SHDW,
     "nftStorageAuthToken": "${NFT_STORAGE_TOKEN}",
     "retainAuthority": true,
     "isMutable": true,
@@ -636,7 +616,6 @@ ARWEAVE_JWK="$ARWEAVE_JWK"
 INFURA_ID="$INFURA_ID"
 INFURA_SECRET="$INFURA_SECRET"
 AWS_BUCKET="$AWS_BUCKET"
-SHDW_STORAGE="$SHDW_STORAGE"
 NFT_STORAGE_TOKEN="$NFT_STORAGE_TOKEN"
 
 ENV_URL="$ENV_URL"

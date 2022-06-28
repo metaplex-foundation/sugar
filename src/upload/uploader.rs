@@ -273,9 +273,6 @@ pub async fn initialize(
         UploadMethod::Bundlr => {
             Box::new(BundlrMethod::new(sugar_config, config_data).await?) as Box<dyn Uploader>
         }
-        UploadMethod::ShadowDrive => {
-            Box::new(SHDWMethod::new(sugar_config, config_data)?) as Box<dyn Uploader>
-        }
         UploadMethod::NftStorage => {
             Box::new(NftStorageMethod::new(config_data).await?) as Box<dyn Uploader>
         }

@@ -70,10 +70,6 @@ pub struct ConfigData {
 
     #[serde(serialize_with = "to_option_string")]
     pub nft_storage_auth_token: Option<String>,
-
-    #[serde(deserialize_with = "to_option_pubkey")]
-    #[serde(serialize_with = "to_option_string")]
-    pub shdw_storage: Option<Pubkey>,
 }
 
 pub fn to_string<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
@@ -295,7 +291,6 @@ impl HiddenSettings {
 pub enum UploadMethod {
     Bundlr,
     AWS,
-    ShadowDrive,
     NftStorage,
 }
 
