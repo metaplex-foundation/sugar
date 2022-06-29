@@ -2661,9 +2661,9 @@ dependencies = [
 
 [[package]]
 name = "mpl-candy-machine"
-version = "4.0.0"
+version = "4.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fed8c4280024581a6c8a3ca7d18a5103e8c8fd030e2164177b75afe3ab2a488"
+checksum = "113e1468f5d73bc99305a625a322d73ced9aed4388a4a425c4d4f34ae6daf7f7"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -4725,6 +4725,7 @@ dependencies = [
  "shellexpand",
  "solana-account-decoder",
  "solana-client",
+ "solana-logger",
  "solana-program",
  "spl-associated-token-account",
  "spl-token",
