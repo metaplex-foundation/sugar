@@ -24,14 +24,15 @@ use std::{
 use mpl_candy_machine::accounts as nft_accounts;
 use mpl_candy_machine::instruction as nft_instruction;
 
-use crate::candy_machine::CANDY_MACHINE_ID;
-use crate::common::*;
 use crate::setup::{setup_client, sugar_setup};
 use crate::utils::*;
+use crate::{cache::load_cache, candy_machine::CANDY_MACHINE_ID};
+use crate::{common::*, pdas::get_metadata_pda};
 
 pub struct SignArgs {
     pub candy_machine: Option<String>,
     pub keypair: Option<String>,
+    pub cache: String,
     pub rpc_url: Option<String>,
     pub mint: Option<String>,
 }
@@ -63,17 +64,21 @@ pub fn process_sign(args: SignArgs) -> Result<()> {
         "\n{} {}{} funds",
         style("[2/2]").bold().dim(),
         WITHDRAW_EMOJI,
-        if args.list { "Listing" } else { "Retrieving" }
+        if args.mint.is_some() {
+            "Signing one NFT"
+        } else {
+            "Signing all NFTs"
+        }
     );
 
     if let Some(mint_id) = args.mint {
         let pb = spinner_with_style();
         pb.set_message(format!("Signing NFT with mint id {}.", mint_id));
 
-        let account_pubkey = Pubkey::from_str(&account)?;
-        let metadata_pubkey = get_metadata_pda(account_pubkey);
+        let account_pubkey = Pubkey::from_str(&mint_id)?;
+        let metadata_pubkey = get_metadata_pda(&account_pubkey, &program)?;
 
-        let result = match sign(program) {
+        let result = match sign(program, candy_machine_id, payer) {
             Ok(signature) => format!("{} {}", style("Signature:").bold(), signature),
             Err(err) => {
                 pb.abandon_with_message(format!("{}", style("Signing failed ").red().bold()));
