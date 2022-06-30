@@ -288,7 +288,7 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
 
         if !indices.is_empty() {
             // makes sure all items are in order
-            indices.sort();
+            indices.sort_unstable();
             // logs all indices
             info!("unminted list: {:?}", indices);
 
@@ -318,7 +318,7 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
                 );
             }
             // just adds a new line break
-            println!("");
+            println!();
         }
     }
 
