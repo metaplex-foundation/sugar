@@ -98,13 +98,12 @@ pub fn parse_string_as_date(go_live_date: &str) -> Result<String> {
 
 pub fn go_live_date_as_timestamp(go_live_date: &Option<String>) -> Result<Option<i64>> {
     if let Some(go_live_date) = go_live_date {
-        let format;
-        if let Ok(date) = chrono::DateTime::parse_from_rfc2822(go_live_date) {
-            format = date.timestamp();
+        let format = if let Ok(date) = chrono::DateTime::parse_from_rfc2822(go_live_date) {
+            date.timestamp()
         } else if let Ok(date) = chrono::DateTime::parse_from_rfc3339(go_live_date) {
-            format = date.timestamp();
+            date.timestamp()
         } else if let Ok(timestamp) = go_live_date.parse::<i64>() {
-            format = timestamp;
+            timestamp
         } else {
             return Err(anyhow!("Invalid date format. Format must be: RFC2822(Fri, 14 Jul 2022 02:40:00 -0400), RFC3339(2022-02-25T13:00:00Z), or UNIX timestamp."));
         };
