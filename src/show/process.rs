@@ -23,6 +23,8 @@ pub struct ShowArgs {
 // TODO: change the value '1' for the corresponding constant once the
 // new version of the mpl_candy_machine crate is published
 const SWAP_REMOVE_FEATURE_INDEX: usize = 1;
+// number of indices per line
+const PER_LINE: usize = 11;
 
 pub fn process_show(args: ShowArgs) -> Result<()> {
     println!(
@@ -235,7 +237,7 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
         println!(
             "\n{} {}Retrieving unminted indices",
             style("[2/2]").bold().dim(),
-            PAPER_EMOJI
+            LOOKING_GLASS_EMOJI
         );
 
         let mut start = CONFIG_ARRAY_START
@@ -285,16 +287,38 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
         }
 
         if !indices.is_empty() {
-            print!("\n{}", style("Indices => [ ").dim());
+            // makes sure all items are in order
+            indices.sort();
+            // logs all indices
+            info!("unminted list: {:?}", indices);
 
-            // prints the first unminted
-            print!("{}", indices.remove(0));
-            // prints the remaining ones
+            println!(
+                "\n{}{}",
+                PAPER_EMOJI,
+                style(format!("Unminted list ({} total):", indices.len())).dim()
+            );
+            let mut current = 0;
+
             for i in indices {
-                print!(", {i}");
-            }
+                if current == 0 {
+                    println!("{}", style(" :").dim());
+                    print!("{}", style(" :.. ").dim());
+                }
+                current += 1;
 
-            println!("{}", style(" ]").dim());
+                print!(
+                    "{:<5}{}",
+                    i,
+                    if current == PER_LINE {
+                        current = 0;
+                        "\n"
+                    } else {
+                        " "
+                    }
+                );
+            }
+            // just adds a new line break
+            println!("");
         }
     }
 
