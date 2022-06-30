@@ -1,4 +1,9 @@
+use anchor_client::ClientError;
 use anyhow::{anyhow, Result};
+use lazy_static::lazy_static;
+use regex::Regex;
+use solana_client::{client_error::ClientErrorKind, rpc_request::RpcError};
+use solana_program::program_error::ProgramError;
 use std::{env, fs::File, path::Path};
 
 use crate::config::data::*;
@@ -34,4 +39,41 @@ pub fn path_to_string(path: &Path) -> Result<String> {
         Some(s) => Ok(s.to_string()),
         None => Err(anyhow!("Couldn't convert path to string.")),
     }
+}
+
+pub fn parse_client_error(e: ClientError) -> String {
+    match e {
+        ClientError::AnchorError(e) => format!("AnchorError: {e}"),
+        ClientError::LogParseError(e) => format!("LogParseError: {e}"),
+        ClientError::ProgramError(e) => match e {
+            ProgramError::Custom(code) => format!("Code: {}", code),
+            _ => format!("ProgramError: {}", e),
+        },
+        ClientError::SolanaClientError(e) => match e.kind {
+            ClientErrorKind::Custom(code) => format!("Code: {}", code),
+            ClientErrorKind::RpcError(e) => match e {
+                RpcError::RpcRequestError(e) => format!("RpcRequestError: {}", e),
+                RpcError::RpcResponseError {
+                    code: _,
+                    message,
+                    data: _,
+                } => parse_rpc_response_message(message),
+                RpcError::ParseError(e) => format!("ParseError: {e}"),
+                _ => format!("RpcError: {}", e),
+            },
+            ClientErrorKind::TransactionError(e) => format!("Transaction {}", e),
+            _ => format!("SolanaClientError: {}", e),
+        },
+        _ => format!("Unmatched ClientError{}", e),
+    }
+}
+
+fn parse_rpc_response_message(msg: String) -> String {
+    lazy_static! {
+        static ref RE: Regex =
+            Regex::new(r"0x([A-Za-z1-9]+)").expect("Failed to compile parse_client_error regex.");
+    }
+
+    let mat = RE.find(&msg).unwrap();
+    msg[mat.start()..mat.end()].to_string()
 }

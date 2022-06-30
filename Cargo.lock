@@ -4723,6 +4723,7 @@ dependencies = [
  "glob",
  "indexmap",
  "indicatif",
+ "lazy_static",
  "mpl-candy-machine",
  "mpl-token-metadata",
  "num_cpus",

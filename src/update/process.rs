@@ -12,6 +12,7 @@ use crate::candy_machine::CANDY_MACHINE_ID;
 use crate::candy_machine::{get_candy_machine_state, parse_config_price};
 use crate::common::*;
 use crate::config::{data::*, parser::get_config_data};
+use crate::parse::parse_client_error;
 use crate::utils::{check_spl_token, check_spl_token_account, spinner_with_style};
 use crate::{cache::load_cache, config::data::ConfigData};
 
@@ -135,7 +136,13 @@ pub fn process_update(args: UpdateArgs) -> Result<()> {
     let pb = spinner_with_style();
     pb.set_message("Sending update transaction...");
 
-    let update_signature = builder.send()?;
+    let update_signature = match builder.send() {
+        Ok(update_signature) => update_signature,
+        Err(error) => {
+            let e = parse_client_error(error);
+            return Err(anyhow!("{e}"));
+        }
+    };
 
     pb.finish_with_message(format!(
         "{} {}",
