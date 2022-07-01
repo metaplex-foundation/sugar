@@ -1,5 +1,5 @@
-use std::ffi::OsStr;
 use std::{
+    ffi::OsStr,
     fs::{self, DirEntry, File, OpenOptions},
     io::{BufReader, Read},
     sync::Arc,
@@ -13,8 +13,7 @@ use ring::digest::{Context, SHA256};
 use serde::Serialize;
 use serde_json;
 
-use crate::common::*;
-use crate::validate::format::Metadata;
+use crate::{common::*, validate::format::Metadata};
 
 pub struct UploadDataArgs<'a> {
     pub bundlr_client: Arc<Bundlr<SolanaSigner>>,
@@ -74,7 +73,7 @@ pub fn get_cache_item<'a>(path: &Path, cache: &'a mut Cache) -> Result<(String, 
     let cache_item: &CacheItem = cache
         .items
         .get(&asset_id)
-        .ok_or_else(|| anyhow!("Failed to get config item at index: {}", asset_id))?;
+        .ok_or_else(|| anyhow!("Failed to get config item at index '{}'", asset_id))?;
 
     Ok((asset_id, cache_item))
 }
@@ -117,7 +116,7 @@ pub fn list_files(assets_dir: &str, include_collection: bool) -> Result<Vec<DirE
                 .expect("Failed to convert file name to valid unicode.");
 
             let is_collection = include_collection && file_stem == "collection";
-            let is_numeric = file_stem.chars().all(|c| c.is_digit(10));
+            let is_numeric = file_stem.chars().all(|c| c.is_ascii_digit());
 
             is_file && (is_numeric || is_collection)
         });
@@ -145,7 +144,8 @@ pub fn get_asset_pairs(assets_dir: &str) -> Result<HashMap<isize, AssetPair>> {
     let animation_exists_regex =
         Regex::new("^(.+)\\.((mp4)|(mov)|(webm))$").expect("Failed to create regex.");
 
-    // since there doesn't have to be video for each image/json pair, need to get rid of invalid file names before entering metadata filename loop
+    // since there doesn't have to be video for each image/json pair, need to get rid of
+    // invalid file names before entering metadata filename loop
     for x in paths_ref {
         if let Some(captures) = animation_exists_regex.captures(x) {
             if &captures[1] != "collection" && captures[1].parse::<usize>().is_err() {
@@ -209,7 +209,9 @@ pub fn get_asset_pairs(assets_dir: &str) -> Result<HashMap<isize, AssetPair>> {
             &img_filenames[0]
         };
 
-        // need a similar check for animation as above, this one checking if there is animation on specific index
+        // need a similar check for animation as above, this one checking if there is animation
+        // on specific index
+
         let animation_pattern = format!("^{}\\.((mp4)|(mov)|(webm))$", i);
         let animation_regex = RegexBuilder::new(&animation_pattern)
             .case_insensitive(true)
@@ -275,7 +277,7 @@ pub fn get_asset_pairs(assets_dir: &str) -> Result<HashMap<isize, AssetPair>> {
     Ok(asset_pairs)
 }
 
-fn encode(file: &str) -> Result<String> {
+pub fn encode(file: &str) -> Result<String> {
     let input = File::open(file)?;
     let mut reader = BufReader::new(input);
     let mut context = Context::new(&SHA256);
@@ -327,7 +329,7 @@ fn ensure_sequential_files(metadata_filenames: Vec<String>) -> Result<()> {
 pub fn get_updated_metadata(
     metadata_file: &str,
     image_link: &str,
-    animation_link: Option<String>,
+    animation_link: &Option<String>,
 ) -> Result<String> {
     let mut metadata: Metadata = {
         let m = OpenOptions::new()
@@ -353,7 +355,7 @@ pub fn get_updated_metadata(
     }
 
     metadata.image = image_link.to_string();
-    metadata.animation_url = animation_link;
+    metadata.animation_url = animation_link.clone();
 
     Ok(serde_json::to_string(&metadata).unwrap())
 }

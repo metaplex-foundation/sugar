@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use anchor_client::{
     solana_sdk::{
         commitment_config::CommitmentConfig,
@@ -6,12 +8,13 @@ use anchor_client::{
     Client, Cluster,
 };
 use anyhow::{anyhow, Result};
-use std::rc::Rc;
 use tracing::error;
 
-use crate::config::data::SugarConfig;
-use crate::constants::{DEFAULT_KEYPATH, DEFAULT_RPC_DEVNET};
-use crate::parse::*;
+use crate::{
+    config::data::SugarConfig,
+    constants::{DEFAULT_KEYPATH, DEFAULT_RPC_DEVNET},
+    parse::*,
+};
 
 pub fn setup_client(sugar_config: &SugarConfig) -> Result<Client> {
     let rpc_url = sugar_config.rpc_url.clone();
@@ -44,7 +47,11 @@ pub fn sugar_setup(
             Ok(keypair) => keypair,
             Err(e) => {
                 error!("Failed to read keypair file: {}", e);
-                return Err(anyhow!("Failed to read keypair file: {}", e));
+                return Err(anyhow!(
+                    "Failed to read keypair file: {}, {}",
+                    keypair_path,
+                    e
+                ));
             }
         },
 

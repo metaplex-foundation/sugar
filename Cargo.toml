@@ -31,22 +31,24 @@ glob = "0.3.0"
 indexmap = { version = "1.8.0", features = ["serde"] }
 indicatif = { version = "0.16.2", features = ["rayon"] }
 mpl-token-metadata = "1.2.7"
-mpl-candy-machine = { version = "4.0.0", features = ["no-entrypoint"] }
+mpl-candy-machine = { version = "4.0.1", features = ["no-entrypoint"] }
 num_cpus = "1.13.1"
 par-stream = { version = "0.10.0", features = ["runtime-tokio"] }
 rand = "0.7.0"
 rayon = "1.5.1"
-regex = "1.5.4"
-reqwest = { version = "0.11.9", features = ["json"] }
+regex = "1.5.6"
+reqwest = { version = "0.11.9", features = ["json", "multipart"] }
 retry = "1.3.0"
 ring = "0.16.20"
 serde = { version = "1.0.133", features = ["derive"] }
 serde_json = "1.0.74"
 serde_yaml = "0.8.23"
+shadow-drive-user-staking = "0.1.1"
 shellexpand = "2.1.0"
 solana-account-decoder = "1.8.0"
 solana-client = "1.8.1"
 solana-program = "1.8.1"
+solana-transaction-status = "1.8.1"
 spl-associated-token-account = "1.0.3"
 spl-token = "3.2.0"
 structopt = "0.3.25"
@@ -57,3 +59,4 @@ tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
 tracing-bunyan-formatter = "0.3"
 dialoguer = "0.10.0"
 url = "2.2.2"
+solana-logger = "1.8.1"

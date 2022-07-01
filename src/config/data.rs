@@ -1,17 +1,20 @@
-use anchor_client::solana_sdk::signature::Keypair;
-use anchor_client::solana_sdk::{native_token::LAMPORTS_PER_SOL, pubkey::Pubkey};
+use std::{
+    fmt::{self, Display},
+    str::FromStr,
+};
+
+use anchor_client::solana_sdk::{
+    native_token::LAMPORTS_PER_SOL, pubkey::Pubkey, signature::Keypair,
+};
 pub use anyhow::{anyhow, Result};
 use chrono::DateTime;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt::{self, Display};
-use std::str::FromStr;
-
 use mpl_candy_machine::{
     Creator as CandyCreator, EndSettingType as CandyEndSettingType,
     EndSettings as CandyEndSettings, GatekeeperConfig as CandyGatekeeperConfig,
     HiddenSettings as CandyHiddenSettings, WhitelistMintMode as CandyWhitelistMintMode,
     WhitelistMintSettings as CandyWhitelistMintSettings,
 };
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::config::errors::*;
 
@@ -47,7 +50,7 @@ pub struct ConfigData {
     #[serde(serialize_with = "to_option_string")]
     pub spl_token: Option<Pubkey>,
 
-    pub go_live_date: String,
+    pub go_live_date: Option<String>,
 
     pub end_settings: Option<EndSettings>,
 
@@ -61,15 +64,15 @@ pub struct ConfigData {
 
     pub is_mutable: bool,
 
+    pub symbol: String,
+
+    pub seller_fee_basis_points: u16,
+
     #[serde(serialize_with = "to_option_string")]
     pub aws_s3_bucket: Option<String>,
 
     #[serde(serialize_with = "to_option_string")]
     pub nft_storage_auth_token: Option<String>,
-
-    pub symbol: String,
-
-    pub seller_fee_basis_points: u16,
 }
 
 pub fn to_string<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
@@ -96,19 +99,21 @@ pub fn parse_string_as_date(go_live_date: &str) -> Result<String> {
     Ok(date.to_rfc2822())
 }
 
-pub fn go_live_date_as_timestamp(go_live_date: &str) -> Result<i64> {
-    let format;
-    if let Ok(date) = chrono::DateTime::parse_from_rfc2822(go_live_date) {
-        format = date.timestamp();
-    } else if let Ok(date) = chrono::DateTime::parse_from_rfc3339(go_live_date) {
-        format = date.timestamp();
-    } else if let Ok(timestamp) = go_live_date.parse::<i64>() {
-        format = timestamp;
+pub fn go_live_date_as_timestamp(go_live_date: &Option<String>) -> Result<Option<i64>> {
+    if let Some(go_live_date) = go_live_date {
+        let format = if let Ok(date) = chrono::DateTime::parse_from_rfc2822(go_live_date) {
+            date.timestamp()
+        } else if let Ok(date) = chrono::DateTime::parse_from_rfc3339(go_live_date) {
+            date.timestamp()
+        } else if let Ok(timestamp) = go_live_date.parse::<i64>() {
+            timestamp
+        } else {
+            return Err(anyhow!("Invalid date format. Format must be: RFC2822(Fri, 14 Jul 2022 02:40:00 -0400), RFC3339(2022-02-25T13:00:00Z), or UNIX timestamp."));
+        };
+        Ok(Some(format))
     } else {
-        return Err(anyhow!("Invalid date format. Format must be: RFC2822(Fri, 14 Jul 2022 02:40:00 -0400), RFC3339(2022-02-25T13:00:00Z), or UNIX timestamp."));
-    };
-
-    Ok(format)
+        Ok(None)
+    }
 }
 
 pub fn price_as_lamports(price: f64) -> u64 {
