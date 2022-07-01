@@ -298,13 +298,15 @@ async fn run() -> Result<()> {
             rpc_url,
             cache,
             mint,
-            candy_machine,
+            candy_machine_creator,
+            position,
         } => process_sign(SignArgs {
             keypair,
             rpc_url,
             cache,
             mint,
-            candy_machine,
+            candy_machine_creator,
+            position,
         })?,
     }
 

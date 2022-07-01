@@ -275,9 +275,13 @@ pub enum Commands {
         #[clap(short, long)]
         mint: Option<String>,
 
-        /// Address of candy machine to mint from.
+        /// Address of candy machine creator.
         #[clap(long)]
-        candy_machine: Option<String>,
+        candy_machine_creator: Option<String>,
+
+        /// CM creator index to filter by
+        #[clap(short, long, default_value = "0")]
+        position: usize,
     },
 }
 
