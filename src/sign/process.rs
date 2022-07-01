@@ -86,9 +86,9 @@ pub fn process_sign(args: SignArgs) -> Result<()> {
         pb.set_message(format!("Signing NFT with mint id {}.", mint_id));
 
         let account_pubkey = Pubkey::from_str(&mint_id)?;
-        let metadata_pubkey = get_metadata_pda(&account_pubkey, &program.clone())?;
+        let metadata_pubkey = get_metadata_pda(&account_pubkey, &program)?;
 
-        match sign(program.clone(), &signer, metadata_pubkey.0) {
+        match sign(program, &signer, metadata_pubkey.0) {
             Ok(signature) => format!("{} {:?}", style("Signature:").bold(), signature),
             Err(err) => {
                 pb.abandon_with_message(format!("{}", style("Signing failed ").red().bold()));
