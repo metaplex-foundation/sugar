@@ -139,7 +139,7 @@ pub fn process_update(args: UpdateArgs) -> Result<()> {
     let update_signature = match builder.send() {
         Ok(update_signature) => update_signature,
         Err(error) => {
-            let e = parse_client_error(error);
+            let e = parse_client_error(error)?;
             return Err(anyhow!("{e}"));
         }
     };

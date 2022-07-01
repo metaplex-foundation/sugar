@@ -36,6 +36,7 @@ mpl-token-metadata = "1.2.7"
 mpl-candy-machine = { version = "4.0.1", features = ["no-entrypoint"] }
 num_cpus = "1.13.1"
 par-stream = { version = "0.10.0", features = ["runtime-tokio"] }
+phf = { version = "0.10", features = ["macros"] }
 rand = "0.7.0"
 rayon = "1.5.1"
 regex = "1.5.6"
