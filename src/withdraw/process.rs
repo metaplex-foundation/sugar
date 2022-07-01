@@ -1,8 +1,4 @@
-use std::{
-    io::{stdin, stdout, Write},
-    rc::Rc,
-    str::FromStr,
-};
+use std::{rc::Rc, str::FromStr};
 
 pub use anchor_client::{
     solana_sdk::{
@@ -15,7 +11,8 @@ pub use anchor_client::{
     },
     Client, Program,
 };
-use console::style;
+use console::{style, Style};
+use dialoguer::{theme::ColorfulTheme, Confirm};
 use mpl_candy_machine::{accounts as nft_accounts, instruction as nft_instruction};
 use solana_account_decoder::UiAccountEncoding;
 use solana_client::{
@@ -134,44 +131,50 @@ pub fn process_withdraw(args: WithdrawArgs) -> Result<()> {
 
                 println!("\n{}", style("[Completed]").bold().dim());
             } else {
-                println!("\n+----------------------------------------------+");
-                println!("| WARNING: This will drain all candy machines. |");
-                println!("+----------------------------------------------+");
+                let warning = format!(
+                    "+-----------------------------------------------------+\n\
+                     | {} WARNING: This will drain ALL your Candy Machines |\n\
+                     +-----------------------------------------------------+",
+                    WARNING_EMOJI
+                );
 
-                print!("\nContinue? [Y/n] (default \'n\'): ");
-                stdout().flush().ok();
+                println!("{}\n", style(warning).bold().yellow());
 
-                let mut s = String::new();
-                stdin().read_line(&mut s).expect("Error reading input.");
+                let theme = ColorfulTheme {
+                    success_prefix: style("✔".to_string()).yellow().force_styling(true),
+                    values_style: Style::new().yellow(),
+                    ..get_dialoguer_theme()
+                };
 
-                if let Some('Y') = s.chars().next() {
-                    let pb = progress_bar_with_style(accounts.len() as u64);
-                    let mut not_drained = 0;
+                if !Confirm::with_theme(&theme)
+                    .with_prompt("Do you want to continue?")
+                    .interact()?
+                {
+                    return Err(anyhow!("Operation aborted"));
+                }
 
-                    accounts.iter().for_each(|account| {
-                        let (candy_machine, _account) = account;
-                        do_withdraw(program.clone(), *candy_machine, payer).unwrap_or_else(|e| {
-                            not_drained += 1;
-                            error!("Error: {}", e);
-                        });
-                        pb.inc(1);
+                let pb = progress_bar_with_style(accounts.len() as u64);
+                let mut not_drained = 0;
+
+                accounts.iter().for_each(|account| {
+                    let (candy_machine, _account) = account;
+                    do_withdraw(program.clone(), *candy_machine, payer).unwrap_or_else(|e| {
+                        not_drained += 1;
+                        error!("Error: {}", e);
                     });
+                    pb.inc(1);
+                });
 
-                    pb.finish();
+                pb.finish();
 
-                    if not_drained > 0 {
-                        println!(
-                            "{}",
-                            style(format!("Could not drain {} candy machine(s)", not_drained))
-                                .red()
-                                .bold()
-                                .dim()
-                        );
-                    }
-                } else {
-                    // there were candy machines to drain, but the user decided
-                    // to abort the withdraw
-                    println!("\n{}", style("Withdraw aborted.").red().bold().dim());
+                if not_drained > 0 {
+                    println!(
+                        "{}",
+                        style(format!("Could not drain {} candy machine(s)", not_drained))
+                            .red()
+                            .bold()
+                            .dim()
+                    );
                 }
             }
         }
