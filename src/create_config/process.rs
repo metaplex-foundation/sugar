@@ -10,21 +10,20 @@ use anchor_lang::prelude::Pubkey;
 use anyhow::{anyhow, Result};
 use chrono::DateTime;
 use console::style;
-use dialoguer::{Confirm, Input, MultiSelect, Select};
+use dialoguer::Confirm;
+use dialoguer::{Input, MultiSelect, Select};
 use url::Url;
 
-use crate::{
-    candy_machine::CANDY_MACHINE_ID,
-    config::{
-        parse_string_as_date, ConfigData, Creator, EndSettingType, EndSettings, GatekeeperConfig,
-        HiddenSettings, UploadMethod, WhitelistMintMode, WhitelistMintSettings,
-    },
-    constants::*,
-    setup::{setup_client, sugar_setup},
-    upload::list_files,
-    utils::{check_spl_token, check_spl_token_account, get_dialoguer_theme},
-    validate::Metadata,
+use crate::candy_machine::CANDY_MACHINE_ID;
+use crate::config::{
+    parse_string_as_date, ConfigData, Creator, EndSettingType, EndSettings, GatekeeperConfig,
+    HiddenSettings, UploadMethod, WhitelistMintMode, WhitelistMintSettings,
 };
+use crate::constants::*;
+use crate::setup::{setup_client, sugar_setup};
+use crate::upload::list_files;
+use crate::utils::{check_spl_token, check_spl_token_account, get_dialoguer_theme};
+use crate::validate::Metadata;
 
 /// Default name of the first metadata file.
 const DEFAULT_METADATA: &str = "0.json";
@@ -240,11 +239,15 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             .expect("Failed to parse number into u16 that should have already been validated.")
     };
 
+    // date
+
+    let null_or_none = |input: &str| -> bool { input == "none" || input == "null" };
     let date= Input::with_theme(&theme)
     .with_prompt("What is your go live date? Enter it this format, YYYY-MM-DD HH:MM:SS [+/-]UTC-OFFSET or type 'now' for \
      current time. For example 2022-05-02 18:00:00 +0000 for May 2, 2022 18:00:00 UTC.")
      .validate_with(|input: &String| {
-        if parse_string_as_date(input).is_ok() || input.contains("now"){
+        let trimmed = input.trim().to_lowercase();
+        if trimmed == "now" || null_or_none(&trimmed) || parse_string_as_date(input).is_ok() {
             Ok(())
         } else {
             Err("Invalid date format. Format must be YYYY-MM-DD HH:MM:SS [+/-]UTC-OFFSET or 'now'.")
@@ -253,13 +256,18 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     .interact()
     .unwrap();
 
-    config_data.go_live_date = if date.contains("now") {
+    let trimmed = date.trim().to_lowercase();
+
+    config_data.go_live_date = if trimmed == "now" {
         let current_time = chrono::Utc::now();
-        current_time.format("%d %b %Y %H:%M:%S %z").to_string()
+        Some(current_time.format("%d %b %Y %H:%M:%S %z").to_string())
+    } else if null_or_none(&trimmed) {
+        None
     } else {
         let date = DateTime::parse_from_str(&date, DATE_MASK)?;
-        date.format("%d %b %Y %H:%M:%S %z").to_string()
+        Some(date.format("%d %b %Y %H:%M:%S %z").to_string())
     };
+
     // creators
 
     let num_creators = Input::with_theme(&theme)
