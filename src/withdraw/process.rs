@@ -109,72 +109,70 @@ pub fn process_withdraw(args: WithdrawArgs) -> Result<()> {
             });
 
             println!(
-                "Found {} candy machines, total amount: ◎ {}",
+                "\nFound {} candy machines, total amount: ◎ {}",
                 accounts.len(),
                 total / LAMPORTS_PER_SOL as f64
             );
 
-            if accounts.is_empty() {
-                // nothing else to do, we just say goodbye
-                println!("\n{}", style("[Completed]").bold().dim());
-            } else if args.list {
-                println!("\n{:48} Balance", "Candy Machine ID");
-                println!("{:-<61}", "-");
+            if !accounts.is_empty() {
+                if args.list {
+                    println!("\n{:48} Balance", "Candy Machine ID");
+                    println!("{:-<61}", "-");
 
-                for (pubkey, account) in accounts {
-                    println!(
-                        "{:48} {:>12.8}",
-                        pubkey.to_string(),
-                        account.lamports as f64 / LAMPORTS_PER_SOL as f64
+                    for (pubkey, account) in accounts {
+                        println!(
+                            "{:48} {:>12.8}",
+                            pubkey.to_string(),
+                            account.lamports as f64 / LAMPORTS_PER_SOL as f64
+                        );
+                    }
+                } else {
+                    let warning = format!(
+                        "\n\
+                        +-----------------------------------------------------+\n\
+                        | {} WARNING: This will drain ALL your Candy Machines |\n\
+                        +-----------------------------------------------------+",
+                        WARNING_EMOJI
                     );
-                }
 
-                println!("\n{}", style("[Completed]").bold().dim());
-            } else {
-                let warning = format!(
-                    "+-----------------------------------------------------+\n\
-                     | {} WARNING: This will drain ALL your Candy Machines |\n\
-                     +-----------------------------------------------------+",
-                    WARNING_EMOJI
-                );
+                    println!("{}\n", style(warning).bold().yellow());
 
-                println!("{}\n", style(warning).bold().yellow());
+                    let theme = ColorfulTheme {
+                        success_prefix: style("✔".to_string()).yellow().force_styling(true),
+                        values_style: Style::new().yellow(),
+                        ..get_dialoguer_theme()
+                    };
 
-                let theme = ColorfulTheme {
-                    success_prefix: style("✔".to_string()).yellow().force_styling(true),
-                    values_style: Style::new().yellow(),
-                    ..get_dialoguer_theme()
-                };
+                    if !Confirm::with_theme(&theme)
+                        .with_prompt("Do you want to continue?")
+                        .interact()?
+                    {
+                        return Err(anyhow!("Operation aborted"));
+                    }
 
-                if !Confirm::with_theme(&theme)
-                    .with_prompt("Do you want to continue?")
-                    .interact()?
-                {
-                    return Err(anyhow!("Operation aborted"));
-                }
+                    let pb = progress_bar_with_style(accounts.len() as u64);
+                    let mut not_drained = 0;
 
-                let pb = progress_bar_with_style(accounts.len() as u64);
-                let mut not_drained = 0;
-
-                accounts.iter().for_each(|account| {
-                    let (candy_machine, _account) = account;
-                    do_withdraw(program.clone(), *candy_machine, payer).unwrap_or_else(|e| {
-                        not_drained += 1;
-                        error!("Error: {}", e);
+                    accounts.iter().for_each(|account| {
+                        let (candy_machine, _account) = account;
+                        do_withdraw(program.clone(), *candy_machine, payer).unwrap_or_else(|e| {
+                            not_drained += 1;
+                            error!("Error: {}", e);
+                        });
+                        pb.inc(1);
                     });
-                    pb.inc(1);
-                });
 
-                pb.finish();
+                    pb.finish();
 
-                if not_drained > 0 {
-                    println!(
-                        "{}",
-                        style(format!("Could not drain {} candy machine(s)", not_drained))
-                            .red()
-                            .bold()
-                            .dim()
-                    );
+                    if not_drained > 0 {
+                        println!(
+                            "{}",
+                            style(format!("Could not drain {} candy machine(s)", not_drained))
+                                .red()
+                                .bold()
+                                .dim()
+                        );
+                    }
                 }
             }
         }
