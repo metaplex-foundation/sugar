@@ -5,20 +5,16 @@ use anchor_client::solana_sdk::{
 };
 use anchor_lang::prelude::AccountMeta;
 use anyhow::Result;
-
-use solana_program::native_token::LAMPORTS_PER_SOL;
-
-use mpl_candy_machine::accounts as nft_accounts;
-use mpl_candy_machine::instruction as nft_instruction;
-use mpl_candy_machine::{CandyMachineData, Creator as CandyCreator};
+use mpl_candy_machine::{
+    accounts as nft_accounts, instruction as nft_instruction, CandyMachineData,
+    Creator as CandyCreator,
+};
 pub use mpl_token_metadata::state::{
     MAX_CREATOR_LIMIT, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH,
 };
+use solana_program::native_token::LAMPORTS_PER_SOL;
 
-use crate::candy_machine::parse_config_price;
-use crate::common::*;
-use crate::config::data::*;
-use crate::deploy::errors::*;
+use crate::{candy_machine::parse_config_price, common::*, config::data::*, deploy::errors::*};
 
 /// Create the candy machine data struct.
 pub fn create_candy_machine_data(
@@ -26,7 +22,7 @@ pub fn create_candy_machine_data(
     config: &ConfigData,
     uuid: String,
 ) -> Result<CandyMachineData> {
-    let go_live_date = Some(go_live_date_as_timestamp(&config.go_live_date)?);
+    let go_live_date: Option<i64> = go_live_date_as_timestamp(&config.go_live_date)?;
 
     let end_settings = config.end_settings.as_ref().map(|s| s.into_candy_format());
 
