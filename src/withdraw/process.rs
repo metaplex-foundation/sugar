@@ -147,7 +147,7 @@ pub fn process_withdraw(args: WithdrawArgs) -> Result<()> {
                         .with_prompt("Do you want to continue?")
                         .interact()?
                     {
-                        return Err(anyhow!("Operation aborted"));
+                        return Err(anyhow!("Withdraw aborted"));
                     }
 
                     let pb = progress_bar_with_style(accounts.len() as u64);
