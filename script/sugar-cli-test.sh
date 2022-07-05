@@ -75,6 +75,7 @@ function default_settings() {
     INFURA_SECRET="null"
     AWS_BUCKET="null"
     NFT_STORAGE_TOKEN="null"
+    SHDW_STORAGE_ACCOUNT="null"
 }
 
 function max_settings() {
@@ -93,6 +94,7 @@ function max_settings() {
     INFURA_SECRET="null"
     AWS_BUCKET="null"
     NFT_STORAGE_TOKEN="null"
+    SHDW_STORAGE_ACCOUNT="null"
 }
 
 function mainnet_env() {
@@ -218,12 +220,14 @@ if [ -z ${STORAGE+x} ]; then
     echo "1. bundlr (default)"
     echo "2. aws"
     echo "3. nft_storage"
-    echo  -n "$(CYN "Select the storage type [1-3]") (default 1): "
+    echo "4. shdw"
+    echo  -n "$(CYN "Select the storage type [1-4]") (default 1): "
     read Input
     case "$Input" in
         1) STORAGE="bundlr" ;;
         2) STORAGE="aws" ;;
-        3) STORAGE="nft_storage"
+        3) STORAGE="nft_storage" ;;
+        4) STORAGE="shdw" ;;
     esac
 fi
 
@@ -263,6 +267,15 @@ if [ -z ${NFT_STORAGE_TOKEN+x} ]; then
     if [ "$STORAGE" = "nft_storage" ]; then
         echo -n $(CYN "Authentication token: ")
         read NFT_STORAGE_TOKEN
+    fi
+fi
+
+if [ -z ${SHDW_STORAGE_ACCOUNT+x} ]; then
+    SHDW_STORAGE_ACCOUNT="null"
+
+    if [ "$STORAGE" = "shdw" ]; then
+        echo -n $(CYN "SHDW storage account: ")
+        read SHDW_STORAGE_ACCOUNT
     fi
 fi
 
@@ -566,6 +579,12 @@ else
     HIDDEN_SETTINGS="null"
 fi
 
+SHDW=null
+
+if [ ! "$SHDW_STORAGE" = "null" ]; then
+    SHDW="\"${SHDW_STORAGE_ACCOUNT}\""
+fi
+
 cat >$CONFIG_FILE <<-EOM
 {
     "price": 0.1,
@@ -585,6 +604,7 @@ cat >$CONFIG_FILE <<-EOM
     "ipfsInfuraSecret": "${INFURA_SECRET}",
     "awsS3Bucket": "${AWS_BUCKET}",
     "nftStorageAuthToken": "${NFT_STORAGE_TOKEN}",
+    "shdwStorageAccount": $SHDW,
     "retainAuthority": true,
     "isMutable": true,
     "creators": [
@@ -617,6 +637,7 @@ INFURA_ID="$INFURA_ID"
 INFURA_SECRET="$INFURA_SECRET"
 AWS_BUCKET="$AWS_BUCKET"
 NFT_STORAGE_TOKEN="$NFT_STORAGE_TOKEN"
+SHDW_STORAGE_ACCOUNT="$SHDW_STORAGE_ACCOUNT"
 
 ENV_URL="$ENV_URL"
 RPC="$RPC"
