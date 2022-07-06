@@ -31,7 +31,6 @@ futures = "0.3.21"
 glob = "0.3.0"
 indexmap = { version = "1.9.1", features = ["serde"] }
 indicatif = { version = "0.16.2", features = ["rayon"] }
-microsalt = "0.2.21"
 mpl-token-metadata = "1.2.5"
 mpl-candy-machine = { version = "4.0.1", features = ["no-entrypoint"] }
 num_cpus = "1.13.1"

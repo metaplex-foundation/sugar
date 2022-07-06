@@ -1,7 +1,5 @@
 use async_trait::async_trait;
-use base64::encode;
 use data_encoding::HEXLOWER;
-use microsalt::sign::{signature, Keypair as SignKeypair};
 use reqwest::{
     multipart::{Form, Part},
     Client, StatusCode,
@@ -21,16 +19,12 @@ use crate::{
     utils::*,
 };
 
-// Token mint pubkey.
-//const TOKEN_MINT: Pubkey = solana_program::pubkey!("SHDWyBxihqiCj6YekG2GUr7wqKLeLAMK1gHZck9pL6y");
-// Uploader pubkey.
-//const UPLOADER: Pubkey = solana_program::pubkey!("972oJTFyjmVNsWM4GHEGPWUomAiJf2qrVotLtwnKmWem");
 // Shadow Drive mainnet endpoint.
 const MAINNET_ENDPOINT: &str = "https://shadow-storage.genesysgo.net";
 // Shadow Drive devnet endpoint.
 const DEVNET_ENDPOINT: &str = "https://shadow-storage-dev.shadowdrive.org";
 // Shadow Drive files location.
-//const SHDW_DRIVE_LOCATION: &str = "https://shdw-drive.genesysgo.net";
+const SHDW_DRIVE_LOCATION: &str = "https://shdw-drive.genesysgo.net";
 
 #[derive(Debug, Deserialize, Default)]
 #[serde(default)]
@@ -44,7 +38,7 @@ pub struct StorageInfo {
 
 pub struct Config {
     endpoint: String,
-    keypair: Arc<SignKeypair>,
+    keypair: Arc<Keypair>,
     storage_account: Pubkey,
     storage_info: StorageInfo,
 }
@@ -80,6 +74,9 @@ impl SHDWMethod {
                 .send()
                 .await?;
 
+            let key_bytes = sugar_config.keypair.to_bytes();
+            let keypair = Keypair::from_bytes(&key_bytes)?;
+
             match response.status() {
                 StatusCode::OK => {
                     let body = response.json::<Value>().await?;
@@ -87,7 +84,7 @@ impl SHDWMethod {
 
                     Ok(Self(Arc::new(Config {
                         endpoint: endpoint.to_string(),
-                        keypair: Arc::new(SignKeypair::new()),
+                        keypair: Arc::new(keypair),
                         storage_account: Pubkey::from_str(pubkey)?,
                         storage_info,
                     })))
@@ -98,61 +95,6 @@ impl SHDWMethod {
             Err(anyhow!(
                 "Missing 'shdwStorageAccount' value in config file."
             ))
-        }
-    }
-
-    async fn send(config: Arc<Config>, asset_info: AssetInfo) -> Result<(String, String)> {
-        let data = match asset_info.data_type {
-            DataType::Image => fs::read(&asset_info.content)?,
-            DataType::Metadata => asset_info.content.into_bytes(),
-            DataType::Animation => fs::read(&asset_info.content)?,
-        };
-
-        let mut context = Context::new(&SHA256);
-        context.update(&asset_info.name.as_bytes());
-        let hash = HEXLOWER.encode(context.finish().as_ref());
-
-        let message = format!(
-            "Shadow Drive Signed Message:\n\
-            Storage Account: {}\n\
-            Upload files with hash: {hash}",
-            config.storage_account
-        );
-
-        let encoded = encode(message);
-        let signed = bs58::encode(signature(&encoded.as_bytes(), &config.keypair.secret));
-
-        let mut form = Form::new();
-        let file = Part::bytes(data)
-            .file_name(asset_info.name.clone())
-            .mime_str(asset_info.content_type.as_str())?;
-        form = form
-            .part("file", file)
-            .text("message", signed.into_string())
-            .text("signer", format!("{:?}", &config.keypair.public[..]))
-            .text("storage_account", config.storage_account.to_string())
-            .text("fileNames", asset_info.name);
-
-        let http_client = reqwest::Client::new();
-        let response = http_client
-            .post(format!("{}/upload", config.endpoint))
-            .multipart(form)
-            .send()
-            .await?;
-        let status = response.status();
-
-        if status.is_success() {
-            //let body = response.json::<Value>().await?;
-            println!("\nSuccess {:?}\n", response.text().await?);
-
-            Ok(("a".to_string(), "a".to_string()))
-        } else {
-            //let body = response.json::<Value>().await?;
-            Err(anyhow!(UploadError::SendDataFailed(format!(
-                "Error uploading file ({}): {}",
-                status,
-                response.text().await?,
-            ))))
         }
     }
 }
@@ -225,6 +167,70 @@ impl Prepare for SHDWMethod {
 impl ParallelUploader for SHDWMethod {
     fn upload_asset(&self, asset_info: AssetInfo) -> JoinHandle<Result<(String, String)>> {
         let config = self.0.clone();
-        tokio::spawn(async move { SHDWMethod::send(config, asset_info).await })
+        tokio::spawn(async move { config.send(asset_info).await })
+    }
+}
+
+impl Config {
+    async fn send(&self, asset_info: AssetInfo) -> Result<(String, String)> {
+        let data = match asset_info.data_type {
+            DataType::Image => fs::read(&asset_info.content)?,
+            DataType::Metadata => asset_info.content.into_bytes(),
+            DataType::Animation => fs::read(&asset_info.content)?,
+        };
+
+        let mut context = Context::new(&SHA256);
+        context.update(asset_info.name.as_bytes());
+        let hash = HEXLOWER.encode(context.finish().as_ref());
+
+        let message = format!(
+            "Shadow Drive Signed Message:\n\
+            Storage Account: {}\n\
+            Upload files with hash: {hash}",
+            self.storage_account
+        );
+
+        let signature = self.keypair.sign_message(message.as_bytes()).to_string();
+        let encoded = bs58::encode(signature).into_string();
+
+        println!(
+            "\n{:?}\n",
+            format!("{:?}", &self.keypair.pubkey().to_bytes())
+        );
+
+        let mut form = Form::new();
+        let file = Part::bytes(data)
+            .file_name(asset_info.name.clone())
+            .mime_str(asset_info.content_type.as_str())?;
+        form = form
+            .part("file", file)
+            .text("message", encoded)
+            .text("signer", format!("{:?}", &self.keypair.pubkey().to_bytes()))
+            .text("storage_account", self.storage_account.to_string())
+            .text("fileNames", asset_info.name.to_string());
+
+        let http_client = reqwest::Client::new();
+        let response = http_client
+            .post(format!("{}/upload", self.endpoint))
+            .multipart(form)
+            .send()
+            .await?;
+        let status = response.status();
+
+        if status.is_success() {
+            Ok((
+                asset_info.asset_id,
+                format!(
+                    "{SHDW_DRIVE_LOCATION}/{}/{}",
+                    self.storage_account, asset_info.name
+                ),
+            ))
+        } else {
+            Err(anyhow!(UploadError::SendDataFailed(format!(
+                "Error uploading file ({}): {}",
+                status,
+                response.text().await?,
+            ))))
+        }
     }
 }
