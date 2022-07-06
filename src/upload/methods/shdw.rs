@@ -193,11 +193,6 @@ impl Config {
         let signature = self.keypair.sign_message(message.as_bytes()).to_string();
         let encoded = bs58::encode(signature).into_string();
 
-        println!(
-            "\n{:?}\n",
-            format!("{:?}", &self.keypair.pubkey().to_bytes())
-        );
-
         let mut form = Form::new();
         let file = Part::bytes(data)
             .file_name(asset_info.name.clone())
