@@ -38,7 +38,7 @@ pub struct StorageInfo {
 
 pub struct Config {
     endpoint: String,
-    keypair: Arc<Keypair>,
+    keypair: Keypair,
     storage_account: Pubkey,
     storage_info: StorageInfo,
 }
@@ -84,7 +84,7 @@ impl SHDWMethod {
 
                     Ok(Self(Arc::new(Config {
                         endpoint: endpoint.to_string(),
-                        keypair: Arc::new(keypair),
+                        keypair,
                         storage_account: Pubkey::from_str(pubkey)?,
                         storage_info,
                     })))
