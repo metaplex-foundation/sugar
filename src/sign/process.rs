@@ -10,6 +10,7 @@ pub use anchor_client::{
     },
     Client, Program,
 };
+
 use console::style;
 use mpl_token_metadata::ID as TOKEN_METADATA_PROGRAM_ID;
 use retry::{delay::Exponential, retry};
@@ -21,6 +22,7 @@ use solana_client::{
 };
 use solana_program::borsh::try_from_slice_unchecked;
 use std::{
+    cmp,
     rc::Rc,
     str::FromStr,
     sync::{
@@ -45,7 +47,7 @@ pub struct SignArgs {
     pub position: usize,
 }
 
-pub fn process_sign(args: SignArgs) -> Result<()> {
+pub async fn process_sign(args: SignArgs) -> Result<()> {
     // (1) Setting up connection
     println!(
         "{} {}Initializing connection",
@@ -58,7 +60,7 @@ pub fn process_sign(args: SignArgs) -> Result<()> {
 
     let (program, signer) = setup_sign(args.keypair, args.rpc_url)?;
 
-    let program = Rc::new(program);
+    let program = Arc::new(program);
 
     let candy_machine_creator = match args.candy_machine_creator {
         Some(candy_machine_creator) => candy_machine_creator,
@@ -88,7 +90,7 @@ pub fn process_sign(args: SignArgs) -> Result<()> {
         let account_pubkey = Pubkey::from_str(&mint_id)?;
         let metadata_pubkey = get_metadata_pda(&account_pubkey, &program)?;
 
-        match sign(program, &signer, metadata_pubkey.0) {
+        match sign(Arc::clone(&program), &signer, metadata_pubkey.0).await {
             Ok(signature) => format!("{} {:?}", style("Signature:").bold(), signature),
             Err(err) => {
                 pb.abandon_with_message(format!("{}", style("Signing failed ").red().bold()));
@@ -103,46 +105,32 @@ pub fn process_sign(args: SignArgs) -> Result<()> {
             &program.rpc(),
             &candy_machine_creator,
             args.position,
-        )?;
+        )
+        .await?;
 
-        let signed_at_least_one_account = Arc::new(AtomicBool::new(false));
         let pb = progress_bar_with_style(accounts.len() as u64);
-        let mut not_signed = 0;
+        let mut handles = Vec::new();
 
-        accounts.iter().for_each(|(metadata_pubkey, account)| {
-            let signed_at_least_one_account = signed_at_least_one_account.clone();
-            let metadata: Metadata = match try_from_slice_unchecked(&account.data.clone()) {
+        let mut errors = Vec::new();
+
+        for tx in accounts.drain(0..cmp::min(accounts.len(), PARALLEL_LIMIT)) {
+            let metadata: Metadata = match try_from_slice_unchecked(&tx.1.data.clone()) {
                 Ok(metadata) => metadata,
-                Err(_) => {
-                    error!("Account {} has no metadata", metadata_pubkey);
-                    return;
-                }
+                Err(_) => return Err(anyhow!("Account {} has no metadata", tx.0)),
             };
 
             if let Some(creators) = metadata.data.creators {
                 // Check whether the specific creator has already signed the account
                 for creator in creators {
                     if creator.address == signer.pubkey() && !creator.verified {
-                        sign(program.clone(), &signer, *metadata_pubkey).unwrap_or_else(|e| {
-                            not_signed += 1;
-                            error!("Error signing: {}", e);
-                        });
+                        handles.push(tokio::spawn(async move {
+                            sign(Arc::clone(&program), &signer, tx.0).await
+                        }));
 
-                        signed_at_least_one_account.store(true, Ordering::Relaxed);
                         pb.inc(1);
                     }
                 }
             }
-        });
-
-        if not_signed > 0 {
-            println!(
-                "{}",
-                style(format!("Could not sign {} nft(s)", not_signed))
-                    .red()
-                    .bold()
-                    .dim()
-            );
         }
 
         pb.finish();
@@ -159,7 +147,7 @@ fn setup_sign(keypair: Option<String>, rpc_url: Option<String>) -> Result<(Progr
     Ok((program, sugar_config.keypair))
 }
 
-fn sign(program: Rc<Program>, creator: &Keypair, metadata: Pubkey) -> Result<()> {
+async fn sign(program: Arc<Program>, creator: &Keypair, metadata: Pubkey) -> Result<()> {
     let recent_blockhash = program.rpc().get_latest_blockhash()?;
     let ix = sign_metadata(METAPLEX_PROGRAM_ID, metadata, creator.pubkey());
     let tx = Transaction::new_signed_with_payer(
@@ -178,7 +166,7 @@ fn sign(program: Rc<Program>, creator: &Keypair, metadata: Pubkey) -> Result<()>
     Ok(())
 }
 
-fn get_candy_machine_creator_accounts(
+async fn get_candy_machine_creator_accounts(
     client: &RpcClient,
     creator: &str,
     position: usize,
