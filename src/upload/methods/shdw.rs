@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use data_encoding::HEXLOWER;
 use reqwest::{
     multipart::{Form, Part},
-    Client, StatusCode,
+    StatusCode,
 };
 use ring::digest::{Context, SHA256};
 use std::{fs, ops::Deref, sync::Arc};
@@ -64,11 +64,11 @@ impl SHDWMethod {
                 Cluster::Mainnet => MAINNET_ENDPOINT,
             };
 
-            let client = Client::builder().build()?;
+            let http_client = reqwest::Client::new();
             let mut json = HashMap::new();
             json.insert("storage_account", pubkey);
 
-            let response = client
+            let response = http_client
                 .post(format!("{endpoint}/storage-account-info"))
                 .json(&json)
                 .send()
@@ -191,7 +191,6 @@ impl Config {
         );
 
         let signature = self.keypair.sign_message(message.as_bytes()).to_string();
-        let encoded = bs58::encode(signature).into_string();
 
         let mut form = Form::new();
         let file = Part::bytes(data)
@@ -199,8 +198,9 @@ impl Config {
             .mime_str(asset_info.content_type.as_str())?;
         form = form
             .part("file", file)
-            .text("message", encoded)
-            .text("signer", format!("{:?}", &self.keypair.pubkey().to_bytes()))
+            .text("message", signature)
+            .text("overwrite", "true")
+            .text("signer", self.keypair.pubkey().to_string())
             .text("storage_account", self.storage_account.to_string())
             .text("fileNames", asset_info.name.to_string());
 
