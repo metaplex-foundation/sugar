@@ -1,3 +1,5 @@
+use std::{fs, ops::Deref, sync::Arc};
+
 use async_trait::async_trait;
 use data_encoding::HEXLOWER;
 use reqwest::{
@@ -5,7 +7,7 @@ use reqwest::{
     StatusCode,
 };
 use ring::digest::{Context, SHA256};
-use std::{fs, ops::Deref, sync::Arc};
+use solana_program::pubkey;
 use tokio::task::JoinHandle;
 
 use crate::{
@@ -19,10 +21,12 @@ use crate::{
     utils::*,
 };
 
+// Shadow Drive program id.
+const SHADOW_DRIVE_PROGRAM_ID: Pubkey = pubkey!("2e1wdyNhUvE76y6yUCvah2KaviavMJYKoRun8acMRBZZ");
 // Shadow Drive mainnet endpoint.
 const MAINNET_ENDPOINT: &str = "https://shadow-storage.genesysgo.net";
 // Shadow Drive devnet endpoint.
-const DEVNET_ENDPOINT: &str = "https://shadow-storage-dev.shadowdrive.org";
+const DEVNET_ENDPOINT: &str = "https://shadow-storage-dev.genesysgo.net";
 // Shadow Drive files location.
 const SHDW_DRIVE_LOCATION: &str = "https://shdw-drive.genesysgo.net";
 
@@ -56,7 +60,7 @@ impl SHDWMethod {
     pub async fn new(sugar_config: &SugarConfig, config_data: &ConfigData) -> Result<Self> {
         if let Some(pubkey) = &config_data.shdw_storage_account {
             let client = setup_client(sugar_config)?;
-            let program = client.program(shadow_drive_user_staking::ID);
+            let program = client.program(SHADOW_DRIVE_PROGRAM_ID);
             let solana_cluster: Cluster = get_cluster(program.rpc())?;
 
             let endpoint = match solana_cluster {
@@ -110,7 +114,6 @@ impl Prepare for SHDWMethod {
         // calculates the size of the files to upload, this assumes that the total
         // storage has enough space to hold the collection as assets might already
         // exist and therefore will be replaced
-
         let mut total_size = 0;
 
         for (data_type, indices) in asset_indices {
