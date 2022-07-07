@@ -4739,7 +4739,6 @@ dependencies = [
  "async-trait",
  "aws-config",
  "aws-sdk-s3",
- "base64 0.13.0",
  "bs58 0.4.0",
  "bundlr-sdk",
  "chrono",
