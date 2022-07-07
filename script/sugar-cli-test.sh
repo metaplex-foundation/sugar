@@ -5,11 +5,11 @@
 # To suppress prompts, you will need to set/export the following variables:
 #
 # ENV_URL="mainnet-beta"
-# RPC="https://ssc-dao.genesysgo.net/"
+# RPC="https://ssc-dao.genesysgo.net"
 # STORAGE="bundlr"
 #
 # ENV_URL="devnet"
-# RPC="https://devnet.genesysgo.net/"
+# RPC="https://devnet.genesysgo.net"
 # STORAGE="bundlr"
 #
 # ITEMS=10
@@ -70,6 +70,7 @@ function default_settings() {
     TEST_IMAGE="n"
     HIDDEN="n"
 
+    STORAGE="bundlr"
     ARWEAVE_JWK="null"
     INFURA_ID="null"
     INFURA_SECRET="null"
@@ -89,6 +90,7 @@ function max_settings() {
     TEST_IMAGE="n"
     HIDDEN="n"
 
+    STORAGE="bundlr"
     ARWEAVE_JWK="null"
     INFURA_ID="null"
     INFURA_SECRET="null"
@@ -99,14 +101,12 @@ function max_settings() {
 
 function mainnet_env() {
     ENV_URL="mainnet-beta"
-    RPC="https://ssc-dao.genesysgo.net/"
-    STORAGE="bundlr"
+    RPC="https://ssc-dao.genesysgo.net"
 }
 
 function devnet_env() {
     ENV_URL="devnet"
-    RPC="https://devnet.genesysgo.net/"
-    STORAGE="bundlr"
+    RPC="https://devnet.genesysgo.net"
 }
 
 #-----------------------------------------------------------------------------#
@@ -190,8 +190,12 @@ if [ -z ${ENV_URL+x} ]; then
     echo -n "$(CYN "Select the environment [1-2]") (default 1): "
     read Input
     case "$Input" in
-        1) ENV_URL="devnet" ;;
-        2) ENV_URL="mainnet-beta" ;;
+        1)
+            devnet_env
+        ;;
+        2)
+            mainnet_env
+            ;;
     esac
 fi
 
