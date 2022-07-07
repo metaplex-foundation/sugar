@@ -190,12 +190,8 @@ if [ -z ${ENV_URL+x} ]; then
     echo -n "$(CYN "Select the environment [1-2]") (default 1): "
     read Input
     case "$Input" in
-        1)
-            devnet_env
-        ;;
-        2)
-            mainnet_env
-            ;;
+        1) devnet_env ;;
+        2) mainnet_env ;;
     esac
 fi
 
