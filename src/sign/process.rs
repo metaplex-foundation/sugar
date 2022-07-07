@@ -12,6 +12,7 @@ pub use anchor_client::{
 };
 
 use console::style;
+use futures::future::select_all;
 use mpl_token_metadata::ID as TOKEN_METADATA_PROGRAM_ID;
 use retry::{delay::Exponential, retry};
 use solana_account_decoder::UiAccountEncoding;
@@ -23,7 +24,8 @@ use solana_client::{
 use solana_program::borsh::try_from_slice_unchecked;
 use std::{
     cmp,
-    rc::Rc,
+    collections::HashSet,
+    fmt::Write as _,
     str::FromStr,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -33,10 +35,13 @@ use std::{
 
 use mpl_token_metadata::{instruction::sign_metadata, state::Metadata, ID as METAPLEX_PROGRAM_ID};
 
-use crate::setup::{setup_client, sugar_setup};
-use crate::utils::*;
 use crate::{cache::load_cache, candy_machine::CANDY_MACHINE_ID};
 use crate::{common::*, pdas::get_metadata_pda};
+use crate::{
+    config::SugarConfig,
+    setup::{setup_client, sugar_setup},
+};
+use crate::{deploy::DeployError, utils::*};
 
 pub struct SignArgs {
     pub candy_machine_creator: Option<String>,
@@ -45,6 +50,7 @@ pub struct SignArgs {
     pub rpc_url: Option<String>,
     pub mint: Option<String>,
     pub position: usize,
+    pub interrupted: Arc<AtomicBool>,
 }
 
 pub async fn process_sign(args: SignArgs) -> Result<()> {
@@ -58,9 +64,9 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
     let pb = spinner_with_style();
     pb.set_message("Connecting...");
 
-    let (program, signer) = setup_sign(args.keypair, args.rpc_url)?;
-
-    let program = Arc::new(program);
+    let sugar_config = Arc::new(sugar_setup(args.keypair, args.rpc_url)?);
+    let client = setup_client(&sugar_config)?;
+    let program = client.program(CANDY_MACHINE_ID);
 
     let candy_machine_creator = match args.candy_machine_creator {
         Some(candy_machine_creator) => candy_machine_creator,
@@ -90,7 +96,7 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
         let account_pubkey = Pubkey::from_str(&mint_id)?;
         let metadata_pubkey = get_metadata_pda(&account_pubkey, &program)?;
 
-        match sign(Arc::clone(&program), &signer, metadata_pubkey.0).await {
+        match sign(Arc::clone(&sugar_config), metadata_pubkey.0).await {
             Ok(signature) => format!("{} {:?}", style("Signature:").bold(), signature),
             Err(err) => {
                 pb.abandon_with_message(format!("{}", style("Signing failed ").red().bold()));
@@ -101,12 +107,17 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
 
         pb.finish();
     } else {
-        let accounts = get_candy_machine_creator_accounts(
+        let pb = spinner_with_style();
+        pb.set_message("Fetching candy machine mint ids...");
+
+        let mut accounts = get_candy_machine_creator_accounts(
             &program.rpc(),
             &candy_machine_creator,
             args.position,
         )
         .await?;
+
+        pb.finish_with_message("Done");
 
         let pb = progress_bar_with_style(accounts.len() as u64);
         let mut handles = Vec::new();
@@ -122,9 +133,10 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
             if let Some(creators) = metadata.data.creators {
                 // Check whether the specific creator has already signed the account
                 for creator in creators {
-                    if creator.address == signer.pubkey() && !creator.verified {
+                    let config = sugar_config.clone();
+                    if creator.address == config.keypair.pubkey() && !creator.verified {
                         handles.push(tokio::spawn(async move {
-                            sign(Arc::clone(&program), &signer, tx.0).await
+                            sign(Arc::clone(&config), tx.0).await
                         }));
 
                         pb.inc(1);
@@ -133,27 +145,105 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
             }
         }
 
-        pb.finish();
+        while !args.interrupted.load(Ordering::SeqCst) && !handles.is_empty() {
+            match select_all(handles).await {
+                (Ok(res), _index, remaining) => {
+                    // independently if the upload was successful or not
+                    // we continue to try the remaining ones
+                    handles = remaining;
+
+                    if res.is_ok() {
+                        // updates the progress bar
+                        pb.inc(1);
+                    } else {
+                        // user will need to retry the upload
+                        errors.push(DeployError::AddConfigLineFailed(format!(
+                            "Transaction error: {:?}",
+                            res.err().unwrap()
+                        )));
+                    }
+                }
+                (Err(err), _index, remaining) => {
+                    // user will need to retry the upload
+                    errors.push(DeployError::AddConfigLineFailed(format!(
+                        "Transaction error: {:?}",
+                        err
+                    )));
+                    // ignoring all errors
+                    handles = remaining;
+                }
+            }
+
+            if !accounts.is_empty() {
+                // if we are half way through, let spawn more transactions
+                if (PARALLEL_LIMIT - handles.len()) > (PARALLEL_LIMIT / 2) {
+                    for tx in accounts.drain(0..cmp::min(accounts.len(), PARALLEL_LIMIT / 2)) {
+                        let config = sugar_config.clone();
+                        handles.push(tokio::spawn(async move {
+                            sign(Arc::clone(&config), tx.0).await
+                        }));
+                    }
+                }
+            }
+        }
+
+        if !errors.is_empty() {
+            pb.abandon_with_message(format!(
+                "{}",
+                style("Signing all NFTs failed ").red().bold()
+            ));
+        } else if !accounts.is_empty() {
+            pb.abandon_with_message(format!(
+                "{}",
+                style("Signing all NFTs aborted ").red().bold()
+            ));
+            return Err(DeployError::AddConfigLineFailed(
+                "Not all config lines were deployed.".to_string(),
+            )
+            .into());
+        } else {
+            pb.finish_with_message(format!(
+                "{}",
+                style("Write config lines successful ").green().bold()
+            ));
+        }
+
+        if !errors.is_empty() {
+            let mut message = String::new();
+            write!(
+                message,
+                "Failed to deploy all config lines, {0} error(s) occurred:",
+                errors.len()
+            )?;
+
+            let mut unique = HashSet::new();
+
+            for err in errors {
+                unique.insert(err.to_string());
+            }
+
+            for u in unique {
+                message.push_str(&style("\n=> ").dim().to_string());
+                message.push_str(&u);
+            }
+
+            return Err(DeployError::AddConfigLineFailed(message).into());
+        }
     }
 
     Ok(())
 }
 
-fn setup_sign(keypair: Option<String>, rpc_url: Option<String>) -> Result<(Program, Keypair)> {
-    let sugar_config = sugar_setup(keypair, rpc_url)?;
-    let client = setup_client(&sugar_config)?;
+async fn sign(config: Arc<SugarConfig>, metadata: Pubkey) -> Result<()> {
+    let client = setup_client(&config)?;
     let program = client.program(CANDY_MACHINE_ID);
 
-    Ok((program, sugar_config.keypair))
-}
-
-async fn sign(program: Arc<Program>, creator: &Keypair, metadata: Pubkey) -> Result<()> {
     let recent_blockhash = program.rpc().get_latest_blockhash()?;
-    let ix = sign_metadata(METAPLEX_PROGRAM_ID, metadata, creator.pubkey());
+    let ix = sign_metadata(METAPLEX_PROGRAM_ID, metadata, config.keypair.pubkey());
     let tx = Transaction::new_signed_with_payer(
         &[ix],
-        Some(&creator.pubkey()),
-        &[creator],
+        Some(&config.keypair.pubkey()),
+        &[&config.keypair],
         recent_blockhash,
     );
 
@@ -162,6 +252,19 @@ async fn sign(program: Arc<Program>, creator: &Keypair, metadata: Pubkey) -> Res
         Exponential::from_millis_with_factor(250, 2.0).take(3),
         || program.rpc().send_and_confirm_transaction(&tx),
     )?;
+
+    // let _sig = program
+    //     .request()
+    //     .accounts(nft_accounts::AddConfigLines {
+    //         candy_machine: tx_info.candy_pubkey,
+    //         authority: program.payer(),
+    //     })
+    //     .args(nft_instruction::AddConfigLines {
+    //         index: start_index,
+    //         config_lines,
+    //     })
+    //     .signer(&tx_info.payer)
+    //     .send()?;
 
     Ok(())
 }

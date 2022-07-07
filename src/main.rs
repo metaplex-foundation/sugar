@@ -312,7 +312,8 @@ async fn run() -> Result<()> {
             mint,
             candy_machine_creator,
             position,
-        })?,
+            interrupted: interrupted.clone(),
+        }).await?,
     }
 
     Ok(())
