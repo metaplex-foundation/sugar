@@ -11,9 +11,10 @@ pub use anchor_client::{
     Client, Program,
 };
 
+use anchor_lang::accounts;
 use console::style;
 use futures::future::select_all;
-use mpl_token_metadata::ID as TOKEN_METADATA_PROGRAM_ID;
+use mpl_token_metadata::{instruction::sign_metadata, ID as TOKEN_METADATA_PROGRAM_ID};
 use retry::{delay::Exponential, retry};
 use solana_account_decoder::UiAccountEncoding;
 use solana_client::{
@@ -33,7 +34,9 @@ use std::{
     },
 };
 
-use mpl_token_metadata::{instruction::sign_metadata, state::Metadata, ID as METAPLEX_PROGRAM_ID};
+use mpl_token_metadata::{
+    instruction::MetadataInstruction::SignMetadata, state::Metadata, ID as METAPLEX_PROGRAM_ID,
+};
 
 use crate::{cache::load_cache, candy_machine::CANDY_MACHINE_ID};
 use crate::{common::*, pdas::get_metadata_pda};
@@ -135,11 +138,10 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
                 for creator in creators {
                     let config = sugar_config.clone();
                     if creator.address == config.keypair.pubkey() && !creator.verified {
+                        println!("here");
                         handles.push(tokio::spawn(async move {
                             sign(Arc::clone(&config), tx.0).await
                         }));
-
-                        pb.inc(1);
                     }
                 }
             }
@@ -157,7 +159,7 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
                         pb.inc(1);
                     } else {
                         // user will need to retry the upload
-                        errors.push(DeployError::AddConfigLineFailed(format!(
+                        errors.push(SigningError::SigningMintFailed(format!(
                             "Transaction error: {:?}",
                             res.err().unwrap()
                         )));
@@ -165,7 +167,7 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
                 }
                 (Err(err), _index, remaining) => {
                     // user will need to retry the upload
-                    errors.push(DeployError::AddConfigLineFailed(format!(
+                    errors.push(SigningError::SigningMintFailed(format!(
                         "Transaction error: {:?}",
                         err
                     )));
@@ -252,19 +254,6 @@ async fn sign(config: Arc<SugarConfig>, metadata: Pubkey) -> Result<()> {
         Exponential::from_millis_with_factor(250, 2.0).take(3),
         || program.rpc().send_and_confirm_transaction(&tx),
     )?;
-
-    // let _sig = program
-    //     .request()
-    //     .accounts(nft_accounts::AddConfigLines {
-    //         candy_machine: tx_info.candy_pubkey,
-    //         authority: program.payer(),
-    //     })
-    //     .args(nft_instruction::AddConfigLines {
-    //         index: start_index,
-    //         config_lines,
-    //     })
-    //     .signer(&tx_info.payer)
-    //     .send()?;
 
     Ok(())
 }
