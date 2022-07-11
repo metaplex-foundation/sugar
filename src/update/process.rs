@@ -17,7 +17,6 @@ use crate::{
         data::{ConfigData, *},
         parser::get_config_data,
     },
-    parse::parse_client_error,
     utils::{check_spl_token, check_spl_token_account, spinner_with_style},
 };
 
@@ -141,13 +140,7 @@ pub fn process_update(args: UpdateArgs) -> Result<()> {
     let pb = spinner_with_style();
     pb.set_message("Sending update transaction...");
 
-    let update_signature = match builder.send() {
-        Ok(update_signature) => update_signature,
-        Err(error) => {
-            let e = parse_client_error(error)?;
-            return Err(anyhow!("{e}"));
-        }
-    };
+    let update_signature = builder.send()?;
 
     pb.finish_with_message(format!(
         "{} {}",
