@@ -25,8 +25,6 @@ use solana_client::{
 use solana_program::borsh::try_from_slice_unchecked;
 use std::{
     cmp,
-    collections::HashSet,
-    fmt::Write as _,
     str::FromStr,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -34,17 +32,15 @@ use std::{
     },
 };
 
-use mpl_token_metadata::{
-    instruction::MetadataInstruction::SignMetadata, state::Metadata, ID as METAPLEX_PROGRAM_ID,
-};
+use mpl_token_metadata::{state::Metadata, ID as METAPLEX_PROGRAM_ID};
 
+use crate::utils::*;
 use crate::{cache::load_cache, candy_machine::CANDY_MACHINE_ID};
 use crate::{common::*, pdas::get_metadata_pda};
 use crate::{
     config::SugarConfig,
     setup::{setup_client, sugar_setup},
 };
-use crate::{deploy::DeployError, utils::*};
 
 pub struct SignArgs {
     pub candy_machine_creator: Option<String>,
@@ -68,6 +64,11 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
     pb.set_message("Connecting...");
 
     let sugar_config = Arc::new(sugar_setup(args.keypair, args.rpc_url)?);
+
+    // let commitment = CommitmentConfig::from_str(&commitment)?;
+    // let timeout = Duration::from_secs(options.timeout);
+
+    // let client = RpcClient::new_with_timeout_and_commitment(rpc.clone(), timeout, commitment);
     let client = setup_client(&sugar_config)?;
     let program = client.program(CANDY_MACHINE_ID);
 
@@ -159,7 +160,7 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
                         pb.inc(1);
                     } else {
                         // user will need to retry the upload
-                        errors.push(SigningError::SigningMintFailed(format!(
+                        errors.push(anyhow!(format!(
                             "Transaction error: {:?}",
                             res.err().unwrap()
                         )));
@@ -167,10 +168,7 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
                 }
                 (Err(err), _index, remaining) => {
                     // user will need to retry the upload
-                    errors.push(SigningError::SigningMintFailed(format!(
-                        "Transaction error: {:?}",
-                        err
-                    )));
+                    errors.push(anyhow!(format!("Transaction error: {:?}", err)));
                     // ignoring all errors
                     handles = remaining;
                 }
@@ -199,37 +197,12 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
                 "{}",
                 style("Signing all NFTs aborted ").red().bold()
             ));
-            return Err(DeployError::AddConfigLineFailed(
-                "Not all config lines were deployed.".to_string(),
-            )
-            .into());
+            return Err(anyhow!(format!("Not all NFTs were signed.")));
         } else {
             pb.finish_with_message(format!(
                 "{}",
                 style("Write config lines successful ").green().bold()
             ));
-        }
-
-        if !errors.is_empty() {
-            let mut message = String::new();
-            write!(
-                message,
-                "Failed to deploy all config lines, {0} error(s) occurred:",
-                errors.len()
-            )?;
-
-            let mut unique = HashSet::new();
-
-            for err in errors {
-                unique.insert(err.to_string());
-            }
-
-            for u in unique {
-                message.push_str(&style("\n=> ").dim().to_string());
-                message.push_str(&u);
-            }
-
-            return Err(DeployError::AddConfigLineFailed(message).into());
         }
     }
 
@@ -297,6 +270,7 @@ async fn get_candy_machine_creator_accounts(
             commitment: Some(CommitmentConfig {
                 commitment: CommitmentLevel::Confirmed,
             }),
+            // min_context_slot: None,
         },
         with_context: None,
     };
