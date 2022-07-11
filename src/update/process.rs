@@ -17,7 +17,9 @@ use crate::{
         data::{ConfigData, *},
         parser::get_config_data,
     },
-    utils::{check_spl_token, check_spl_token_account, spinner_with_style},
+    utils::{
+        assert_correct_authority, check_spl_token, check_spl_token_account, spinner_with_style,
+    },
 };
 
 pub struct UpdateArgs {
@@ -34,14 +36,15 @@ pub fn process_update(args: UpdateArgs) -> Result<()> {
     let client = setup_client(&sugar_config)?;
     let config_data = get_config_data(&args.config)?;
 
-    // the candy machine id specified takes precedence over the one from the cache
+    let mut cache = load_cache(&args.cache, false)?;
 
+    // Return early with a useful error if the user is using the wrong keypair.
+    assert_correct_authority(&cache, &sugar_config)?;
+
+    // the candy machine id specified takes precedence over the one from the cache
     let candy_machine_id = match args.candy_machine {
         Some(candy_machine_id) => candy_machine_id,
-        None => {
-            let cache = load_cache(&args.cache, false)?;
-            cache.program.candy_machine
-        }
+        None => cache.program.candy_machine.clone(),
     };
 
     let candy_pubkey = match Pubkey::from_str(&candy_machine_id) {
@@ -170,6 +173,10 @@ pub fn process_update(args: UpdateArgs) -> Result<()> {
             style("Authority signature:").bold(),
             authority_signature
         ));
+
+        // Update the cache with the new authority
+        cache.program.update_authority = new_authority_pubkey.to_string();
+        cache.sync_file()?;
     }
 
     Ok(())

@@ -55,6 +55,8 @@ pub struct CacheProgram {
     pub candy_machine: String,
     #[serde(rename = "candyMachineCreator")]
     pub candy_machine_creator: String,
+    #[serde(rename = "updateAuthority")]
+    pub update_authority: String,
     #[serde(rename = "collectionMint")]
     pub collection_mint: String,
 }
@@ -64,16 +66,18 @@ impl CacheProgram {
         CacheProgram {
             candy_machine: String::new(),
             candy_machine_creator: String::new(),
+            update_authority: String::new(),
             collection_mint: String::new(),
         }
     }
 
-    pub fn new_from_cm(candy_machine: &Pubkey) -> Self {
+    pub fn new_from_cm(candy_machine: &Pubkey, update_authority: &Pubkey) -> Self {
         let (candy_machine_creator_pda, _creator_bump) =
             find_candy_machine_creator_pda(candy_machine);
         CacheProgram {
             candy_machine: candy_machine.to_string(),
             candy_machine_creator: candy_machine_creator_pda.to_string(),
+            update_authority: update_authority.to_string(),
             collection_mint: String::new(),
         }
     }
