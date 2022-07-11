@@ -303,17 +303,20 @@ async fn run() -> Result<()> {
             rpc_url,
             cache,
             mint,
-            candy_machine_creator,
+            candy_machine_id,
             position,
-        } => process_sign(SignArgs {
-            keypair,
-            rpc_url,
-            cache,
-            mint,
-            candy_machine_creator,
-            position,
-            interrupted: interrupted.clone(),
-        }).await?,
+        } => {
+            process_sign(SignArgs {
+                keypair,
+                rpc_url,
+                cache,
+                mint,
+                candy_machine_id,
+                position,
+                interrupted: interrupted.clone(),
+            })
+            .await?
+        }
     }
 
     Ok(())

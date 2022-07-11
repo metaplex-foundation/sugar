@@ -281,7 +281,7 @@ pub enum Commands {
 
         /// Address of candy machine creator.
         #[clap(long)]
-        candy_machine_creator: Option<String>,
+        candy_machine_id: Option<String>,
 
         /// CM creator index to filter by
         #[clap(short, long, default_value = "0")]

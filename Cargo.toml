@@ -20,7 +20,7 @@ async-trait = "0.1.52"
 aws-config = "0.9.0"
 aws-sdk-s3 = "0.9.0"
 bs58 = "0.4.0"
-bundlr-sdk = { version = "0.2.0", features = ["solana"] }
+bundlr-sdk = { version = "0.1.0", features = ["solana"] }
 chrono = "0.4.19"
 clap = { version = "3.0.0", features = ["derive", "cargo"] }
 console = "0.15.0"
@@ -46,14 +46,14 @@ serde_yaml = "0.8.23"
 shadow-drive-user-staking = "0.1.1"
 shellexpand = "2.1.0"
 solana-account-decoder = "1.8.0"
-solana-client = "1.8.1"
+solana-client = "1.9.3"
 solana-program = "1.8.1"
 solana-transaction-status = "1.8.1"
 spl-associated-token-account = "1.0.3"
 spl-token = "3.2.0"
 structopt = "0.3.25"
 thiserror = "1.0.30"
-tokio = "1.19.2"
+tokio = "1.15.0"
 tracing = { version = "0.1", features = ["log"] }
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
 tracing-bunyan-formatter = "0.3"

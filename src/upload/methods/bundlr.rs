@@ -2,7 +2,7 @@ use std::{cmp, fs, path::Path, sync::Arc};
 
 use anchor_client::solana_sdk::native_token::LAMPORTS_PER_SOL;
 use async_trait::async_trait;
-use bundlr_sdk::{tags::Tag, Bundlr, Ed25519Signer};
+use bundlr_sdk::{tags::Tag, Bundlr, SolanaSigner};
 use clap::crate_version;
 use console::style;
 use solana_client::rpc_client::RpcClient;
@@ -35,7 +35,7 @@ const HEADER_SIZE: u64 = 2000;
 const MINIMUM_SIZE: u64 = 10000;
 
 pub struct BundlrMethod {
-    pub client: Arc<Bundlr<Ed25519Signer>>,
+    pub client: Arc<Bundlr<SolanaSigner>>,
     pub sugar_tag: Tag,
     pubkey: Pubkey,
     node: String,
@@ -67,7 +67,7 @@ impl BundlrMethod {
         let bundlr_pubkey = Pubkey::from_str(&bundlr_address)?;
         // get keypair as base58 string for Bundlr
         let keypair = bs58::encode(sugar_config.keypair.to_bytes()).into_string();
-        let signer = Ed25519Signer::from_base58(&keypair);
+        let signer = SolanaSigner::from_base58(&keypair);
 
         let bundlr_client = Bundlr::new(
             bundlr_node.to_string(),
@@ -179,7 +179,7 @@ impl BundlrMethod {
     }
 
     async fn send(
-        client: Arc<Bundlr<Ed25519Signer>>,
+        client: Arc<Bundlr<SolanaSigner>>,
         tag: Tag,
         asset_info: AssetInfo,
     ) -> Result<(String, String)> {
