@@ -11,42 +11,28 @@ pub use anchor_client::{
     Client, Program,
 };
 
+use anyhow::Error;
 use console::style;
 use futures::future::select_all;
-use mpl_token_metadata::{
-    instruction::sign_metadata, state::Creator, ID as TOKEN_METADATA_PROGRAM_ID,
-};
+use mpl_token_metadata::instruction::sign_metadata;
 use retry::{delay::Exponential, retry};
-use solana_account_decoder::UiAccountEncoding;
-use solana_client::{
-    rpc_client::RpcClient,
-    rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
-    rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType},
-    rpc_response::RpcConfirmedTransactionStatusWithSignature,
-};
+use solana_client::rpc_response::RpcConfirmedTransactionStatusWithSignature;
 use solana_program::borsh::try_from_slice_unchecked;
 use solana_transaction_status::{
     EncodedConfirmedTransaction, UiTransactionEncoding, UiTransactionTokenBalance,
 };
 use std::{
     cmp,
-    rc::Rc,
     str::FromStr,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
-    time::Duration,
 };
-use tokio::sync::mpsc::error;
 
 use mpl_token_metadata::{state::Metadata, ID as METAPLEX_PROGRAM_ID};
 
-use crate::{
-    cache::load_cache,
-    candy_machine::{self, CANDY_MACHINE_ID},
-    mint::MintArgs,
-};
+use crate::{cache::load_cache, candy_machine::CANDY_MACHINE_ID};
 use crate::{common::*, pdas::find_metadata_pda, utils::*};
 use crate::{
     config::SugarConfig,
@@ -76,12 +62,6 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
 
     let sugar_config = Arc::new(sugar_setup(args.keypair, args.rpc_url)?);
 
-    // let rpc_url = sugar_config.rpc_url.clone();
-    // let commitment = CommitmentConfig::from_str(&String::from("confirmed"))?;
-    // let timeout = Duration::from_secs(500);
-
-    // let client = RpcClient::new_with_timeout_and_commitment(rpc_url, timeout, commitment);
-
     let client = setup_client(&sugar_config)?;
     let program = client.program(CANDY_MACHINE_ID);
 
@@ -94,17 +74,6 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
     };
 
     pb.finish_with_message("Connected");
-
-    println!(
-        "\n{} {}{}",
-        style("[2/2]").bold().dim(),
-        SIGNING_EMOJI,
-        if args.mint.is_some() {
-            "Signing one NFT"
-        } else {
-            "Signing all NFTs"
-        }
-    );
 
     if let Some(mint_id) = args.mint {
         println!(
@@ -130,25 +99,50 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
 
         pb.finish();
     } else {
+        println!(
+            "\n{} {}{}",
+            style("[2/4]").bold().dim(),
+            SIGNING_EMOJI,
+            "Fetching mint ids"
+        );
+
         let mut errors = Vec::new();
         let pb = spinner_with_style();
-        pb.set_message("Fetching candy machine mint ids...");
+        pb.set_message("Fetching...");
 
-        let mints =
+        let (mints, mint_errors) =
             get_candy_machine_mints(&program, sugar_config.clone(), candy_machine_id).await?;
 
-        pb.set_message("Fetching accounts for mint ids...");
+        if !mint_errors.is_empty() {
+            pb.finish_with_message(format!("{} There were some errors fetching mint ids. Please rerun after all successful signings.",WARNING_EMOJI ));
+        } else {
+            pb.finish_with_message("Done");
+        }
+
+        println!(
+            "\n{} {}{}",
+            style("[3/4]").bold().dim(),
+            SIGNING_EMOJI,
+            "Fetching mint accounts"
+        );
+
+        let pb = spinner_with_style();
+        pb.set_message("Fetching...");
 
         let mut accounts = fetch_accounts(sugar_config.clone(), mints).await?;
 
-        pb.finish_with_message(format!("Found {:?} accounts", accounts.len() as u64));
+        pb.finish_with_message(format!(
+            "Found {:?} unsigned accounts",
+            accounts.len() as u64
+        ));
 
         let pb = progress_bar_with_style(accounts.len() as u64);
 
-        let mut handles = Vec::new();
-        for tx in accounts.drain(0..cmp::min(accounts.len(), PARALLEL_LIMIT)) {
-            let config = sugar_config.clone();
+        args.interrupted.store(false, Ordering::SeqCst);
 
+        let mut handles = Vec::new();
+        for tx in accounts.drain(0..cmp::min(accounts.len(), 60)) {
+            let config = sugar_config.clone();
             handles.push(tokio::spawn(
                 async move { sign(Arc::clone(&config), tx).await },
             ));
@@ -182,8 +176,8 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
 
             if !accounts.is_empty() {
                 // if we are half way through, let spawn more transactions
-                if (PARALLEL_LIMIT - handles.len()) > (PARALLEL_LIMIT / 2) {
-                    for tx in accounts.drain(0..cmp::min(accounts.len(), PARALLEL_LIMIT / 2)) {
+                if (60 - handles.len()) > (60 / 2) {
+                    for tx in accounts.drain(0..cmp::min(accounts.len(), 60 / 2)) {
                         let config = sugar_config.clone();
                         handles.push(tokio::spawn(async move { sign(config.clone(), tx).await }));
                     }
@@ -240,9 +234,10 @@ async fn get_candy_machine_mints(
     client: &Program,
     config: Arc<SugarConfig>,
     candy_machine_id: String,
-) -> Result<Vec<String>> {
+) -> Result<(Vec<String>, Vec<Error>)> {
     let mut all_signatures = Vec::new();
     let mut retries = 0;
+    let mut errors = Vec::new();
 
     loop {
         let signatures = client
@@ -270,7 +265,7 @@ async fn get_candy_machine_mints(
     }
 
     let mut mints = Vec::new();
-    // while !args.interrupted.load(Ordering::SeqCst) && !handles.is_empty() {
+
     while !handles.is_empty() {
         match select_all(handles).await {
             (Ok(res), _index, remaining) => {
@@ -286,11 +281,7 @@ async fn get_candy_machine_mints(
                             let mints = post_token_balances_ref
                                 .clone()
                                 .into_iter()
-                                .filter(|x| {
-                                    !x.ui_token_amount.ui_amount.is_none()
-                                        && x.mint != "2nmwnHy3mg7sVdKszSYfgT1hdAMEv168oYgEimSufwdW"
-                                        && x.mint != "FsHfCRt4A5aiVEgY2Daxqf24vuMCQepJvydkb4Yc8QAd"
-                                })
+                                .filter(|x| !x.ui_token_amount.ui_amount.is_none())
                                 .collect::<Vec<UiTransactionTokenBalance>>();
 
                             let first_index = &mints;
@@ -316,15 +307,15 @@ async fn get_candy_machine_mints(
                     }
                 } else {
                     // user will need to retry the upload
-                    // errors.push(anyhow!(format!(
-                    //     "Transaction error: {:?}",
-                    //     res.err().unwrap()
-                    // )));
+                    errors.push(anyhow!(format!(
+                        "Transaction error: {:?}",
+                        res.err().unwrap()
+                    )));
                 }
             }
             (Err(err), _index, remaining) => {
                 // user will need to retry the upload
-                // errors.push(anyhow!(format!("Transaction error: {:?}", err)));
+                errors.push(anyhow!(format!("Transaction error: {:?}", err)));
                 // ignoring all errors
                 handles = remaining;
             }
@@ -346,7 +337,7 @@ async fn get_candy_machine_mints(
     mints.sort_unstable();
     mints.dedup();
 
-    Ok(mints)
+    Ok((mints, errors))
 }
 
 async fn fetch_accounts(config: Arc<SugarConfig>, mints: Vec<String>) -> Result<Vec<Pubkey>> {
@@ -359,7 +350,7 @@ async fn fetch_accounts(config: Arc<SugarConfig>, mints: Vec<String>) -> Result<
             async move { fetch_account(config, mint).await },
         ));
     }
-
+    let mut errors = Vec::new();
     let mut accounts = Vec::new();
     // while !args.interrupted.load(Ordering::SeqCst) && !handles.is_empty() {
     while !handles.is_empty() {
@@ -370,52 +361,38 @@ async fn fetch_accounts(config: Arc<SugarConfig>, mints: Vec<String>) -> Result<
                 handles = remaining;
 
                 if res.is_ok() {
-                    // updates the progress bar
-
                     let account_info = &res?;
 
-                    // let metadata: Metadata =
-                    //     match try_from_slice_unchecked(&account_info.1.data.clone()) {
-                    //         Ok(metadata) => metadata,
-                    //         Err(_) => {
-                    //             let metadata_pubkey = &account_info.0;
-                    //             // return Err(anyhow!(
-                    //             //     "Account {} has no metadata",
-                    //             //     metadata_pubkey.clone()
-                    //             // ));
-                    //             error!("error");
-                    //         }
-                    //     };
-
-                    let metadata: Option<Metadata> = if let Ok(metadata) =
-                        try_from_slice_unchecked(&account_info.1.data.clone())
-                    {
-                        Some(metadata)
-                    } else {
-                        None
-                    };
-
-                    if let Some(metadata) = metadata {
-                        if let Some(creators) = metadata.data.creators {
-                            for creator in creators {
-                                let config = Arc::clone(&config);
-                                if creator.address == config.keypair.pubkey() && !creator.verified {
-                                    accounts.push(account_info.0.clone())
-                                }
+                    let metadata: Metadata =
+                        match try_from_slice_unchecked(&account_info.1.data.clone()) {
+                            Ok(metadata) => metadata,
+                            Err(_) => {
+                                return Err(anyhow!(format!(
+                                    "Account {} has no metadata",
+                                    account_info.0
+                                )));
+                            }
+                        };
+                        
+                    if let Some(creators) = metadata.data.creators {
+                        for creator in creators {
+                            let config = Arc::clone(&config);
+                            if creator.address == config.keypair.pubkey() && !creator.verified {
+                                accounts.push(account_info.0.clone())
                             }
                         }
                     }
                 } else {
                     // user will need to retry the upload
-                    // errors.push(anyhow!(format!(
-                    //     "Transaction error: {:?}",
-                    //     res.err().unwrap()
-                    // )));
+                    errors.push(anyhow!(format!(
+                        "Transaction error: {:?}",
+                        res.err().unwrap()
+                    )));
                 }
             }
             (Err(err), _index, remaining) => {
                 // user will need to retry the upload
-                // errors.push(anyhow!(format!("Transaction error: {:?}", err)));
+                errors.push(anyhow!(format!("Transaction error: {:?}", err)));
                 // ignoring all errors
                 handles = remaining;
             }
