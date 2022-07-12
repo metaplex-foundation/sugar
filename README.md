@@ -35,7 +35,7 @@ bash <(curl -sSf https://sugar.metaplex.com/install.sh)
 
 For Windows:
 
-Download [this installer binary](https://github.com/metaplex-foundation/winstaller/releases/download/v0.1.0/winstaller.exe) and execute it. Since it is not a verified Windows binary you may have to choose "Run Anyway" from "More Info" on the pop-up Windows dialog. 
+Download [this installer binary](https://github.com/metaplex-foundation/winstaller/releases/latest/download/winstaller.exe) and execute it. Since it is not a verified Windows binary you may have to choose "Run Anyway" from "More Info" on the pop-up Windows dialog. 
 
 > **Dependencies:**
 > When installing on Ubuntu or WSL (Windows Subsystem Linux), you may need to install some additional dependencies:
