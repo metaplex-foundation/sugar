@@ -25,12 +25,15 @@ pub fn process_remove_collection(args: RemoveCollectionArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = setup_client(&sugar_config)?;
     let program = client.program(CANDY_MACHINE_ID);
-    let mut cache = load_cache(&args.cache, false)?;
+    let mut cache = Cache::new();
 
     // the candy machine id specified takes precedence over the one from the cache
     let candy_machine_id = match args.candy_machine {
         Some(ref candy_machine_id) => candy_machine_id,
-        None => &cache.program.candy_machine,
+        None => {
+            cache = load_cache(&args.cache, false)?;
+            &cache.program.candy_machine
+        }
     };
 
     let candy_pubkey = match Pubkey::from_str(candy_machine_id) {
