@@ -1,9 +1,8 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-use crate::validate::{errors, parser};
-
 use super::ValidateParserError;
+use crate::validate::{errors, parser};
 
 #[derive(Debug, Clone, Deserialize, Default, Serialize)]
 pub struct Metadata {

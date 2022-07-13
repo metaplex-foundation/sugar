@@ -1,8 +1,9 @@
-use serde::Serialize;
 use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
 };
+
+use serde::Serialize;
 use thiserror::Error;
 
 use crate::common::*;
