@@ -30,7 +30,9 @@ pub fn check_seller_fee_basis_points(
     seller_fee_basis_points: u16,
 ) -> Result<(), ValidateParserError> {
     if seller_fee_basis_points > 10000 {
-        return Err(ValidateParserError::InvalidSellerFeeBasisPoints);
+        return Err(ValidateParserError::InvalidSellerFeeBasisPoints(
+            seller_fee_basis_points,
+        ));
     }
     Ok(())
 }
