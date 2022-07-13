@@ -5,7 +5,6 @@ use anchor_client::{
     solana_sdk::{
         program_pack::{IsInitialized, Pack},
         pubkey::Pubkey,
-        signer::Signer,
     },
     Program,
 };
@@ -16,10 +15,7 @@ pub use indicatif::{ProgressBar, ProgressStyle};
 use solana_client::rpc_client::RpcClient;
 use spl_token::state::{Account, Mint};
 
-use crate::{
-    cache::Cache,
-    config::{data::Cluster, SugarConfig},
-};
+use crate::config::data::Cluster;
 
 /// Hash for devnet cluster
 pub const DEVNET_HASH: &str = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
@@ -133,8 +129,8 @@ pub fn get_dialoguer_theme() -> ColorfulTheme {
     }
 }
 
-pub fn assert_correct_authority(cache: &Cache, config: &SugarConfig) -> Result<()> {
-    if cache.program.update_authority != config.keypair.pubkey().to_string() {
+pub fn assert_correct_authority(user_keypair: &Pubkey, update_authority: &Pubkey) -> Result<()> {
+    if user_keypair != update_authority {
         return Err(anyhow!(
             "Update authority does not match that of the candy machine."
         ));

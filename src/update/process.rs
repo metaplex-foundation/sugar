@@ -38,9 +38,6 @@ pub fn process_update(args: UpdateArgs) -> Result<()> {
 
     let mut cache = load_cache(&args.cache, false)?;
 
-    // Return early with a useful error if the user is using the wrong keypair.
-    assert_correct_authority(&cache, &sugar_config)?;
-
     // the candy machine id specified takes precedence over the one from the cache
     let candy_machine_id = match args.candy_machine {
         Some(candy_machine_id) => candy_machine_id,
@@ -68,9 +65,14 @@ pub fn process_update(args: UpdateArgs) -> Result<()> {
 
     let candy_machine_state = get_candy_machine_state(&sugar_config, &candy_pubkey)?;
     let candy_machine_data =
-        create_candy_machine_data(&client, &config_data, candy_machine_state.data)?;
+        create_candy_machine_data(&client, &config_data, &candy_machine_state.data)?;
 
     pb.finish_with_message("Done");
+
+    assert_correct_authority(
+        &sugar_config.keypair.pubkey(),
+        &candy_machine_state.authority,
+    )?;
 
     println!(
         "\n{} {}Updating configuration",
@@ -185,7 +187,7 @@ pub fn process_update(args: UpdateArgs) -> Result<()> {
 fn create_candy_machine_data(
     client: &Client,
     config: &ConfigData,
-    candy_machine: CandyMachineData,
+    candy_machine: &CandyMachineData,
 ) -> Result<CandyMachineData> {
     info!("{:?}", config.go_live_date);
     let go_live_date: Option<i64> = go_live_date_as_timestamp(&config.go_live_date)?;
@@ -211,7 +213,7 @@ fn create_candy_machine_data(
         .collect::<Result<Vec<mpl_candy_machine::Creator>>>()?;
 
     let data = CandyMachineData {
-        uuid: candy_machine.uuid,
+        uuid: candy_machine.uuid.clone(),
         price,
         symbol: config.symbol.clone(),
         seller_fee_basis_points: config.seller_fee_basis_points,
