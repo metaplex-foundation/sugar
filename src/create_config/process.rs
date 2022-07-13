@@ -158,7 +158,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     println!("\nCheck out our Candy Machine config docs to learn about the options:");
     println!(
         "  -> {}\n",
-        style("https://docs.metaplex.com/candy-machine-v2/configuration")
+        style("https://docs.metaplex.com/tools/sugar/configuration")
             .bold()
             .magenta()
             .underlined()
@@ -400,7 +400,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         let civic_network = Pubkey::from_str(CIVIC_NETWORK).unwrap();
         let encore_network = Pubkey::from_str(ENCORE_NETWORK).unwrap();
         let selection = Select::with_theme(&theme)
-            .with_prompt("Which gatekeeper network do you want to use? Check https://docs.metaplex.com/candy-machine-v2/configuration#provider-networks for more info.")
+            .with_prompt("Which gatekeeper network do you want to use? Check https://docs.metaplex.com/guides/archived/candy-machine-v2/configuration#provider-networks for more info.")
             .items(&gatekeeper_options)
             .default(0)
             .interact()?;
@@ -563,7 +563,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     // upload method
 
-    let upload_options = vec!["Bundlr", "AWS", "NFT Storage"];
+    let upload_options = vec!["Bundlr", "AWS", "NFT Storage", "SHDW"];
     config_data.upload_method = match Select::with_theme(&theme)
         .with_prompt("What upload method do you want to use?")
         .items(&upload_options)
@@ -574,6 +574,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         0 => UploadMethod::Bundlr,
         1 => UploadMethod::AWS,
         2 => UploadMethod::NftStorage,
+        3 => UploadMethod::SHDW,
         _ => UploadMethod::Bundlr,
     };
 
@@ -590,6 +591,16 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         config_data.nft_storage_auth_token = Some(
             Input::with_theme(&theme)
                 .with_prompt("What is the NFT Storage authentication token?")
+                .interact()
+                .unwrap(),
+        );
+    }
+
+    if config_data.upload_method == UploadMethod::SHDW {
+        config_data.shdw_storage_account = Some(
+            Input::with_theme(&theme)
+                .with_prompt("What is the SHDW storage address?")
+                .validate_with(pubkey_validator)
                 .interact()
                 .unwrap(),
         );

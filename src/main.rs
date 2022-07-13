@@ -22,6 +22,7 @@ use sugar_cli::{
     deploy::{process_deploy, DeployArgs},
     launch::{process_launch, LaunchArgs},
     mint::{process_mint, MintArgs},
+    parse::parse_sugar_errors,
     show::{process_show, ShowArgs},
     update::{process_update, UpdateArgs},
     upload::{process_upload, UploadArgs},
@@ -74,11 +75,13 @@ async fn main() {
             );
         }
         Err(err) => {
+            let parsed_err = parse_sugar_errors(&err.to_string());
+
             println!(
                 "\n{}{} {}",
                 ERROR_EMOJI,
                 style("Error running command (re-run needed):").red(),
-                err,
+                parsed_err,
             );
             // finished the program with an error code to the OS
             std::process::exit(1);
@@ -262,23 +265,26 @@ async fn run() -> Result<()> {
             candy_machine,
             unminted,
         })?,
-        Commands::Collection {
-            keypair,
-            rpc_url,
-            cache,
-            candy_machine,
-            command,
-        } => match command {
-            CollectionSubcommands::Set { collection_mint } => {
-                process_set_collection(SetCollectionArgs {
-                    collection_mint,
-                    keypair,
-                    rpc_url,
-                    cache,
-                    candy_machine,
-                })?
-            }
-            CollectionSubcommands::Remove => process_remove_collection(RemoveCollectionArgs {
+        Commands::Collection { command } => match command {
+            CollectionSubcommands::Set {
+                keypair,
+                rpc_url,
+                cache,
+                candy_machine,
+                collection_mint,
+            } => process_set_collection(SetCollectionArgs {
+                collection_mint,
+                keypair,
+                rpc_url,
+                cache,
+                candy_machine,
+            })?,
+            CollectionSubcommands::Remove {
+                keypair,
+                rpc_url,
+                cache,
+                candy_machine,
+            } => process_remove_collection(RemoveCollectionArgs {
                 keypair,
                 rpc_url,
                 cache,

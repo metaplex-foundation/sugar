@@ -148,7 +148,7 @@ fn discount_price_to_lamports(discount_price: Option<f64>) -> Option<u64> {
     discount_price.map(|price| (price * LAMPORTS_PER_SOL as f64) as u64)
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GatekeeperConfig {
     /// The network for the gateway token required
@@ -168,7 +168,7 @@ impl GatekeeperConfig {
         }
     }
 
-    pub fn into_candy_format(&self) -> CandyGatekeeperConfig {
+    pub fn to_candy_format(&self) -> CandyGatekeeperConfig {
         CandyGatekeeperConfig {
             gatekeeper_network: self.gatekeeper_network,
             expire_on_use: self.expire_on_use,
@@ -176,13 +176,13 @@ impl GatekeeperConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EndSettingType {
     Date,
     Amount,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EndSettings {
     #[serde(rename = "endSettingType")]
     end_setting_type: EndSettingType,
@@ -196,7 +196,7 @@ impl EndSettings {
             number,
         }
     }
-    pub fn into_candy_format(&self) -> CandyEndSettings {
+    pub fn to_candy_format(&self) -> CandyEndSettings {
         CandyEndSettings {
             end_setting_type: match self.end_setting_type {
                 EndSettingType::Date => CandyEndSettingType::Date,
@@ -232,9 +232,9 @@ impl WhitelistMintSettings {
             discount_price,
         }
     }
-    pub fn into_candy_format(&self) -> CandyWhitelistMintSettings {
+    pub fn to_candy_format(&self) -> CandyWhitelistMintSettings {
         CandyWhitelistMintSettings {
-            mode: self.mode.into_candy_format(),
+            mode: self.mode.to_candy_format(),
             mint: self.mint,
             presale: self.presale,
             discount_price: discount_price_to_lamports(self.discount_price),
@@ -242,7 +242,7 @@ impl WhitelistMintSettings {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum WhitelistMintMode {
     BurnEveryTime,
@@ -250,7 +250,7 @@ pub enum WhitelistMintMode {
 }
 
 impl WhitelistMintMode {
-    pub fn into_candy_format(&self) -> CandyWhitelistMintMode {
+    pub fn to_candy_format(&self) -> CandyWhitelistMintMode {
         match self {
             WhitelistMintMode::BurnEveryTime => CandyWhitelistMintMode::BurnEveryTime,
             WhitelistMintMode::NeverBurn => CandyWhitelistMintMode::NeverBurn,
@@ -270,7 +270,7 @@ impl FromStr for WhitelistMintMode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HiddenSettings {
     name: String,
     uri: String,
@@ -281,7 +281,7 @@ impl HiddenSettings {
     pub fn new(name: String, uri: String, hash: String) -> HiddenSettings {
         HiddenSettings { name, uri, hash }
     }
-    pub fn into_candy_format(&self) -> CandyHiddenSettings {
+    pub fn to_candy_format(&self) -> CandyHiddenSettings {
         CandyHiddenSettings {
             name: self.name.clone(),
             uri: self.uri.clone(),
@@ -294,7 +294,7 @@ impl HiddenSettings {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum UploadMethod {
     Bundlr,
@@ -305,7 +305,7 @@ pub enum UploadMethod {
     SHDW,
 }
 
-impl fmt::Display for UploadMethod {
+impl Display for UploadMethod {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
@@ -326,7 +326,7 @@ pub struct Creator {
 }
 
 impl Creator {
-    pub fn into_candy_format(&self) -> Result<CandyCreator> {
+    pub fn to_candy_format(&self) -> Result<CandyCreator> {
         let creator = CandyCreator {
             address: self.address,
             share: self.share,
