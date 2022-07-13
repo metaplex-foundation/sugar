@@ -19,32 +19,31 @@ pub struct Metadata {
 }
 
 impl Metadata {
-    pub fn validate(self) -> Result<(), ValidateParserError> {
+    pub fn validate(&self) -> Result<(), ValidateParserError> {
         parser::check_name(&self.name)?;
         parser::check_symbol(&self.symbol)?;
         parser::check_url(&self.image)?;
         parser::check_seller_fee_basis_points(self.seller_fee_basis_points)?;
+        parser::check_creators_shares(&self.properties.creators)?;
+        parser::check_creators_addresses(&self.properties.creators)?;
 
         Ok(())
     }
 
-    pub fn validate_strict(self) -> Result<(), ValidateParserError> {
-        if self.animation_url.is_none() {
+    pub fn validate_strict(&self) -> Result<(), ValidateParserError> {
+        if let Some(animation_url) = &self.animation_url {
+            parser::check_url(animation_url)?;
+        } else {
             return Err(errors::ValidateParserError::MissingAnimationUrl);
-        } else {
-            parser::check_url(&self.animation_url.unwrap())?;
         }
 
-        if self.external_url.is_none() {
+        if let Some(external_url) = &self.external_url {
+            parser::check_url(external_url)?;
+        } else {
             return Err(errors::ValidateParserError::MissingExternalUrl);
-        } else {
-            parser::check_url(&self.external_url.unwrap())?;
         }
 
-        parser::check_name(&self.name)?;
-        parser::check_symbol(&self.symbol)?;
-        parser::check_url(&self.image)?;
-        parser::check_seller_fee_basis_points(self.seller_fee_basis_points)?;
+        Self::validate(self)?;
 
         Ok(())
     }
@@ -53,6 +52,13 @@ impl Metadata {
 #[derive(Debug, Clone, Deserialize, Default, Serialize)]
 pub struct Property {
     pub files: Vec<FileAttr>,
+    pub creators: Vec<Creator>,
+}
+
+#[derive(Debug, Clone, Deserialize, Default, Serialize)]
+pub struct Creator {
+    pub address: String,
+    pub share: u16,
 }
 
 #[derive(Debug, Clone, Deserialize, Default, Serialize)]

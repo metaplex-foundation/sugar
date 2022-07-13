@@ -18,7 +18,7 @@ pub enum ValidateParserError {
     #[error("Url exceeds 200 chars.")]
     UrlTooLong,
 
-    #[error("Creator address: {0} is invalid.")]
+    #[error("Creator address: '{0}' is invalid.")]
     InvalidCreatorAddress(String),
 
     #[error("Creators' share does not equal 100%.")]
