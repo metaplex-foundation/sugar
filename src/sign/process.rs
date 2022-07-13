@@ -12,22 +12,15 @@ pub use anchor_client::{
 };
 
 use anyhow::Error;
-use bs58::decode;
 use console::style;
 use futures::future::select_all;
 use mpl_token_metadata::instruction::sign_metadata;
 use retry::{delay::Exponential, retry};
 use solana_client::rpc_response::RpcConfirmedTransactionStatusWithSignature;
 use solana_program::borsh::try_from_slice_unchecked;
-use solana_transaction_status::{
-    parse_instruction::parse, EncodedConfirmedTransaction, UiTransactionEncoding,
-};
-use spl_token::{
-    instruction::{initialize_mint, mint_to, TokenInstruction},
-    ID as TOKEN_PROGRAM_ID,
-};
+use solana_transaction_status::{EncodedConfirmedTransaction, UiTransactionEncoding};
+use spl_token::instruction::TokenInstruction;
 use std::{
-    any::Any,
     cmp,
     str::FromStr,
     sync::{
@@ -83,10 +76,9 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
 
     if let Some(mint_id) = args.mint {
         println!(
-            "\n{} {}{}",
+            "\n{} {}Signing one NFT",
             style("[2/2]").bold().dim(),
             SIGNING_EMOJI,
-            "Signing one NFT"
         );
         let pb = spinner_with_style();
         pb.set_message(format!("Signing NFT with mint id {}.", mint_id));
@@ -106,10 +98,9 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
         pb.finish();
     } else {
         println!(
-            "\n{} {}{}",
+            "\n{} {}Fetching mint ids",
             style("[2/4]").bold().dim(),
             SIGNING_EMOJI,
-            "Fetching mint ids"
         );
 
         let mut errors = Vec::new();
@@ -126,10 +117,9 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
         }
 
         println!(
-            "\n{} {}{}",
+            "\n{} {}Fetching mint accounts",
             style("[3/4]").bold().dim(),
             SIGNING_EMOJI,
-            "Fetching mint accounts"
         );
 
         let pb = spinner_with_style();
@@ -143,10 +133,9 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
         ));
 
         println!(
-            "\n{} {}{}",
+            "\n{} {}Signing mint accounts",
             style("[4/4]").bold().dim(),
-            SIGNING_EMOJI,
-            "Signing mint accounts"
+            SIGNING_EMOJI
         );
 
         let pb = progress_bar_with_style(accounts.len() as u64);
@@ -256,7 +245,7 @@ async fn get_candy_machine_mints(
             .rpc()
             .get_signatures_for_address(&Pubkey::from_str(&candy_machine_id).unwrap())?;
 
-        if signatures.len() == 0 {
+        if signatures.is_empty() {
             if retries < 10 {
                 retries += 1;
             } else {
@@ -287,7 +276,7 @@ async fn get_candy_machine_mints(
 
                 if res.is_ok() {
                     let res_ref = &res?;
-                    if let Some(transaction) = res_ref.clone().transaction.transaction.decode() {
+                    if let Some(transaction) = &(*res_ref).transaction.transaction.decode() {
                         let found = transaction.message.instructions.iter().find(|ix| {
                             let token_ix = if let Ok(token_ix) = TokenInstruction::unpack(&ix.data)
                             {
@@ -295,11 +284,11 @@ async fn get_candy_machine_mints(
                             } else {
                                 None
                             };
-                            !token_ix.is_none()
+                            token_ix.is_some()
                                 && token_ix.unwrap() == TokenInstruction::MintTo { amount: (1) }
                         });
 
-                        let trx_err = if let Some(meta) = &res_ref.clone().transaction.meta {
+                        let trx_err = if let Some(meta) = &(*res_ref).transaction.meta {
                             meta.err.is_some()
                         } else {
                             false
@@ -401,7 +390,7 @@ async fn fetch_accounts(config: Arc<SugarConfig>, mints: Vec<String>) -> Result<
                         for creator in creators {
                             let config = Arc::clone(&config);
                             if creator.address == config.keypair.pubkey() && !creator.verified {
-                                accounts.push(account_info.0.clone())
+                                accounts.push(account_info.0)
                             }
                         }
                     }
