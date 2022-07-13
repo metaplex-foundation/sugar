@@ -305,7 +305,19 @@ async fn get_candy_machine_mints(
                             false
                         };
 
-                        if found.is_some() && !trx_err {
+                        let bot_tax = if let Some(meta) = &res_ref.transaction.meta {
+                            if let Some(log_messages) = &meta.log_messages {
+                                log_messages.iter().find(|log_msg| {
+                                    log_msg.contains("Candy Machine Botting is taxed at")
+                                })
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        };
+
+                        if found.is_some() && !trx_err && bot_tax.is_none() {
                             mints.push(
                                 transaction.message.account_keys
                                     [found.unwrap().accounts[0] as usize]
