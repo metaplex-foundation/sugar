@@ -12,6 +12,7 @@ pub use anchor_client::{
 };
 
 use anyhow::Error;
+use bs58::decode;
 use console::style;
 use futures::future::select_all;
 use mpl_token_metadata::instruction::sign_metadata;
@@ -19,9 +20,14 @@ use retry::{delay::Exponential, retry};
 use solana_client::rpc_response::RpcConfirmedTransactionStatusWithSignature;
 use solana_program::borsh::try_from_slice_unchecked;
 use solana_transaction_status::{
-    EncodedConfirmedTransaction, UiTransactionEncoding, UiTransactionTokenBalance,
+    parse_instruction::parse, EncodedConfirmedTransaction, UiTransactionEncoding,
+};
+use spl_token::{
+    instruction::{initialize_mint, mint_to, TokenInstruction},
+    ID as TOKEN_PROGRAM_ID,
 };
 use std::{
+    any::Any,
     cmp,
     str::FromStr,
     sync::{
@@ -136,8 +142,14 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
             accounts.len() as u64
         ));
 
-        let pb = progress_bar_with_style(accounts.len() as u64);
+        println!(
+            "\n{} {}{}",
+            style("[4/4]").bold().dim(),
+            SIGNING_EMOJI,
+            "Signing mint accounts"
+        );
 
+        let pb = progress_bar_with_style(accounts.len() as u64);
         args.interrupted.store(false, Ordering::SeqCst);
 
         let mut handles = Vec::new();
@@ -274,37 +286,36 @@ async fn get_candy_machine_mints(
                 handles = remaining;
 
                 if res.is_ok() {
-                    // updates the progress bar
-                    let mint = if let Some(meta) = res?.transaction.meta {
-                        if let Some(post_token_balances) = meta.post_token_balances {
-                            let post_token_balances_ref = &post_token_balances;
-                            let mints = post_token_balances_ref
-                                .clone()
-                                .into_iter()
-                                .filter(|x| !x.ui_token_amount.ui_amount.is_none())
-                                .collect::<Vec<UiTransactionTokenBalance>>();
-
-                            let first_index = &mints;
-
-                            let mint = if first_index.len() > 0 {
-                                let trx_token_balance = &first_index.clone()[0];
-                                let mint = trx_token_balance.clone().mint;
-                                Some(mint)
+                    let res_ref = &res?;
+                    if let Some(transaction) = res_ref.clone().transaction.transaction.decode() {
+                        let found = transaction.message.instructions.iter().find(|ix| {
+                            let token_ix = if let Ok(token_ix) = TokenInstruction::unpack(&ix.data)
+                            {
+                                Some(token_ix)
                             } else {
                                 None
                             };
+                            !token_ix.is_none()
+                                && token_ix.unwrap() == TokenInstruction::MintTo { amount: (1) }
+                        });
 
-                            mint
+                        let trx_err = if let Some(meta) = &res_ref.clone().transaction.meta {
+                            meta.err.is_some()
                         } else {
-                            None
-                        }
+                            false
+                        };
+
+                        if found.is_some() && !trx_err {
+                            mints.push(
+                                transaction.message.account_keys
+                                    [found.unwrap().accounts[0] as usize]
+                                    .to_string(),
+                            );
+                        };
+                        Some(transaction)
                     } else {
                         None
                     };
-
-                    if mint.is_some() {
-                        mints.push(mint.unwrap())
-                    }
                 } else {
                     // user will need to retry the upload
                     errors.push(anyhow!(format!(
@@ -373,7 +384,7 @@ async fn fetch_accounts(config: Arc<SugarConfig>, mints: Vec<String>) -> Result<
                                 )));
                             }
                         };
-                        
+
                     if let Some(creators) = metadata.data.creators {
                         for creator in creators {
                             let config = Arc::clone(&config);
@@ -422,7 +433,7 @@ async fn get_transaction(
 
     let transaction = program
         .rpc()
-        .get_transaction(sig, UiTransactionEncoding::JsonParsed)?;
+        .get_transaction(sig, UiTransactionEncoding::Base58)?;
 
     Ok(transaction)
 }
