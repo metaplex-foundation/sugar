@@ -33,7 +33,7 @@ pub fn process_remove_collection(args: RemoveCollectionArgs) -> Result<()> {
         None => &cache.program.candy_machine,
     };
 
-    let candy_pubkey = match Pubkey::from_str(&candy_machine_id) {
+    let candy_pubkey = match Pubkey::from_str(candy_machine_id) {
         Ok(candy_pubkey) => candy_pubkey,
         Err(_) => {
             let error = anyhow!("Failed to parse candy machine id: {}", candy_machine_id);
