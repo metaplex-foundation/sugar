@@ -2,7 +2,7 @@ use std::{cmp, fs, path::Path, sync::Arc};
 
 use anchor_client::solana_sdk::native_token::LAMPORTS_PER_SOL;
 use async_trait::async_trait;
-use bundlr_sdk::{tags::Tag, Bundlr, SolanaSigner};
+use bundlr_sdk::{tags::Tag, Bundlr, Ed25519Signer as SolanaSigner};
 use clap::crate_version;
 use console::style;
 use solana_client::rpc_client::RpcClient;
@@ -226,7 +226,7 @@ impl Prepare for BundlrMethod {
                         let item = assets.get(index).unwrap();
                         let path = Path::new(&item.image);
                         total_size +=
-                            HEADER_SIZE + cmp::max(MINIMUM_SIZE, std::fs::metadata(path)?.len());
+                            HEADER_SIZE + cmp::max(MINIMUM_SIZE, fs::metadata(path)?.len());
                     }
                 }
                 DataType::Animation => {
@@ -235,8 +235,8 @@ impl Prepare for BundlrMethod {
 
                         if let Some(animation) = &item.animation {
                             let path = Path::new(animation);
-                            total_size += HEADER_SIZE
-                                + cmp::max(MINIMUM_SIZE, std::fs::metadata(path)?.len());
+                            total_size +=
+                                HEADER_SIZE + cmp::max(MINIMUM_SIZE, fs::metadata(path)?.len());
                         }
                     }
                 }

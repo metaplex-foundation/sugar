@@ -18,50 +18,51 @@ Sugar is an alternative to the current Metaplex Candy Machine CLI. It has been w
 - simplified build and installation procedures taking advantage of `cargo` package management, including a binary distributable package ready to use;
 - robust error handling and validation of inputs, including improvements to config and cache files, leading to more informative error messages.
 
-See [the docs](https://docs.metaplex.com/sugar/introduction) for full installation and usage instructions.
+See [the docs](https://docs.metaplex.com/tools/sugar/introduction) for full installation and usage instructions.
 
-> **Note:** This is a beta release of Sugar. Use at your own risk. The current version supports only systems running macOS, Linux, or another Unix-like OS.
+> **Note:** This is a beta release of Sugar. Use at your own risk.
 
 ## Installation
 
-To install, either download a binary, install from Crates.io, or install from source. Non-technical users will typically find using a pre-built binary to be simpler.
+### Recommended Method
+
+For macOS, Linux and Windows Subsystem Linux (WSL), run the following install script in your terminal:
+
+```bash
+bash <(curl -sSf https://sugar.metaplex.com/install.sh)
+```
+
+
+For Windows:
+
+Download [this installer binary](https://github.com/metaplex-foundation/winstaller/releases/latest/download/winstaller.exe) and execute it. Since it is not a verified Windows binary you may have to choose "Run Anyway" from "More Info" on the pop-up Windows dialog. 
 
 > **Dependencies:**
 > When installing on Ubuntu or WSL (Windows Subsystem Linux), you may need to install some additional dependencies:
 >
 > ```bash
-> sudo apt install libssl-dev libudev-dev pkg-config
-> ```
->
-> macOS users may need to install the OpenSSL library, which can be done using [Homebrew](https://brew.sh):
->
-> ```bash
-> brew install openssl@3
+> sudo apt install libudev-dev pkg-config unzip
 > ```
 
-### Binaries
 
-Binaries for the supported OS can be found at:
 
-- [Sugar Releases](https://github.com/metaplex-foundation/sugar/releases)
+### Developers
 
-To install Sugar pre-built binary on a supported OS, run the following in your terminal:
+Using Crates.io:
 
 ```bash
-bash <(curl -sSf https://raw.githubusercontent.com/metaplex-foundation/sugar/main/script/sugar-install.sh)
+cargo install sugar-cli
 ```
 
-### Using Crates.io
+
+
+Build From Source:
 
 ```bash
-cargo install sugar-cli --locked
+cargo install --path ./
 ```
 
-### Build From Source
 
-```bash
-cargo install --locked --path ./
-```
 
 ## Quick Start
 

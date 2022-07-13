@@ -73,6 +73,9 @@ pub struct ConfigData {
 
     #[serde(serialize_with = "to_option_string")]
     pub nft_storage_auth_token: Option<String>,
+
+    #[serde(serialize_with = "to_option_string")]
+    pub shdw_storage_account: Option<String>,
 }
 
 pub fn to_string<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
@@ -165,7 +168,7 @@ impl GatekeeperConfig {
         }
     }
 
-    pub fn into_candy_format(&self) -> CandyGatekeeperConfig {
+    pub fn to_candy_format(&self) -> CandyGatekeeperConfig {
         CandyGatekeeperConfig {
             gatekeeper_network: self.gatekeeper_network,
             expire_on_use: self.expire_on_use,
@@ -193,7 +196,7 @@ impl EndSettings {
             number,
         }
     }
-    pub fn into_candy_format(&self) -> CandyEndSettings {
+    pub fn to_candy_format(&self) -> CandyEndSettings {
         CandyEndSettings {
             end_setting_type: match self.end_setting_type {
                 EndSettingType::Date => CandyEndSettingType::Date,
@@ -229,9 +232,9 @@ impl WhitelistMintSettings {
             discount_price,
         }
     }
-    pub fn into_candy_format(&self) -> CandyWhitelistMintSettings {
+    pub fn to_candy_format(&self) -> CandyWhitelistMintSettings {
         CandyWhitelistMintSettings {
-            mode: self.mode.into_candy_format(),
+            mode: self.mode.to_candy_format(),
             mint: self.mint,
             presale: self.presale,
             discount_price: discount_price_to_lamports(self.discount_price),
@@ -247,7 +250,7 @@ pub enum WhitelistMintMode {
 }
 
 impl WhitelistMintMode {
-    pub fn into_candy_format(&self) -> CandyWhitelistMintMode {
+    pub fn to_candy_format(&self) -> CandyWhitelistMintMode {
         match self {
             WhitelistMintMode::BurnEveryTime => CandyWhitelistMintMode::BurnEveryTime,
             WhitelistMintMode::NeverBurn => CandyWhitelistMintMode::NeverBurn,
@@ -278,7 +281,7 @@ impl HiddenSettings {
     pub fn new(name: String, uri: String, hash: String) -> HiddenSettings {
         HiddenSettings { name, uri, hash }
     }
-    pub fn into_candy_format(&self) -> CandyHiddenSettings {
+    pub fn to_candy_format(&self) -> CandyHiddenSettings {
         CandyHiddenSettings {
             name: self.name.clone(),
             uri: self.uri.clone(),
@@ -295,11 +298,14 @@ impl HiddenSettings {
 #[serde(rename_all = "snake_case")]
 pub enum UploadMethod {
     Bundlr,
+    #[serde(rename = "aws")]
     AWS,
     NftStorage,
+    #[serde(rename = "shdw")]
+    SHDW,
 }
 
-impl fmt::Display for UploadMethod {
+impl Display for UploadMethod {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
@@ -320,7 +326,7 @@ pub struct Creator {
 }
 
 impl Creator {
-    pub fn into_candy_format(&self) -> Result<CandyCreator> {
+    pub fn to_candy_format(&self) -> Result<CandyCreator> {
         let creator = CandyCreator {
             address: self.address,
             share: self.share,
