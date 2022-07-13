@@ -1,7 +1,8 @@
+use serde::Serialize;
 use thiserror::Error;
 
-#[derive(Debug, Error)]
-pub enum ValidateError {
+#[derive(Debug, Error, Serialize)]
+pub enum ValidateParserError {
     #[error("Missing or empty assets directory")]
     MissingOrEmptyAssetsDirectory,
 
