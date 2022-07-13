@@ -44,7 +44,6 @@ pub struct SignArgs {
     pub cache: String,
     pub rpc_url: Option<String>,
     pub mint: Option<String>,
-    pub position: usize,
     pub interrupted: Arc<AtomicBool>,
 }
 
