@@ -10,10 +10,10 @@ pub use anchor_client::{
     },
     Client, Program,
 };
-
 use anyhow::Error;
 use console::style;
 use futures::future::select_all;
+
 use mpl_token_metadata::instruction::sign_metadata;
 use retry::{delay::Exponential, retry};
 use solana_client::{
@@ -22,7 +22,6 @@ use solana_client::{
 };
 use solana_program::borsh::try_from_slice_unchecked;
 use solana_transaction_status::{EncodedConfirmedTransaction, UiTransactionEncoding};
-use spl_token::instruction::TokenInstruction;
 use std::{
     cmp,
     str::FromStr,
@@ -147,7 +146,7 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
         for tx in accounts.drain(0..cmp::min(accounts.len(), 60)) {
             let config = sugar_config.clone();
             handles.push(tokio::spawn(
-                async move { sign(Arc::clone(&config), tx).await },
+                async move { sign(Arc::clone(&config), *tx).await },
             ));
         }
 
@@ -179,10 +178,10 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
 
             if !accounts.is_empty() {
                 // if we are half way through, let spawn more transactions
-                if (60 - handles.len()) > (60 / 2) {
-                    for tx in accounts.drain(0..cmp::min(accounts.len(), 60 / 2)) {
+                if (PARALLEL_LIMIT - handles.len()) > (PARALLEL_LIMIT / 2) {
+                    for tx in accounts.drain(0..cmp::min(accounts.len(), PARALLEL_LIMIT / 2)) {
                         let config = sugar_config.clone();
-                        handles.push(tokio::spawn(async move { sign(config.clone(), tx).await }));
+                        handles.push(tokio::spawn(async move { sign(config.clone(), *tx).await }));
                     }
                 }
             }
@@ -237,7 +236,7 @@ async fn get_candy_machine_mints(
     client: &Program,
     config: Arc<SugarConfig>,
     candy_machine_id: String,
-) -> Result<(Vec<Pubkey>, Vec<Error>)> {
+) -> Result<(HashMap<Pubkey, Pubkey>, Vec<Error>)> {
     let mut all_signatures = Vec::new();
     let mut retries = 0;
     let mut errors = Vec::new();
@@ -288,8 +287,7 @@ async fn get_candy_machine_mints(
         ));
     }
 
-    let mut mints = Vec::new();
-
+    let mut mints_and_metadata = HashMap::new();
     while !handles.is_empty() {
         match select_all(handles).await {
             (Ok(res), _index, remaining) => {
@@ -300,15 +298,13 @@ async fn get_candy_machine_mints(
                 if res.is_ok() {
                     let res_ref = &res?;
                     if let Some(transaction) = &(*res_ref).transaction.transaction.decode() {
+                        let account_keys = &transaction.message.account_keys;
                         let found = transaction.message.instructions.iter().find(|ix| {
-                            let token_ix = if let Ok(token_ix) = TokenInstruction::unpack(&ix.data)
-                            {
-                                Some(token_ix)
-                            } else {
-                                None
-                            };
-                            token_ix.is_some()
-                                && token_ix.unwrap() == TokenInstruction::MintTo { amount: (1) }
+                            let program_id = account_keys[ix.program_id_index as usize];
+
+                            program_id
+                                == Pubkey::from_str("cndy3Z4yapfJBmL3ShUp5exZKqR3z33thTzeNMm2gRZ")
+                                    .unwrap()
                         });
 
                         let trx_err = if let Some(meta) = &(*res_ref).transaction.meta {
@@ -330,10 +326,14 @@ async fn get_candy_machine_mints(
                         };
 
                         if found.is_some() && !trx_err && bot_tax.is_none() {
-                            mints.push(
-                                transaction.message.account_keys
-                                    [found.unwrap().accounts[0] as usize],
-                            );
+                            if found.unwrap().program_id_index >= 16 {
+                                let metadata_account = transaction.message.account_keys
+                                    [found.unwrap().accounts[4] as usize];
+                                let mint = transaction.message.account_keys
+                                    [found.unwrap().accounts[5] as usize];
+
+                                mints_and_metadata.insert(mint, metadata_account);
+                            }
                         };
                         Some(transaction)
                     } else {
@@ -368,29 +368,29 @@ async fn get_candy_machine_mints(
         }
     }
 
-    mints.sort_unstable();
-    mints.dedup();
-
-    Ok((mints, errors))
+    Ok((mints_and_metadata, errors))
 }
 
-async fn fetch_accounts(config: Arc<SugarConfig>, mints: Vec<Pubkey>) -> Result<Vec<Pubkey>> {
+async fn fetch_accounts(
+    config: Arc<SugarConfig>,
+    mints_and_metadata: HashMap<Pubkey, Pubkey>,
+) -> Result<Vec<Arc<Pubkey>>> {
     let mut handles = Vec::new();
-    let mints = Arc::new(mints);
-    let arc_mints = mints.clone();
 
-    let mut all_mints = Vec::new();
+    let pdas: Vec<Pubkey> = mints_and_metadata.into_values().collect();
+
+    let mut all_pdas = Vec::new();
     let mut i = 0;
-    while i < mints.len() {
-        if i + 100 > mints.len() {
-            all_mints.push(arc_mints[(i..mints.len())].to_vec());
+    while i < pdas.len() {
+        if i + 100 > pdas.len() {
+            all_pdas.push(pdas[(i..pdas.len())].to_vec());
         } else {
-            all_mints.push(arc_mints[(i..i + 100)].to_vec());
+            all_pdas.push(pdas[(i..i + 100)].to_vec());
         };
         i += 100
     }
 
-    for mint in all_mints.drain(0..cmp::min(all_mints.len(), PARALLEL_LIMIT)) {
+    for mint in all_pdas.drain(0..cmp::min(all_pdas.len(), PARALLEL_LIMIT)) {
         let config = Arc::clone(&config);
         handles.push(tokio::spawn(
             async move { get_accounts(config, &mint).await },
@@ -407,21 +407,30 @@ async fn fetch_accounts(config: Arc<SugarConfig>, mints: Vec<Pubkey>) -> Result<
                 handles = remaining;
 
                 if res.is_ok() {
-                    let account_info = &res?;
-                    for account in account_info {
+                    for account in res? {
                         if let Some(account) = account {
-                            if let Ok(metadata) =
-                                try_from_slice_unchecked(&mut &account.data.as_slice())
+                            let metadata: Option<Metadata> = if let Ok(metadata) =
+                                try_from_slice_unchecked(&account.data.clone())
                             {
-                                let meta: Metadata = metadata;
+                                Some(metadata)
+                            } else {
+                                None
+                            };
+
+                            if let Some(meta) = metadata {
                                 if let Some(creators) = meta.data.creators {
                                     for creator in creators {
                                         let config = Arc::clone(&config);
                                         if creator.address == config.keypair.pubkey()
                                             && !creator.verified
                                         {
-                                            let metadata_pda = find_metadata_pda(&meta.mint);
-                                            accounts.push(metadata_pda)
+                                            let mint = &mints_and_metadata;
+                                            if let Some(metadata) =
+                                                mints_and_metadata.get(&meta.mint)
+                                            {
+                                                let metadata_ref = Arc::new(*metadata);
+                                                accounts.push(metadata_ref)
+                                            }
                                         }
                                     }
                                 }
@@ -444,10 +453,10 @@ async fn fetch_accounts(config: Arc<SugarConfig>, mints: Vec<Pubkey>) -> Result<
             }
         }
 
-        if !all_mints.is_empty() {
+        if !all_pdas.is_empty() {
             // if we are half way through, let spawn more transactions
             if (PARALLEL_LIMIT - handles.len()) > (PARALLEL_LIMIT / 2) {
-                for tx in all_mints.drain(0..cmp::min(all_mints.len(), PARALLEL_LIMIT / 2)) {
+                for tx in all_pdas.drain(0..cmp::min(all_pdas.len(), PARALLEL_LIMIT / 2)) {
                     let config = Arc::clone(&config);
                     handles.push(tokio::spawn(async move { get_accounts(config, &tx).await }));
                 }
