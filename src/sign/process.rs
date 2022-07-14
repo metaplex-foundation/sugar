@@ -20,7 +20,7 @@ use solana_client::{
     rpc_client::GetConfirmedSignaturesForAddress2Config,
     rpc_response::RpcConfirmedTransactionStatusWithSignature,
 };
-use solana_program::borsh::try_from_slice_unchecked;
+use solana_program::{borsh::try_from_slice_unchecked, pubkey};
 use solana_transaction_status::{EncodedConfirmedTransaction, UiTransactionEncoding};
 use std::{
     cmp,
@@ -108,7 +108,7 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
         let pb = spinner_with_style();
         pb.set_message("Fetching...");
 
-        let (mints, mint_errors) =
+        let (mints_and_metadata, metadata, mint_errors) =
             get_candy_machine_mints(&program, sugar_config.clone(), candy_machine_id).await?;
 
         if !mint_errors.is_empty() {
@@ -126,7 +126,8 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
         let pb = spinner_with_style();
         pb.set_message("Fetching...");
 
-        let mut accounts = fetch_accounts(sugar_config.clone(), mints).await?;
+        let mut accounts =
+            fetch_accounts(sugar_config.clone(), Arc::new(mints_and_metadata), metadata).await?;
 
         pb.finish_with_message(format!(
             "Found {:?} unsigned accounts",
@@ -143,7 +144,7 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
         args.interrupted.store(false, Ordering::SeqCst);
 
         let mut handles = Vec::new();
-        for tx in accounts.drain(0..cmp::min(accounts.len(), 60)) {
+        for tx in accounts.drain(0..cmp::min(accounts.len(), PARALLEL_LIMIT)) {
             let config = sugar_config.clone();
             handles.push(tokio::spawn(
                 async move { sign(Arc::clone(&config), *tx).await },
@@ -236,7 +237,7 @@ async fn get_candy_machine_mints(
     client: &Program,
     config: Arc<SugarConfig>,
     candy_machine_id: String,
-) -> Result<(HashMap<Pubkey, Pubkey>, Vec<Error>)> {
+) -> Result<(HashMap<Pubkey, Pubkey>, Vec<Pubkey>, Vec<Error>)> {
     let mut all_signatures = Vec::new();
     let mut retries = 0;
     let mut errors = Vec::new();
@@ -288,6 +289,7 @@ async fn get_candy_machine_mints(
     }
 
     let mut mints_and_metadata = HashMap::new();
+    let mut metadata = Vec::new();
     while !handles.is_empty() {
         match select_all(handles).await {
             (Ok(res), _index, remaining) => {
@@ -302,9 +304,8 @@ async fn get_candy_machine_mints(
                         let found = transaction.message.instructions.iter().find(|ix| {
                             let program_id = account_keys[ix.program_id_index as usize];
 
-                            program_id
-                                == Pubkey::from_str("cndy3Z4yapfJBmL3ShUp5exZKqR3z33thTzeNMm2gRZ")
-                                    .unwrap()
+                            program_id == pubkey!("cndy3Z4yapfJBmL3ShUp5exZKqR3z33thTzeNMm2gRZ")
+                                && ix.program_id_index as usize > 5
                         });
 
                         let trx_err = if let Some(meta) = &(*res_ref).transaction.meta {
@@ -326,14 +327,13 @@ async fn get_candy_machine_mints(
                         };
 
                         if found.is_some() && !trx_err && bot_tax.is_none() {
-                            if found.unwrap().program_id_index >= 16 {
-                                let metadata_account = transaction.message.account_keys
-                                    [found.unwrap().accounts[4] as usize];
-                                let mint = transaction.message.account_keys
-                                    [found.unwrap().accounts[5] as usize];
+                            let metadata_account = transaction.message.account_keys
+                                [found.unwrap().accounts[4] as usize];
+                            let mint = transaction.message.account_keys
+                                [found.unwrap().accounts[5] as usize];
 
-                                mints_and_metadata.insert(mint, metadata_account);
-                            }
+                            metadata.push(metadata_account);
+                            mints_and_metadata.insert(mint, metadata_account);
                         };
                         Some(transaction)
                     } else {
@@ -368,33 +368,33 @@ async fn get_candy_machine_mints(
         }
     }
 
-    Ok((mints_and_metadata, errors))
+    Ok((mints_and_metadata, metadata, errors))
 }
 
 async fn fetch_accounts(
     config: Arc<SugarConfig>,
-    mints_and_metadata: HashMap<Pubkey, Pubkey>,
+    mints_and_metadata: Arc<HashMap<Pubkey, Pubkey>>,
+    metadata: Vec<Pubkey>,
 ) -> Result<Vec<Arc<Pubkey>>> {
     let mut handles = Vec::new();
-
-    let pdas: Vec<Pubkey> = mints_and_metadata.into_values().collect();
+    let metdata_ref = &metadata;
 
     let mut all_pdas = Vec::new();
     let mut i = 0;
-    while i < pdas.len() {
-        if i + 100 > pdas.len() {
-            all_pdas.push(pdas[(i..pdas.len())].to_vec());
+    while i < metdata_ref.len() {
+        if i + 100 > metdata_ref.len() {
+            all_pdas.push(metdata_ref[(i..metdata_ref.len())].to_vec());
         } else {
-            all_pdas.push(pdas[(i..i + 100)].to_vec());
+            all_pdas.push(metdata_ref[(i..i + 100)].to_vec());
         };
         i += 100
     }
 
-    for mint in all_pdas.drain(0..cmp::min(all_pdas.len(), PARALLEL_LIMIT)) {
+    for metadata_accounts in all_pdas.drain(0..cmp::min(all_pdas.len(), PARALLEL_LIMIT)) {
         let config = Arc::clone(&config);
-        handles.push(tokio::spawn(
-            async move { get_accounts(config, &mint).await },
-        ));
+        handles.push(tokio::spawn(async move {
+            get_accounts(config, &metadata_accounts).await
+        }));
     }
 
     let mut errors = Vec::new();
@@ -424,7 +424,6 @@ async fn fetch_accounts(
                                         if creator.address == config.keypair.pubkey()
                                             && !creator.verified
                                         {
-                                            let mint = &mints_and_metadata;
                                             if let Some(metadata) =
                                                 mints_and_metadata.get(&meta.mint)
                                             {
@@ -484,12 +483,12 @@ async fn get_transaction(
 
 async fn get_accounts(
     config: Arc<SugarConfig>,
-    mints: &Vec<Pubkey>,
+    metadata: &Vec<Pubkey>,
 ) -> Result<Vec<Option<Account>>> {
     let client = setup_client(&config).unwrap();
     let program = client.program(CANDY_MACHINE_ID);
 
-    let transaction = program.rpc().get_multiple_accounts(&mints)?;
+    let transaction = program.rpc().get_multiple_accounts(&metadata)?;
 
     Ok(transaction)
 }
