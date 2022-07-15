@@ -407,29 +407,24 @@ async fn fetch_accounts(
                 handles = remaining;
 
                 if res.is_ok() {
-                    for account in res? {
-                        if let Some(account) = account {
-                            let metadata: Option<Metadata> = if let Ok(metadata) =
-                                try_from_slice_unchecked(&account.data.clone())
-                            {
+                    for account in (res?).into_iter().flatten() {
+                        let metadata: Option<Metadata> =
+                            if let Ok(metadata) = try_from_slice_unchecked(&account.data.clone()) {
                                 Some(metadata)
                             } else {
                                 None
                             };
 
-                            if let Some(meta) = metadata {
-                                if let Some(creators) = meta.data.creators {
-                                    for creator in creators {
-                                        let config = Arc::clone(&config);
-                                        if creator.address == config.keypair.pubkey()
-                                            && !creator.verified
-                                        {
-                                            if let Some(metadata) =
-                                                mints_and_metadata.get(&meta.mint)
-                                            {
-                                                let metadata_ref = Arc::new(*metadata);
-                                                accounts.push(metadata_ref)
-                                            }
+                        if let Some(meta) = metadata {
+                            if let Some(creators) = meta.data.creators {
+                                for creator in creators {
+                                    let config = Arc::clone(&config);
+                                    if creator.address == config.keypair.pubkey()
+                                        && !creator.verified
+                                    {
+                                        if let Some(metadata) = mints_and_metadata.get(&meta.mint) {
+                                            let metadata_ref = Arc::new(*metadata);
+                                            accounts.push(metadata_ref)
                                         }
                                     }
                                 }
@@ -483,12 +478,12 @@ async fn get_transaction(
 
 async fn get_accounts(
     config: Arc<SugarConfig>,
-    metadata: &Vec<Pubkey>,
+    metadata: &[Pubkey],
 ) -> Result<Vec<Option<Account>>> {
     let client = setup_client(&config).unwrap();
     let program = client.program(CANDY_MACHINE_ID);
 
-    let transaction = program.rpc().get_multiple_accounts(&metadata)?;
+    let transaction = program.rpc().get_multiple_accounts(metadata)?;
 
     Ok(transaction)
 }
