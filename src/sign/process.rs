@@ -1,3 +1,12 @@
+use std::{
+    cmp,
+    str::FromStr,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
+
 pub use anchor_client::{
     solana_sdk::{
         account::Account,
@@ -13,8 +22,7 @@ pub use anchor_client::{
 use anyhow::Error;
 use console::style;
 use futures::future::select_all;
-
-use mpl_token_metadata::instruction::sign_metadata;
+use mpl_token_metadata::{instruction::sign_metadata, state::Metadata, ID as METAPLEX_PROGRAM_ID};
 use retry::{delay::Exponential, retry};
 use solana_client::{
     rpc_client::GetConfirmedSignaturesForAddress2Config,
@@ -22,22 +30,15 @@ use solana_client::{
 };
 use solana_program::{borsh::try_from_slice_unchecked, pubkey};
 use solana_transaction_status::{EncodedConfirmedTransaction, UiTransactionEncoding};
-use std::{
-    cmp,
-    str::FromStr,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
 
-use mpl_token_metadata::{state::Metadata, ID as METAPLEX_PROGRAM_ID};
-
-use crate::{cache::load_cache, candy_machine::CANDY_MACHINE_ID};
-use crate::{common::*, pdas::find_metadata_pda, utils::*};
 use crate::{
+    cache::load_cache,
+    candy_machine::CANDY_MACHINE_ID,
+    common::*,
     config::SugarConfig,
+    pdas::find_metadata_pda,
     setup::{setup_client, sugar_setup},
+    utils::*,
 };
 
 pub struct SignArgs {
