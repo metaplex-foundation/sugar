@@ -226,41 +226,6 @@ pub enum Commands {
         unminted: bool,
     },
 
-    /// Interact with the bundlr network
-    Bundlr {
-        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
-        #[clap(short, long)]
-        keypair: Option<String>,
-
-        /// RPC Url
-        #[clap(short, long)]
-        rpc_url: Option<String>,
-
-        #[clap(subcommand)]
-        action: BundlrAction,
-    },
-
-    /// Manage the collection on the candy machine
-    Collection {
-        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
-        #[clap(short, long)]
-        keypair: Option<String>,
-
-        /// RPC Url
-        #[clap(short, long)]
-        rpc_url: Option<String>,
-
-        /// Path to the cache file, defaults to "cache.json"
-        #[clap(long, default_value = DEFAULT_CACHE)]
-        cache: String,
-
-        /// Address of candy machine to update.
-        #[clap(long)]
-        candy_machine: Option<String>,
-
-        #[clap(subcommand)]
-        command: CollectionSubcommands,
-    },
     /// Sign one or all NFTs from candy machine
     Sign {
         /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
@@ -283,18 +248,70 @@ pub enum Commands {
         #[clap(long)]
         candy_machine_id: Option<String>,
     },
+
+    /// Interact with the bundlr network
+    Bundlr {
+        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
+        #[clap(short, long)]
+        keypair: Option<String>,
+
+        /// RPC Url
+        #[clap(short, long)]
+        rpc_url: Option<String>,
+
+        #[clap(subcommand)]
+        action: BundlrAction,
+    },
+
+    /// Manage the collection on the candy machine
+    Collection {
+        #[clap(subcommand)]
+        command: CollectionSubcommands,
+    },
 }
 
 #[derive(Subcommand)]
 pub enum CollectionSubcommands {
     /// Set the collection mint on the candy machine
     Set {
+        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
+        #[clap(short, long)]
+        keypair: Option<String>,
+
+        /// RPC Url
+        #[clap(short, long)]
+        rpc_url: Option<String>,
+
+        /// Path to the cache file, defaults to "cache.json"
+        #[clap(long, default_value = DEFAULT_CACHE)]
+        cache: String,
+
+        /// Address of candy machine to update.
+        #[clap(long)]
+        candy_machine: Option<String>,
+
         /// Address of collection mint to set the candy machine to.
         collection_mint: String,
     },
 
     /// Remove the collection from the candy machine
-    Remove,
+    Remove {
+        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
+        #[clap(short, long)]
+        keypair: Option<String>,
+
+        /// RPC Url
+        #[clap(short, long)]
+        rpc_url: Option<String>,
+
+        /// Path to the cache file, defaults to "cache.json"
+        #[clap(long, default_value = DEFAULT_CACHE)]
+        cache: String,
+
+        /// Address of candy machine to update.
+        #[clap(long)]
+        candy_machine: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
