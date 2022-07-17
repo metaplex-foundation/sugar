@@ -297,7 +297,12 @@ pub fn mint(
                         }
                     }
                 }
-                Err(err) => return Err(anyhow!(err)),
+                Err(err) => {
+                    error!("Invalid whitelist token account: {}", err);
+                    return Err(anyhow!(
+                        "Uninitialized whitelist token account: {whitelist_token_account}"
+                    ));
+                }
             }
 
             if !token_found {
