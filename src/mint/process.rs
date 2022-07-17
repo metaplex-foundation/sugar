@@ -300,7 +300,8 @@ pub fn mint(
                 Err(err) => {
                     error!("Invalid whitelist token account: {}", err);
                     return Err(anyhow!(
-                        "Uninitialized whitelist token account: {whitelist_token_account}"
+                        "Uninitialized whitelist token account: {whitelist_token_account}.
+                         Check that you provided a valid SPL token mint for the whitelist."
                     ));
                 }
             }
