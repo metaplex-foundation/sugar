@@ -9,9 +9,12 @@ pub struct Metadata {
     pub name: String,
     pub symbol: String,
     pub description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub seller_fee_basis_points: Option<u16>,
     pub image: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub animation_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub external_url: Option<String>,
     pub attributes: Vec<Attribute>,
     pub properties: Property,
@@ -62,6 +65,7 @@ impl Metadata {
 #[derive(Debug, Clone, Deserialize, Default, Serialize)]
 pub struct Property {
     pub files: Vec<FileAttr>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub creators: Option<Vec<Creator>>,
 }
 
