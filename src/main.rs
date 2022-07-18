@@ -148,6 +148,7 @@ async fn run() -> Result<()> {
             keypair,
             rpc_url,
             cache,
+            v1,
             strict,
             skip_collection_prompt,
         } => {
@@ -157,6 +158,7 @@ async fn run() -> Result<()> {
                 keypair,
                 rpc_url,
                 cache,
+                v1,
                 strict,
                 skip_collection_prompt,
                 interrupted: interrupted.clone(),
@@ -225,10 +227,12 @@ async fn run() -> Result<()> {
         }
         Commands::Validate {
             assets_dir,
+            v1,
             strict,
             skip_collection_prompt,
         } => process_validate(ValidateArgs {
             assets_dir,
+            v1,
             strict,
             skip_collection_prompt,
         })?,

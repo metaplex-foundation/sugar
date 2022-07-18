@@ -14,6 +14,7 @@ use crate::{common::*, utils::*, validate::*};
 
 pub struct ValidateArgs {
     pub assets_dir: String,
+    pub v1: bool,
     pub strict: bool,
     pub skip_collection_prompt: bool,
 }
@@ -112,8 +113,8 @@ pub fn process_validate(args: ValidateArgs) -> Result<()> {
             }
         };
 
-        if args.strict {
-            match metadata.validate_strict() {
+        if args.v1 {
+            match metadata.validate_v1() {
                 Ok(()) => {}
                 Err(e) => {
                     error!("{}: {}", path.display(), e);

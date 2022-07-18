@@ -29,8 +29,8 @@ impl Metadata {
         Ok(())
     }
 
-    // Validation for the older JSON format and strict checking of more fields.
-    pub fn validate_strict(&self) -> Result<(), ValidateParserError> {
+    // Validation for the older JSON format
+    pub fn validate_v1(&self) -> Result<(), ValidateParserError> {
         if let Some(animation_url) = &self.animation_url {
             parser::check_url(animation_url)?;
         } else {

@@ -55,6 +55,10 @@ pub enum Commands {
         #[clap(long, default_value = DEFAULT_CACHE)]
         cache: String,
 
+        /// Validate against the old, V1 JSON standard w/ Creators and SFBP
+        #[clap(long)]
+        v1: bool,
+
         /// Strict mode: validate against JSON metadata standard exactly
         #[clap(long)]
         strict: bool,
@@ -179,6 +183,10 @@ pub enum Commands {
         /// Assets directory to upload, defaults to "assets"
         #[clap(default_value = DEFAULT_ASSETS)]
         assets_dir: String,
+
+        /// Validate against the old, V1 JSON standard w/ Creators and SFBP
+        #[clap(long)]
+        v1: bool,
 
         /// Strict mode: validate against JSON metadata standard exactly
         #[clap(long)]
