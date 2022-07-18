@@ -2,7 +2,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 use super::ValidateParserError;
-use crate::validate::{errors, parser};
+use crate::validate::parser;
 
 #[derive(Debug, Clone, Deserialize, Default, Serialize)]
 pub struct Metadata {
@@ -26,37 +26,23 @@ impl Metadata {
         parser::check_symbol(&self.symbol)?;
         parser::check_url(&self.image)?;
 
-        Ok(())
-    }
-
-    // Validation for the older JSON format
-    pub fn validate_v1(&self) -> Result<(), ValidateParserError> {
-        if let Some(animation_url) = &self.animation_url {
-            parser::check_url(animation_url)?;
-        } else {
-            return Err(errors::ValidateParserError::MissingAnimationUrl);
-        }
-
-        if let Some(external_url) = &self.external_url {
-            parser::check_url(external_url)?;
-        } else {
-            return Err(errors::ValidateParserError::MissingExternalUrl);
-        }
-
+        // If users are using the old format, we do validation on those values.
         if let Some(sfbp) = &self.seller_fee_basis_points {
             parser::check_seller_fee_basis_points(*sfbp)?;
-        } else {
-            return Err(errors::ValidateParserError::MissingSellerFeeBasisPoints);
         }
 
         if let Some(creators) = &self.properties.creators {
             parser::check_creators_shares(creators)?;
             parser::check_creators_addresses(creators)?;
-        } else {
-            return Err(errors::ValidateParserError::MissingCreators);
         }
 
-        Self::validate(self)?;
+        if let Some(animation_url) = &self.animation_url {
+            parser::check_url(animation_url)?;
+        }
+
+        if let Some(external_url) = &self.external_url {
+            parser::check_url(external_url)?;
+        }
 
         Ok(())
     }

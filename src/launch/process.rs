@@ -20,7 +20,6 @@ pub struct LaunchArgs {
     pub keypair: Option<String>,
     pub rpc_url: Option<String>,
     pub cache: String,
-    pub v1: bool,
     pub strict: bool,
     pub skip_collection_prompt: bool,
     pub interrupted: Arc<AtomicBool>,
@@ -60,8 +59,7 @@ pub async fn process_launch(args: LaunchArgs) -> Result<()> {
 
     let validate_args = ValidateArgs {
         assets_dir: args.assets_dir.clone(),
-        strict: false, // TODO: add strict validation in once we finalize new JSON standard.
-        v1: args.v1,
+        strict: args.strict,
         skip_collection_prompt: args.skip_collection_prompt,
     };
 

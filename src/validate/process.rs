@@ -14,7 +14,6 @@ use crate::{common::*, utils::*, validate::*};
 
 pub struct ValidateArgs {
     pub assets_dir: String,
-    pub v1: bool,
     pub strict: bool,
     pub skip_collection_prompt: bool,
 }
@@ -113,8 +112,9 @@ pub fn process_validate(args: ValidateArgs) -> Result<()> {
             }
         };
 
-        if args.v1 {
-            match metadata.validate_v1() {
+        // To be replaced with the strict validator once JSON standard is finalized.
+        if args.strict {
+            match metadata.validate() {
                 Ok(()) => {}
                 Err(e) => {
                     error!("{}: {}", path.display(), e);
