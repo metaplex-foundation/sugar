@@ -14,6 +14,7 @@ pub mod mint;
 pub mod parse;
 pub mod pdas;
 pub mod program_errors;
+pub mod reveal;
 pub mod setup;
 pub mod show;
 pub mod update;

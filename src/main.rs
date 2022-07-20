@@ -23,6 +23,7 @@ use sugar_cli::{
     launch::{process_launch, LaunchArgs},
     mint::{process_mint, MintArgs},
     parse::parse_sugar_errors,
+    reveal::{process_reveal, RevealArgs},
     show::{process_show, ShowArgs},
     update::{process_update, UpdateArgs},
     upload::{process_upload, UploadArgs},
@@ -300,6 +301,20 @@ async fn run() -> Result<()> {
                 keypair,
                 rpc_url,
                 action,
+            })
+            .await?
+        }
+        Commands::Reveal {
+            keypair,
+            rpc_url,
+            cache,
+            config,
+        } => {
+            process_reveal(RevealArgs {
+                keypair,
+                rpc_url,
+                cache,
+                config,
             })
             .await?
         }
