@@ -55,10 +55,23 @@ impl AWSMethod {
         };
 
         let key = bs58::encode(&asset_info.name).into_string();
-        // send data to AWS S3
-        bucket
-            .put_object_with_content_type(&key, &data, &asset_info.content_type)
-            .await?;
+        let mut retry = true;
+        // send data to AWS S3 with a simple retry logic
+        loop {
+            match bucket
+                .put_object_with_content_type(&key, &data, &asset_info.content_type)
+                .await
+            {
+                Ok(_) => break,
+                Err(error) => {
+                    if !retry {
+                        return Err(error.into());
+                    }
+                    // we try one more time before reporting the error
+                    retry = false;
+                }
+            }
+        }
 
         let link = format!("https://{}.s3.amazonaws.com/{}", bucket.name(), key);
 
