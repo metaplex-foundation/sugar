@@ -1,6 +1,5 @@
 use std::fs::OpenOptions;
 
-use base64ct::{Base64, Encoding};
 use console::style;
 use sha2::{Digest, Sha256};
 
@@ -23,8 +22,8 @@ pub fn process_hash(args: HashArgs) -> Result<()> {
     if let Some(hash) = args.compare {
         let mut hasher = Sha256::new();
         hasher.update(cache_data.as_bytes());
-        let hash_base64 = Base64::encode_string(&hasher.finalize());
-        let expected_hash = hash_base64.chars().take(32).collect::<String>();
+        let hash_base58 = bs58::encode(&hasher.finalize()).into_string();
+        let expected_hash = hash_base58.chars().take(32).collect::<String>();
         if hash != expected_hash {
             println!(
                 "{} {}",
@@ -44,11 +43,10 @@ pub fn process_hash(args: HashArgs) -> Result<()> {
     if let Some(mut hidden_settings) = config_data.hidden_settings {
         let mut hasher = Sha256::new();
         hasher.update(cache_data.as_bytes());
-        let hash = hasher.finalize();
-        let hash_base64 = Base64::encode_string(&hash);
+        let hash_base58 = bs58::encode(&hasher.finalize()).into_string();
 
         // Candy machine only allows for 32 characters so we truncate this hash.
-        hidden_settings.set_hash(hash_base64.chars().take(32).collect::<String>());
+        hidden_settings.set_hash(hash_base58.chars().take(32).collect::<String>());
         config_data.hidden_settings = Some(hidden_settings);
 
         let file = OpenOptions::new()
