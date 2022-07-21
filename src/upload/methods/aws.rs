@@ -15,6 +15,9 @@ use crate::{
     },
 };
 
+// Maximum number of times to retry each individual upload.
+const MAX_RETRY: u8 = 3;
+
 pub struct AWSMethod {
     pub bucket: Arc<Bucket>,
 }
@@ -55,8 +58,8 @@ impl AWSMethod {
         };
 
         let key = bs58::encode(&asset_info.name).into_string();
-        let mut retry = true;
-        // send data to AWS S3 with a simple retry logic
+        let mut retry = MAX_RETRY;
+        // send data to AWS S3 with a simple retry logic (mitigates dns lookup errors)
         loop {
             match bucket
                 .put_object_with_content_type(&key, &data, &asset_info.content_type)
@@ -64,11 +67,11 @@ impl AWSMethod {
             {
                 Ok(_) => break,
                 Err(error) => {
-                    if !retry {
+                    if retry == 0 {
                         return Err(error.into());
                     }
                     // we try one more time before reporting the error
-                    retry = false;
+                    retry -= 1;
                 }
             }
         }
