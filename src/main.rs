@@ -20,6 +20,7 @@ use sugar_cli::{
     constants::{COMPLETE_EMOJI, ERROR_EMOJI},
     create_config::{process_create_config, CreateConfigArgs},
     deploy::{process_deploy, DeployArgs},
+    hash::{process_hash, HashArgs},
     launch::{process_launch, LaunchArgs},
     mint::{process_mint, MintArgs},
     parse::parse_sugar_errors,
@@ -141,6 +142,15 @@ async fn run() -> Result<()> {
             keypair,
             rpc_url,
             assets_dir,
+        })?,
+        Commands::Hash {
+            config,
+            cache,
+            compare,
+        } => process_hash(HashArgs {
+            config,
+            cache,
+            compare,
         })?,
         Commands::Launch {
             assets_dir,
