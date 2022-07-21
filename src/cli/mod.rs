@@ -214,25 +214,6 @@ pub enum Commands {
         cache: String,
     },
 
-    /// Withdraw funds from candy machine account closing it
-    Withdraw {
-        /// Address of candy machine to withdraw funds from.
-        #[clap(long)]
-        candy_machine: Option<String>,
-
-        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
-        #[clap(short, long)]
-        keypair: Option<String>,
-
-        /// RPC Url
-        #[clap(short, long)]
-        rpc_url: Option<String>,
-
-        /// List available candy machines, no withdraw performed
-        #[clap(long)]
-        list: bool,
-    },
-
     /// Validate JSON metadata files
     Validate {
         /// Assets directory to upload, defaults to "assets"
@@ -261,6 +242,25 @@ pub enum Commands {
         /// Path to the cache file, defaults to "cache.json"
         #[clap(long, default_value = DEFAULT_CACHE)]
         cache: String,
+    },
+
+    /// Withdraw funds from candy machine account closing it
+    Withdraw {
+        /// Address of candy machine to withdraw funds from.
+        #[clap(long)]
+        candy_machine: Option<String>,
+
+        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
+        #[clap(short, long)]
+        keypair: Option<String>,
+
+        /// RPC Url
+        #[clap(short, long)]
+        rpc_url: Option<String>,
+
+        /// List available candy machines, no withdraw performed
+        #[clap(long)]
+        list: bool,
     },
 }
 
