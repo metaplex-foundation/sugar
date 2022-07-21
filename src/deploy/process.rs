@@ -162,7 +162,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
             &candy_pubkey.to_string()
         );
 
-        cache.program = CacheProgram::new_from_cm(&candy_pubkey, &sugar_config.keypair.pubkey());
+        cache.program = CacheProgram::new_from_cm(&candy_pubkey);
         cache.sync_file()?;
 
         spinner.finish_and_clear();
