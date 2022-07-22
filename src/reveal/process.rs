@@ -99,7 +99,7 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
     );
     let metadata_pubkeys: Vec<Pubkey> = metadata_addresses
         .iter()
-        .map(|a| Pubkey::from_str(&a).unwrap())
+        .map(|a| Pubkey::from_str(a).unwrap())
         .collect();
 
     let mut futures = Vec::new();
@@ -108,13 +108,13 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
     // Get all metadata accounts.
     metadata_pubkeys.as_slice().chunks(100).for_each(|chunk| {
         let client = client.clone();
-        futures.push(async move { async_get_multiple_accounts(client, chunk) });
+        futures.push(async move { async_get_multiple_accounts(client, chunk).await });
     });
     let results = join_all(futures).await;
     let mut accounts = Vec::new();
 
     for result in results {
-        let res = result.await.unwrap();
+        let res = result.unwrap();
         accounts.extend(res);
     }
 
