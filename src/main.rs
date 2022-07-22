@@ -24,6 +24,7 @@ use sugar_cli::{
     mint::{process_mint, MintArgs},
     parse::parse_sugar_errors,
     show::{process_show, ShowArgs},
+    sign::{process_sign, SignArgs},
     update::{process_update, UpdateArgs},
     upload::{process_upload, UploadArgs},
     validate::{process_validate, ValidateArgs},
@@ -300,6 +301,23 @@ async fn run() -> Result<()> {
                 keypair,
                 rpc_url,
                 action,
+            })
+            .await?
+        }
+        Commands::Sign {
+            keypair,
+            rpc_url,
+            cache,
+            mint,
+            candy_machine_id,
+        } => {
+            process_sign(SignArgs {
+                keypair,
+                rpc_url,
+                cache,
+                mint,
+                candy_machine_id,
+                interrupted: interrupted.clone(),
             })
             .await?
         }
