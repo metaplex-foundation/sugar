@@ -400,12 +400,15 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
     if let Some(ref hidden_settings) = config_data.hidden_settings {
         let cache_items_data = serde_json::to_string(&cache.items)?;
 
-        hash_and_update(
-            hidden_settings.clone(),
-            args.config,
-            &mut config_data,
-            &cache_items_data,
-        )?;
+        println!(
+            "\nHidden settings hash: {}",
+            hash_and_update(
+                hidden_settings.clone(),
+                args.config,
+                &mut config_data,
+                &cache_items_data,
+            )?
+        );
     }
 
     Ok(())
