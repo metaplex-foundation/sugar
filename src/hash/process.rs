@@ -47,12 +47,20 @@ pub fn process_hash(args: HashArgs) -> Result<()> {
     }
 
     if let Some(ref hidden_settings) = config_data.hidden_settings {
-        hash_and_update(
-            hidden_settings.clone(),
-            args.config,
-            &mut config_data,
-            &cache_items_data,
-        )?;
+        println!(
+            "hash: {}",
+            hash_and_update(
+                hidden_settings.clone(),
+                args.config,
+                &mut config_data,
+                &cache_items_data,
+            )?
+        );
+        println!(
+            "{} {}",
+            COMPLETE_EMOJI,
+            style("Config file updated with hash!").blue().bold()
+        );
         std::process::exit(0);
     } else {
         return Err(anyhow!("No hidden settings found in config file."));
@@ -64,14 +72,14 @@ pub fn hash_and_update(
     config_file: String,
     config_data: &mut ConfigData,
     cache_items_data: &String,
-) -> Result<()> {
+) -> Result<String> {
     let mut hasher = Sha256::new();
     hasher.update(cache_items_data.as_bytes());
     let hash_base58 = bs58::encode(&hasher.finalize()).into_string();
-    println!("hash: {}", &hash_base58);
 
+    let hash = hash_base58.chars().take(32).collect::<String>();
     // Candy machine only allows for 32 characters so we truncate this hash.
-    hidden_settings.set_hash(hash_base58.chars().take(32).collect::<String>());
+    hidden_settings.set_hash(hash.clone());
     config_data.hidden_settings = Some(hidden_settings);
 
     let file = OpenOptions::new()
@@ -81,11 +89,6 @@ pub fn hash_and_update(
         .open(Path::new(&config_file))?;
 
     serde_json::to_writer_pretty(file, &config_data)?;
-    println!(
-        "{} {}",
-        COMPLETE_EMOJI,
-        style("Config file updated with hash!").blue().bold()
-    );
 
-    Ok(())
+    Ok(hash)
 }
