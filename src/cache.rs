@@ -29,7 +29,7 @@ impl Cache {
 
     pub fn write_to_file<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
         let f = File::create(path)?;
-        serde_json::to_writer(f, &self)?;
+        serde_json::to_writer_pretty(f, &self)?;
 
         Ok(())
     }
