@@ -555,13 +555,10 @@ if [ $RESUME -eq 0 ]; then
 
     if [ "$MANUAL_CACHE" == "Y" ]; then
         echo -n "{\"program\":{\"candyMachine\":\"\", \"candyMachineCreator\":\"\", \"collectionMint\":\"\"}, \"items\":{" >> $CACHE_FILE
-<<<<<<< HEAD
-=======
 
         NAME="Collection"
         METADATA_HASH=`sha256sum "$ASSETS_DIR/collection.json" | cut -d ' ' -f 1`
         echo "\"-1\":{\"name\":\"[$TIMESTAMP] $NAME\",\"image_hash\":\"$COLLECTION_HASH\",\"image_link\":\"$COLLECTION_PNG\",\"metadata_hash\":\"$METADATA_HASH\",\"metadata_link\":\"$COLLECTION_URL\",\"onChain\":false}," >> $CACHE_FILE
->>>>>>> main
         
         for ((i = 0; i < $ITEMS; i++)); do
             if [ "$i" -gt "0" ]; then
