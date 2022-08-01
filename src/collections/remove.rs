@@ -14,7 +14,7 @@ use crate::{
     hash::hash_and_update,
     pdas::*,
     update::{process_update, UpdateArgs},
-    utils::spinner_with_style,
+    utils::{assert_correct_authority, spinner_with_style},
 };
 
 pub struct RemoveCollectionArgs {
@@ -65,6 +65,11 @@ pub fn process_remove_collection(args: RemoveCollectionArgs) -> Result<()> {
     let collection_metadata_info = get_metadata_pda(&collection_mint_pubkey, &program)?;
 
     pb.finish_with_message("Done");
+
+    assert_correct_authority(
+        &sugar_config.keypair.pubkey(),
+        &candy_machine_state.authority,
+    )?;
 
     println!(
         "\n{} {}Removing collection mint for candy machine",

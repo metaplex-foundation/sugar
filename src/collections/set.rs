@@ -18,7 +18,7 @@ use crate::{
     hash::hash_and_update,
     pdas::*,
     update::{process_update, UpdateArgs},
-    utils::spinner_with_style,
+    utils::{assert_correct_authority, spinner_with_style},
 };
 
 pub struct SetCollectionArgs {
@@ -84,6 +84,11 @@ pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
     let collection_edition_info = get_master_edition_pda(&collection_mint_pubkey, &program)?;
 
     pb.finish_with_message("Done");
+
+    assert_correct_authority(
+        &sugar_config.keypair.pubkey(),
+        &candy_machine_state.authority,
+    )?;
 
     println!(
         "\n{} {}Setting collection mint for candy machine",
