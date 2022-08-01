@@ -280,6 +280,10 @@ pub enum CollectionSubcommands {
         #[clap(long, default_value = DEFAULT_CACHE)]
         cache: String,
 
+        /// Path to the config file
+        #[clap(short, long, default_value = DEFAULT_CONFIG)]
+        config: String,
+
         /// Address of candy machine to update.
         #[clap(long)]
         candy_machine: Option<String>,
@@ -301,6 +305,10 @@ pub enum CollectionSubcommands {
         /// Path to the cache file, defaults to "cache.json"
         #[clap(long, default_value = DEFAULT_CACHE)]
         cache: String,
+
+        /// Path to the config file
+        #[clap(short, long, default_value = DEFAULT_CONFIG)]
+        config: String,
 
         /// Address of candy machine to update.
         #[clap(long)]

@@ -15,7 +15,6 @@ use crate::{
     cache::{load_cache, Cache},
     common::*,
     config::{get_config_data, SugarConfig},
-    hash::hash_and_update,
     upload::*,
     utils::*,
     validate::format::Metadata,
@@ -38,7 +37,7 @@ pub struct AssetType {
 
 pub async fn process_upload(args: UploadArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
-    let mut config_data = get_config_data(&args.config)?;
+    let config_data = get_config_data(&args.config)?;
 
     // loading assets
     println!(
@@ -394,21 +393,6 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
         };
 
         return Err(UploadError::Incomplete(message).into());
-    }
-
-    // If hidden settings are enabled, update the hash value with the new cache file.
-    if let Some(ref hidden_settings) = config_data.hidden_settings {
-        let cache_items_data = serde_json::to_string(&cache.items)?;
-
-        println!(
-            "\nHidden settings hash: {}",
-            hash_and_update(
-                hidden_settings.clone(),
-                args.config,
-                &mut config_data,
-                &cache_items_data,
-            )?
-        );
     }
 
     Ok(())

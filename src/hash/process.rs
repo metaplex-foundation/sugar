@@ -19,15 +19,12 @@ pub fn process_hash(args: HashArgs) -> Result<()> {
     let cache = load_cache(&args.cache, false)?;
     let mut config_data = get_config_data(&args.config)?;
 
-    // Only hash `items` from cache as candy machine value changes after `deploy`.
-    let cache_items_data = serde_json::to_string(&cache.items)?;
-
     // We use std::process::exit to exit the program without going to the main handling which prints
     // "Command successful".
 
     if let Some(hash) = args.compare {
         let mut hasher = Sha256::new();
-        hasher.update(cache_items_data.as_bytes());
+        hasher.update(serde_json::to_vec(&cache)?);
         let hash_base58 = bs58::encode(&hasher.finalize()).into_string();
         let expected_hash = hash_base58.chars().take(32).collect::<String>();
         if hash != expected_hash {
@@ -53,7 +50,7 @@ pub fn process_hash(args: HashArgs) -> Result<()> {
                 hidden_settings.clone(),
                 args.config,
                 &mut config_data,
-                &cache_items_data,
+                &cache,
             )?
         );
         println!(
@@ -71,10 +68,11 @@ pub fn hash_and_update(
     mut hidden_settings: HiddenSettings,
     config_file: String,
     config_data: &mut ConfigData,
-    cache_items_data: &String,
+    cache_data: &Cache,
 ) -> Result<String> {
     let mut hasher = Sha256::new();
-    hasher.update(cache_items_data.as_bytes());
+
+    hasher.update(serde_json::to_vec(&cache_data)?);
     let hash_base58 = bs58::encode(&hasher.finalize()).into_string();
 
     let hash = hash_base58.chars().take(32).collect::<String>();

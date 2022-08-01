@@ -149,6 +149,7 @@ async fn run() -> Result<()> {
                 keypair,
                 rpc_url,
                 cache,
+                config,
                 candy_machine,
                 collection_mint,
             } => process_set_collection(SetCollectionArgs {
@@ -156,17 +157,20 @@ async fn run() -> Result<()> {
                 keypair,
                 rpc_url,
                 cache,
+                config,
                 candy_machine,
             })?,
             CollectionSubcommands::Remove {
                 keypair,
                 rpc_url,
                 cache,
+                config,
                 candy_machine,
             } => process_remove_collection(RemoveCollectionArgs {
                 keypair,
                 rpc_url,
                 cache,
+                config,
                 candy_machine,
             })?,
         },
