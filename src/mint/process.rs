@@ -156,6 +156,7 @@ pub fn mint(
     let program = client.program(CANDY_MACHINE_ID);
     let payer = program.payer();
     let wallet = candy_machine_state.wallet;
+    let authority = candy_machine_state.authority;
 
     let candy_machine_data = &candy_machine_state.data;
 
@@ -296,7 +297,13 @@ pub fn mint(
                         }
                     }
                 }
-                Err(err) => return Err(anyhow!(err)),
+                Err(err) => {
+                    error!("Invalid whitelist token account: {}", err);
+                    return Err(anyhow!(
+                        "Uninitialized whitelist token account: {whitelist_token_account}.
+                         Check that you provided a valid SPL token mint for the whitelist."
+                    ));
+                }
             }
 
             if !token_found {
@@ -377,7 +384,7 @@ pub fn mint(
                 collection_mint: collection_pda.mint,
                 collection_metadata: find_metadata_pda(&collection_pda.mint),
                 collection_master_edition: find_master_edition_pda(&collection_pda.mint),
-                authority: payer,
+                authority,
                 collection_authority_record,
             })
             .args(nft_instruction::SetCollectionDuringMint {});
@@ -391,7 +398,7 @@ pub fn mint(
     {
         let cluster_param = match get_cluster(program.rpc()).unwrap_or(Cluster::Mainnet) {
             Cluster::Devnet => "?devnet",
-            Cluster::Mainnet => "",
+            _ => "",
         };
         return Err(anyhow!(
             "Minting most likely failed with a bot tax. Check the transaction link for more details: https://explorer.solana.com/tx/{}{}",
