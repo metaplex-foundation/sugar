@@ -91,14 +91,8 @@ pub fn process_mint(args: MintArgs) -> Result<()> {
     );
 
     let receiver_pubkey = match args.receiver {
-        Some(receiver_id) => match Pubkey::from_str(&receiver_id) {
-            Ok(receiver_pubkey) => receiver_pubkey,
-            Err(_) => {
-                let error = anyhow!("Failed to parse receiver pubkey: {}", receiver_id);
-                error!("{:?}", error);
-                return Err(error);
-            }
-        },
+        Some(receiver_id) => Pubkey::from_str(&receiver_id)
+            .map_err(|_| anyhow!("Failed to parse receiver pubkey: {}", receiver_id))?,
         None => candy_machine_state.wallet,
     };
     println!("\nMinting to {}", &receiver_pubkey);
