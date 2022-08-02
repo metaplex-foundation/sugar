@@ -294,7 +294,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
             hash_and_update(hidden_settings, &args.config, &mut config_data, &args.cache,)?
         );
 
-        println!("\nUpdating candy machine state with new hash value...");
+        println!("\nUpdating candy machine state with new hash value:\n");
         let update_args = UpdateArgs {
             keypair: args.keypair,
             rpc_url: args.rpc_url,
