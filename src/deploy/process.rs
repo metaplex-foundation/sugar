@@ -213,7 +213,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
     if let Some(collection_item) = cache.items.get_mut("-1") {
         println!(
             "\n{} {}Creating and setting the collection NFT for candy machine",
-            style(format!("[3/{}]", total_steps)).bold().dim(),
+            style(format!("[2/{}]", total_steps)).bold().dim(),
             COLLECTION_EMOJI
         );
 
@@ -239,9 +239,12 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
 
     // Hidden Settings check needs to be the last action in this command, so we can update the hash with the final cache state.
     if !hidden {
+        let step_num = 2 + (collection_in_cache as u8);
         println!(
             "\n{} {}Writing config lines",
-            style(format!("[2/{}]", total_steps)).bold().dim(),
+            style(format!("[{}/{}]", step_num, total_steps))
+                .bold()
+                .dim(),
             PAPER_EMOJI
         );
 
