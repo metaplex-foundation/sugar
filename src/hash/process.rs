@@ -1,10 +1,12 @@
-use std::fs::OpenOptions;
+use std::{
+    fs::OpenOptions,
+    io::{BufReader, Read},
+};
 
 use console::style;
 use sha2::{Digest, Sha256};
 
 use crate::{
-    cache::load_cache,
     common::*,
     config::{get_config_data, ConfigData, HiddenSettings},
 };
@@ -16,7 +18,6 @@ pub struct HashArgs {
 }
 
 pub fn process_hash(args: HashArgs) -> Result<()> {
-    let cache = load_cache(&args.cache, false)?;
     let mut config_data = get_config_data(&args.config)?;
 
     // We use std::process::exit to exit the program without going to the main handling which prints
@@ -24,7 +25,14 @@ pub fn process_hash(args: HashArgs) -> Result<()> {
 
     if let Some(hash) = args.compare {
         let mut hasher = Sha256::new();
-        hasher.update(serde_json::to_vec(&cache)?);
+
+        let cache_file = File::open(args.cache)?;
+        let mut reader = BufReader::new(cache_file);
+        let mut buffer = Vec::new();
+        // Read file into vector.
+        reader.read_to_end(&mut buffer)?;
+
+        hasher.update(&buffer);
         let hash_base58 = bs58::encode(&hasher.finalize()).into_string();
         let expected_hash = hash_base58.chars().take(32).collect::<String>();
         if hash != expected_hash {
@@ -48,9 +56,9 @@ pub fn process_hash(args: HashArgs) -> Result<()> {
             "hash: {}",
             hash_and_update(
                 hidden_settings.clone(),
-                args.config,
+                &args.config,
                 &mut config_data,
-                &cache,
+                &args.cache,
             )?
         );
         println!(
@@ -66,13 +74,19 @@ pub fn process_hash(args: HashArgs) -> Result<()> {
 
 pub fn hash_and_update(
     mut hidden_settings: HiddenSettings,
-    config_file: String,
+    config_file: &String,
     config_data: &mut ConfigData,
-    cache_data: &Cache,
+    cache_file_path: &String,
 ) -> Result<String> {
     let mut hasher = Sha256::new();
 
-    hasher.update(serde_json::to_vec(&cache_data)?);
+    let cache_file = File::open(cache_file_path)?;
+    let mut reader = BufReader::new(cache_file);
+    let mut buffer = Vec::new();
+    // Read file into vector.
+    reader.read_to_end(&mut buffer)?;
+
+    hasher.update(&buffer);
     let hash_base58 = bs58::encode(&hasher.finalize()).into_string();
 
     let hash = hash_base58.chars().take(32).collect::<String>();

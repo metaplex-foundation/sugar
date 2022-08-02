@@ -133,12 +133,7 @@ pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
 
             println!(
                 "\nHidden settings hash: {}",
-                hash_and_update(
-                    hidden_settings,
-                    args.config.clone(),
-                    &mut config_data,
-                    &cache,
-                )?
+                hash_and_update(hidden_settings, &args.config, &mut config_data, &args.cache,)?
             );
 
             let update_args = UpdateArgs {

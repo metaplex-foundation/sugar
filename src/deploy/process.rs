@@ -291,12 +291,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
 
         println!(
             "\nHidden settings hash: {}",
-            hash_and_update(
-                hidden_settings,
-                args.config.clone(),
-                &mut config_data,
-                &cache,
-            )?
+            hash_and_update(hidden_settings, &args.config, &mut config_data, &args.cache,)?
         );
 
         println!("\nUpdating candy machine state with new hash value...");
