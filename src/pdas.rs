@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use anchor_client::{solana_sdk::pubkey::Pubkey, ClientError, Program};
 use anyhow::{anyhow, Result};
 use mpl_candy_machine::CollectionPDA;
@@ -100,4 +102,14 @@ pub fn get_collection_pda(
                 &collection_pda_pubkey.to_string()
             ),
         })
+}
+
+pub fn derive_cmv2_pda(pubkey: &Pubkey) -> Pubkey {
+    let cmv2_pubkey = Pubkey::from_str("cndy3Z4yapfJBmL3ShUp5exZKqR3z33thTzeNMm2gRZ")
+        .expect("Failed to parse pubkey from candy machine program id!");
+
+    let seeds = &["candy_machine".as_bytes(), pubkey.as_ref()];
+
+    let (pda, _) = Pubkey::find_program_address(seeds, &cmv2_pubkey);
+    pda
 }

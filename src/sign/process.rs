@@ -12,9 +12,15 @@ pub use anchor_client::{
 };
 use console::style;
 use futures::future::select_all;
+use mpl_token_metadata::ID as TOKEN_METADATA_PROGRAM_ID;
 use mpl_token_metadata::{instruction::sign_metadata, ID as METAPLEX_PROGRAM_ID};
 use retry::{delay::Exponential, retry};
-use solana_client::rpc_client::RpcClient;
+use solana_account_decoder::UiAccountEncoding;
+use solana_client::{
+    rpc_client::RpcClient,
+    rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
+    rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType},
+};
 use solana_transaction_crawler::crawler::Crawler;
 use std::{
     cmp,
@@ -29,8 +35,8 @@ use crate::{
     cache::load_cache,
     candy_machine::CANDY_MACHINE_ID,
     common::*,
-    config::SugarConfig,
-    pdas::find_metadata_pda,
+    config::{Cluster, SugarConfig},
+    pdas::{derive_cmv2_pda, find_metadata_pda},
     setup::{setup_client, sugar_setup},
     utils::*,
 };
@@ -60,6 +66,9 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
     pb.set_message("Connecting...");
 
     let sugar_config = Arc::new(sugar_setup(args.keypair, args.rpc_url)?);
+
+    let client = setup_client(&sugar_config)?;
+    let program = client.program(CANDY_MACHINE_ID);
 
     let candy_machine_id = match args.candy_machine_id {
         Some(candy_machine_id) => candy_machine_id,
@@ -101,14 +110,27 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
         );
 
         let mut errors = Vec::new();
-        let client = RpcClient::new("https://ssc-dao.genesysgo.net");
+
         let cm_id = Pubkey::from_str(&candy_machine_id).unwrap();
 
-        let crawled_accounts = &Crawler::get_cmv2_mints(client, cm_id).await?["metadata"];
-        let mut account_keys = crawled_accounts
-            .into_iter()
-            .map(|account| Pubkey::from_str(&account).unwrap())
-            .collect::<Vec<Pubkey>>();
+        let solana_cluster: Cluster = get_cluster(program.rpc())?;
+        let mut account_keys = match solana_cluster {
+            Cluster::Devnet => {
+                let creator_pubkey =
+                    Pubkey::from_str(creator).expect("Failed to parse pubkey from creator!");
+                let cmv2_creator = derive_cmv2_pda(&creator_pubkey);
+                get_cm_creator_accounts(client, creator, position)?
+            }
+            Cluster::Mainnet => {
+                let client = RpcClient::new("https://ssc-dao.genesysgo.net");
+                let crawled_accounts = &Crawler::get_cmv2_mints(client, cm_id).await?["metadata"];
+                crawled_accounts
+                    .into_iter()
+                    .map(|account| Pubkey::from_str(&account).unwrap())
+                    .collect::<Vec<Pubkey>>()
+            }
+            Cluster::Unknown => todo!(),
+        };
 
         pb.finish_with_message(format!("Found {:?} accounts", account_keys.len() as u64));
         println!(
@@ -213,4 +235,56 @@ async fn sign(config: Arc<SugarConfig>, metadata: Pubkey) -> Result<()> {
     )?;
 
     Ok(())
+}
+
+pub fn get_cm_creator_accounts(
+    client: &RpcClient,
+    creator: &str,
+    position: usize,
+) -> Result<Vec<Account>> {
+    if position > 4 {
+        error!("CM Creator position cannot be greator than 4");
+        std::process::exit(1);
+    }
+
+    let config = RpcProgramAccountsConfig {
+        filters: Some(vec![RpcFilterType::Memcmp(Memcmp {
+            offset: 1 + // key
+            32 + // update auth
+            32 + // mint
+            4 + // name string length
+            MAX_NAME_LENGTH + // name
+            4 + // uri string length
+            MAX_URI_LENGTH + // uri*
+            4 + // symbol string length
+            MAX_SYMBOL_LENGTH + // symbol
+            2 + // seller fee basis points
+            1 + // whether or not there is a creators vec
+            4 + // creators
+            position * // index for each creator
+            (
+                32 + // address
+                1 + // verified
+                1 // share
+            ),
+            bytes: MemcmpEncodedBytes::Base58(creator.to_string()),
+            encoding: None,
+        })]),
+        account_config: RpcAccountInfoConfig {
+            encoding: Some(UiAccountEncoding::Base64),
+            data_slice: None,
+            commitment: Some(CommitmentConfig {
+                commitment: CommitmentLevel::Confirmed,
+            }),
+        },
+        with_context: None,
+    };
+
+    let accounts = client
+        .get_program_accounts_with_config(&TOKEN_METADATA_PROGRAM_ID, config)?
+        .into_iter()
+        .map(|(_pubkey, account)| account)
+        .collect::<Vec<Account>>();
+
+    Ok(accounts)
 }
