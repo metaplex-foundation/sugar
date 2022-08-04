@@ -1,10 +1,5 @@
 use std::sync::Arc;
 
-use crate::common::*;
-use crate::config::get_config_data;
-use crate::parse::parse_solana_config;
-use crate::pdas::find_metadata_pda;
-use crate::{cache::load_cache, utils::*};
 use anchor_client::solana_sdk::account::Account;
 use anchor_lang::AnchorDeserialize;
 use console::style;
@@ -14,10 +9,14 @@ use mpl_token_metadata::{
     state::{DataV2, Metadata},
     ID as TOKEN_METADATA_PROGRAM_ID,
 };
-use solana_client::client_error::ClientError;
-use solana_client::rpc_client::RpcClient;
-use solana_crawler::crawler::Crawler;
+use solana_client::{client_error::ClientError, rpc_client::RpcClient};
+use solana_transaction_crawler::crawler::Crawler;
 use tokio::sync::Semaphore;
+
+use crate::{
+    cache::load_cache, common::*, config::get_config_data, parse::parse_solana_config,
+    pdas::find_metadata_pda, utils::*,
+};
 
 pub struct RevealArgs {
     pub keypair: Option<String>,
@@ -89,7 +88,10 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
 
     let spinner = spinner_with_style();
     spinner.set_message("Crawling candy machine id transactions...");
-    let metadata_addresses = Crawler::get_cmv2_metadata(client, candy_machine_id).await?;
+    let crawled_accounts = Crawler::get_cmv2_mints(client, candy_machine_id).await?;
+    let metadata_addresses = crawled_accounts.get("metadata").ok_or_else(|| {
+        anyhow!("Failed to get metadata addresses from candy machine id transactions.")
+    })?;
     spinner.finish_and_clear();
 
     println!(
