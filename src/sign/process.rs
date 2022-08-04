@@ -156,12 +156,13 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
             let config = sugar_config.clone();
             join_handles.push(tokio::spawn(async move {
                 let _permit = permit;
-                sign(Arc::clone(&config), account).await;
+                sign(Arc::clone(&config), account).await.ok();
             }));
         }
 
         for handle in join_handles {
-            handle.await.map_err(|err| errors.push(err));
+            handle.await.map_err(|err| errors.push(err)).ok();
+            pb.inc(1)
         }
 
         if !errors.is_empty() {
