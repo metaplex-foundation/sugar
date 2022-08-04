@@ -20,6 +20,7 @@ use sugar_cli::{
     constants::{COMPLETE_EMOJI, ERROR_EMOJI},
     create_config::{process_create_config, CreateConfigArgs},
     deploy::{process_deploy, DeployArgs},
+    hash::{process_hash, HashArgs},
     launch::{process_launch, LaunchArgs},
     mint::{process_mint, MintArgs},
     parse::parse_sugar_errors,
@@ -132,6 +133,48 @@ async fn run() -> Result<()> {
     .expect("Error setting Ctrl-C handler");
 
     match cli.command {
+        Commands::Bundlr {
+            keypair,
+            rpc_url,
+            action,
+        } => {
+            process_bundlr(BundlrArgs {
+                keypair,
+                rpc_url,
+                action,
+            })
+            .await?
+        }
+        Commands::Collection { command } => match command {
+            CollectionSubcommands::Set {
+                keypair,
+                rpc_url,
+                cache,
+                config,
+                candy_machine,
+                collection_mint,
+            } => process_set_collection(SetCollectionArgs {
+                collection_mint,
+                keypair,
+                rpc_url,
+                cache,
+                config,
+                candy_machine,
+            })?,
+            CollectionSubcommands::Remove {
+                keypair,
+                rpc_url,
+                cache,
+                config,
+                candy_machine,
+            } => process_remove_collection(RemoveCollectionArgs {
+                keypair,
+                rpc_url,
+                cache,
+                config,
+                candy_machine,
+            })?,
+        },
         Commands::CreateConfig {
             config,
             keypair,
@@ -142,6 +185,30 @@ async fn run() -> Result<()> {
             keypair,
             rpc_url,
             assets_dir,
+        })?,
+        Commands::Deploy {
+            config,
+            keypair,
+            rpc_url,
+            cache,
+        } => {
+            process_deploy(DeployArgs {
+                config,
+                keypair,
+                rpc_url,
+                cache,
+                interrupted: interrupted.clone(),
+            })
+            .await?
+        }
+        Commands::Hash {
+            config,
+            cache,
+            compare,
+        } => process_hash(HashArgs {
+            config,
+            cache,
+            compare,
         })?,
         Commands::Launch {
             assets_dir,
@@ -169,13 +236,28 @@ async fn run() -> Result<()> {
             rpc_url,
             cache,
             number,
+            receiver,
             candy_machine,
         } => process_mint(MintArgs {
             keypair,
             rpc_url,
             cache,
             number,
+            receiver,
             candy_machine,
+        })?,
+        Commands::Show {
+            keypair,
+            rpc_url,
+            cache,
+            candy_machine,
+            unminted,
+        } => process_show(ShowArgs {
+            keypair,
+            rpc_url,
+            cache,
+            candy_machine,
+            unminted,
         })?,
         Commands::Update {
             config,
@@ -192,21 +274,7 @@ async fn run() -> Result<()> {
             new_authority,
             candy_machine,
         })?,
-        Commands::Deploy {
-            config,
-            keypair,
-            rpc_url,
-            cache,
-        } => {
-            process_deploy(DeployArgs {
-                config,
-                keypair,
-                rpc_url,
-                cache,
-                interrupted: interrupted.clone(),
-            })
-            .await?
-        }
+
         Commands::Upload {
             assets_dir,
             config,
@@ -233,6 +301,15 @@ async fn run() -> Result<()> {
             strict,
             skip_collection_prompt,
         })?,
+        Commands::Verify {
+            keypair,
+            rpc_url,
+            cache,
+        } => process_verify(VerifyArgs {
+            keypair,
+            rpc_url,
+            cache,
+        })?,
         Commands::Withdraw {
             candy_machine,
             keypair,
@@ -244,66 +321,6 @@ async fn run() -> Result<()> {
             rpc_url,
             list,
         })?,
-        Commands::Verify {
-            keypair,
-            rpc_url,
-            cache,
-        } => process_verify(VerifyArgs {
-            keypair,
-            rpc_url,
-            cache,
-        })?,
-        Commands::Show {
-            keypair,
-            rpc_url,
-            cache,
-            candy_machine,
-            unminted,
-        } => process_show(ShowArgs {
-            keypair,
-            rpc_url,
-            cache,
-            candy_machine,
-            unminted,
-        })?,
-        Commands::Collection { command } => match command {
-            CollectionSubcommands::Set {
-                keypair,
-                rpc_url,
-                cache,
-                candy_machine,
-                collection_mint,
-            } => process_set_collection(SetCollectionArgs {
-                collection_mint,
-                keypair,
-                rpc_url,
-                cache,
-                candy_machine,
-            })?,
-            CollectionSubcommands::Remove {
-                keypair,
-                rpc_url,
-                cache,
-                candy_machine,
-            } => process_remove_collection(RemoveCollectionArgs {
-                keypair,
-                rpc_url,
-                cache,
-                candy_machine,
-            })?,
-        },
-        Commands::Bundlr {
-            keypair,
-            rpc_url,
-            action,
-        } => {
-            process_bundlr(BundlrArgs {
-                keypair,
-                rpc_url,
-                action,
-            })
-            .await?
-        }
         Commands::Sign {
             keypair,
             rpc_url,

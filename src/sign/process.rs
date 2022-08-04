@@ -1,3 +1,5 @@
+use std::{str::FromStr, sync::Arc};
+
 pub use anchor_client::{
     solana_sdk::{
         account::Account,
@@ -12,8 +14,9 @@ pub use anchor_client::{
 };
 use anyhow::Error;
 use console::style;
-use mpl_token_metadata::ID as TOKEN_METADATA_PROGRAM_ID;
-use mpl_token_metadata::{instruction::sign_metadata, ID as METAPLEX_PROGRAM_ID};
+use mpl_token_metadata::{
+    instruction::sign_metadata, ID as TOKEN_METADATA_PROGRAM_ID, ID as METAPLEX_PROGRAM_ID,
+};
 use retry::{delay::Exponential, retry};
 use solana_account_decoder::UiAccountEncoding;
 use solana_client::{
@@ -22,7 +25,6 @@ use solana_client::{
     rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType},
 };
 use solana_transaction_crawler::crawler::Crawler;
-use std::{str::FromStr, sync::Arc};
 use tokio::sync::Semaphore;
 
 use crate::{
@@ -123,8 +125,8 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
                 let crawled_accounts = Crawler::get_cmv2_mints(client, candy_machine_id).await?;
                 match crawled_accounts.get("metadata") {
                     Some(accounts) => accounts
-                        .into_iter()
-                        .map(|account| Pubkey::from_str(&account).unwrap())
+                        .iter()
+                        .map(|account| Pubkey::from_str(account).unwrap())
                         .collect::<Vec<Pubkey>>(),
                     None => Vec::new(),
                 }
