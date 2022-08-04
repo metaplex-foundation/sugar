@@ -54,16 +54,35 @@ Using Crates.io:
 cargo install sugar-cli
 ```
 
-
-
 Build From Source:
 
 ```bash
 cargo install --path ./
 ```
 
+### CIVIC DEVELOPERS
+#### Building with test ignite networks
+
+To create a candy machine that is protected by the test civic ignite gatekeeper `tigoYhp9SpCDoCQmXGj2im5xa3mnjR1zuXrpCJ5ZRmi`, you can build with an environment variable to use this instead of the normal production (`ignREusXmGrscGNUesoU9mxfds9AiYTezUKex2PsZV6`):
+
+```bash
+GATEKEEPER_NETWORK=tigoYhp9SpCDoCQmXGj2im5xa3mnjR1zuXrpCJ5ZRmi cargo install --path ./
+```
+
+#### Civic quick start
+
+1. Rename civic.env to .env: this sets an environment to use devnet with the quiknode devnet URL
+2. Depending on whether you want to create a test-ignite-protected, or an ignite-protected candy machine, rename the file `config.json.civic-ignite` to `config.json` or `config.json.civic-test-ignite` to `config.json`
+3. delete the `cache.json` file (if one exists from a previous run)
+4. airdrop to the Civic CM owner address: ```solana config set --url devnet && solana airdrop 1 6Gtg8vNfq3k75z5Qqj1xT35sJcT7KMM7DF8LXfgibyxK```
+5. run `sugar launch`, accept questions with 'y'
 
 
+#### Civic create a mint with more than 100 test images
+1. use the script to generate N images i.e.  `script/generate_test_mint_pngs.sh assets mint-test.png 150`
+2. delete the config.json and cache.json files
+3. run `sugar launch` and follow the prompts, taking care to add the Civic gatekeeper
+  
 ## Quick Start
 
 Set up your Solana CLI config with an RPC url and a keypair:
