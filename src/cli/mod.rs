@@ -244,9 +244,17 @@ pub enum Commands {
         #[clap(short, long)]
         mint: Option<String>,
 
-        /// Address of candy machine creator.
+        /// Candy machine id.
         #[clap(long)]
         candy_machine_id: Option<String>,
+
+        /// Address for candy machine creator.
+        #[clap(long)]
+        creator: Option<String>,
+
+        /// CM creator index to filter by
+        #[clap(short, long, default_value = "0")]
+        position: usize,
     },
 
     /// Interact with the bundlr network
