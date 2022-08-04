@@ -113,7 +113,7 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
         let solana_cluster: Cluster = get_cluster(program.rpc())?;
         let account_keys = match solana_cluster {
             Cluster::Devnet => {
-                let client = RpcClient::new("https://psytrbhymqlkfrhudd.dev.genesysgo.net:8899/");
+                let client = RpcClient::new("https://devnet.genesysgo.net/");
                 get_cm_creator_accounts(&client, &creator, args.position)?
             }
             Cluster::Mainnet => {
