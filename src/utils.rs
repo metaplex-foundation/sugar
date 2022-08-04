@@ -29,16 +29,13 @@ pub fn get_cluster(rpc_client: RpcClient) -> Result<Cluster> {
     let mainnet_hash = Hash::from_str(MAINNET_HASH).unwrap();
     let genesis_hash = rpc_client.get_genesis_hash()?;
 
-    if genesis_hash == devnet_hash {
-        Ok(Cluster::Devnet)
+    Ok(if genesis_hash == devnet_hash {
+        Cluster::Devnet
     } else if genesis_hash == mainnet_hash {
-        Ok(Cluster::Mainnet)
+        Cluster::Mainnet
     } else {
-        Err(anyhow!(format!(
-            "Genesis hash '{}' doesn't match supported Solana clusters for Candy Machine",
-            genesis_hash
-        )))
-    }
+        Cluster::Unknown
+    })
 }
 
 /// Check that the mint token is a valid address.
@@ -127,4 +124,14 @@ pub fn get_dialoguer_theme() -> ColorfulTheme {
         unchecked_item_prefix: style("✔".to_string()).black().force_styling(true),
         ..Default::default()
     }
+}
+
+pub fn assert_correct_authority(user_keypair: &Pubkey, update_authority: &Pubkey) -> Result<()> {
+    if user_keypair != update_authority {
+        return Err(anyhow!(
+            "Update authority does not match that of the candy machine."
+        ));
+    }
+
+    Ok(())
 }
