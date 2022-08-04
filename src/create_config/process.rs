@@ -401,7 +401,8 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     config_data.gatekeeper = if choices.contains(&GATEKEEPER_INDEX) {
         let gatekeeper_options = vec!["Civic Pass", "Verify by Encore"];
-        let civic_network = Pubkey::from_str(CIVIC_NETWORK).unwrap();
+        let network_address = &std::env::var("GATEKEEPER_NETWORK").unwrap_or("ignREusXmGrscGNUesoU9mxfds9AiYTezUKex2PsZV6".to_string());
+        let civic_network = Pubkey::from_str(network_address).unwrap();
         let encore_network = Pubkey::from_str(ENCORE_NETWORK).unwrap();
         let selection = Select::with_theme(&theme)
             .with_prompt("Which gatekeeper network do you want to use? Check https://docs.metaplex.com/guides/archived/candy-machine-v2/configuration#provider-networks for more info.")

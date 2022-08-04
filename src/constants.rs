@@ -79,8 +79,6 @@ pub const BUNDLR_MAINNET: &str = "https://node1.bundlr.network";
 /// Default RPC endpoint for devnet.
 pub const DEFAULT_RPC_DEVNET: &str = "https://psytrbhymqlkfrhudd.dev.genesysgo.net:8899/";
 
-pub const CIVIC_NETWORK: &str = "ignREusXmGrscGNUesoU9mxfds9AiYTezUKex2PsZV6";
-
 pub const ENCORE_NETWORK: &str = "tibePmPaoTgrs929rWpu755EXaxC7M3SthVCf6GzjZt";
 
 pub const LOOKING_GLASS_EMOJI: Emoji<'_, '_> = Emoji("🔍 ", "");
