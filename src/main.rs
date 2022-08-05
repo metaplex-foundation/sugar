@@ -327,8 +327,6 @@ async fn run() -> Result<()> {
             cache,
             mint,
             candy_machine_id,
-            creator,
-            position,
         } => {
             process_sign(SignArgs {
                 keypair,
@@ -336,8 +334,6 @@ async fn run() -> Result<()> {
                 cache,
                 mint,
                 candy_machine_id,
-                creator,
-                position,
             })
             .await?
         }

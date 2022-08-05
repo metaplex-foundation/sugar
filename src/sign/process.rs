@@ -43,8 +43,6 @@ pub struct SignArgs {
     pub cache: String,
     pub rpc_url: Option<String>,
     pub mint: Option<String>,
-    pub creator: Option<String>,
-    pub position: usize,
 }
 
 pub async fn process_sign(args: SignArgs) -> Result<()> {
@@ -116,7 +114,7 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
                 let client = RpcClient::new("https://devnet.genesysgo.net/");
                 let (creator, _) = find_candy_machine_creator_pda(&candy_machine_id);
                 let creator = bs58::encode(creator).into_string();
-                get_cm_creator_accounts(&client, &creator, args.position)?
+                get_cm_creator_accounts(&client, &creator, 0)?
             }
             Cluster::Mainnet => {
                 let client = RpcClient::new("https://ssc-dao.genesysgo.net");
