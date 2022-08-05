@@ -28,10 +28,11 @@ use solana_transaction_crawler::crawler::Crawler;
 use tokio::sync::Semaphore;
 
 use crate::{
+    cache::load_cache,
     candy_machine::CANDY_MACHINE_ID,
     common::*,
     config::{Cluster, SugarConfig},
-    pdas::find_metadata_pda,
+    pdas::{find_candy_machine_creator_pda, find_metadata_pda},
     setup::{setup_client, sugar_setup},
     utils::*,
 };
@@ -98,30 +99,27 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
 
         let mut errors = Vec::new();
 
-        if (args.creator.is_some() && args.candy_machine_id.is_some())
-            || (args.candy_machine_id.is_none() && args.creator.is_none())
-        {
-            return Err(anyhow!(
-                "Must specify either --candy-machine-id or --creator."
-            ));
-        }
-
-        let creator = if let Some(candy_machine_id) = args.candy_machine_id.clone() {
-            candy_machine_id
-        } else {
-            args.creator.unwrap()
+        let candy_machine_id = match args.candy_machine_id {
+            Some(candy_machine_id) => candy_machine_id,
+            None => {
+                let cache = load_cache(&args.cache, false)?;
+                cache.program.candy_machine
+            }
         };
+
+        let candy_machine_id = Pubkey::from_str(&candy_machine_id)
+            .expect("Failed to parse pubkey from candy machine id.");
 
         let solana_cluster: Cluster = get_cluster(program.rpc())?;
         let account_keys = match solana_cluster {
             Cluster::Devnet => {
                 let client = RpcClient::new("https://devnet.genesysgo.net/");
+                let (creator, _) = find_candy_machine_creator_pda(&candy_machine_id);
+                let creator = bs58::encode(creator).into_string();
                 get_cm_creator_accounts(&client, &creator, args.position)?
             }
             Cluster::Mainnet => {
                 let client = RpcClient::new("https://ssc-dao.genesysgo.net");
-                let candy_machine_id = Pubkey::from_str(&creator)
-                    .expect("Failed to parse pubkey from candy machine id.");
                 let crawled_accounts = Crawler::get_cmv2_mints(client, candy_machine_id).await?;
                 match crawled_accounts.get("metadata") {
                     Some(accounts) => accounts
