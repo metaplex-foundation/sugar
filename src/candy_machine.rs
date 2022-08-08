@@ -1,6 +1,6 @@
 use anchor_client::{solana_sdk::pubkey::Pubkey, Client, ClientError};
 use anyhow::{anyhow, Result};
-pub use mpl_candy_machine::ID as CANDY_MACHINE_ID;
+// pub use mpl_candy_machine::ID as CANDY_MACHINE_ID;
 use mpl_candy_machine::{CandyMachine, CandyMachineData, WhitelistMintMode, WhitelistMintSettings};
 use spl_token::id as token_program_id;
 
@@ -13,9 +13,9 @@ use crate::{
 // To test a custom candy machine program, comment the mpl_candy_machine::ID line
 // above and use the following lines to declare the id to use:
 //
-//use solana_program::declare_id;
-//declare_id!("<YOUR CANDY MACHINE ID>");
-//pub use self::ID as CANDY_MACHINE_ID;
+use solana_program::declare_id;
+declare_id!("ccmpgw68x3NJmNPePFrTm6TsKCEYUVhF8rEAVL9rSDd");
+pub use self::ID as CANDY_MACHINE_ID;
 
 #[derive(Debug)]
 pub struct ConfigStatus {
