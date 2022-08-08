@@ -92,7 +92,7 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
         println!(
             "\n{} {}Fetching mint ids",
             style("[2/3]").bold().dim(),
-            SIGNING_EMOJI,
+            LOOKING_GLASS_EMOJI,
         );
 
         let mut errors = Vec::new();
@@ -152,15 +152,17 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
         for account in account_keys {
             let permit = Arc::clone(&semaphore).acquire_owned().await.unwrap();
             let config = sugar_config.clone();
+            let pb = pb.clone();
+
             join_handles.push(tokio::spawn(async move {
                 let _permit = permit;
                 sign(Arc::clone(&config), account).await.ok();
+                pb.inc(1);
             }));
         }
 
         for handle in join_handles {
             handle.await.map_err(|err| errors.push(err)).ok();
-            pb.inc(1)
         }
 
         if !errors.is_empty() {
