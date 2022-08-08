@@ -18,6 +18,7 @@ pub mod program_errors;
 pub mod reveal;
 pub mod setup;
 pub mod show;
+pub mod sign;
 pub mod update;
 pub mod upload;
 pub mod utils;
