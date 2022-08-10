@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use anchor_client::solana_sdk::account::Account;
 use anchor_lang::AnchorDeserialize;
@@ -9,13 +9,18 @@ use mpl_token_metadata::{
     state::{DataV2, Metadata},
     ID as TOKEN_METADATA_PROGRAM_ID,
 };
+use serde::Serialize;
 use solana_client::{client_error::ClientError, rpc_client::RpcClient};
 use solana_transaction_crawler::crawler::Crawler;
 use tokio::sync::Semaphore;
 
 use crate::{
-    cache::load_cache, common::*, config::get_config_data, parse::parse_solana_config,
-    pdas::find_metadata_pda, utils::*,
+    cache::load_cache,
+    candy_machine::CANDY_MACHINE_ID,
+    common::*,
+    config::{get_config_data, Cluster},
+    pdas::{find_candy_machine_creator_pda, find_metadata_pda},
+    utils::*,
 };
 
 pub struct RevealArgs {
@@ -23,12 +28,26 @@ pub struct RevealArgs {
     pub rpc_url: Option<String>,
     pub cache: String,
     pub config: String,
+    pub retries: u8,
 }
 
+#[derive(Clone, Debug)]
 pub struct MetadataUpdateValues {
     pub metadata_pubkey: Pubkey,
     pub metadata: Metadata,
     pub new_uri: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct RevealTx {
+    metadata_pubkey: Pubkey,
+    result: RevealResult,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+enum RevealResult {
+    Success,
+    Failure(String),
 }
 
 pub async fn process_reveal(args: RevealArgs) -> Result<()> {
@@ -52,18 +71,8 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
 
     let cache = load_cache(&args.cache, false)?;
     let sugar_config = sugar_setup(args.keypair, args.rpc_url.clone())?;
-
-    // Setup standard Solana client for the Crawler.
-    let sol_config_option = parse_solana_config();
-
-    let rpc_url = match args.rpc_url {
-        Some(rpc_url) => rpc_url,
-        None => match sol_config_option {
-            Some(ref sol_config) => sol_config.json_rpc_url.clone(),
-            None => String::from(DEFAULT_RPC_DEVNET),
-        },
-    };
-    let client = RpcClient::new(&rpc_url);
+    let anchor_client = setup_client(&sugar_config)?;
+    let program = anchor_client.program(CANDY_MACHINE_ID);
 
     let candy_machine_id = match Pubkey::from_str(&cache.program.candy_machine) {
         Ok(candy_machine_id) => candy_machine_id,
@@ -87,25 +96,61 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
     );
 
     let spinner = spinner_with_style();
-    spinner.set_message("Crawling candy machine id transactions...");
-    let crawled_accounts = Crawler::get_cmv2_mints(client, candy_machine_id).await?;
-    let metadata_addresses = crawled_accounts.get("metadata").ok_or_else(|| {
-        anyhow!("Failed to get metadata addresses from candy machine id transactions.")
-    })?;
+    let solana_cluster: Cluster = get_cluster(program.rpc())?;
+
+    #[allow(unused_assignments)]
+    let mut rpc_url = String::new();
+
+    let metadata_pubkeys = match solana_cluster {
+        Cluster::Devnet => {
+            rpc_url = String::from("https://devnet.genesysgo.net/");
+            let client = RpcClient::new(&rpc_url);
+            let (creator, _) = find_candy_machine_creator_pda(&candy_machine_id);
+            let creator = bs58::encode(creator).into_string();
+            get_cm_creator_accounts(&client, &creator, 0)?
+        }
+        Cluster::Mainnet => {
+            rpc_url = String::from("https://ssc-dao.genesysgo.net");
+            let client = RpcClient::new(&rpc_url);
+            let crawled_accounts = Crawler::get_cmv2_mints(client, candy_machine_id).await?;
+            match crawled_accounts.get("metadata") {
+                Some(accounts) => accounts
+                    .iter()
+                    .map(|account| Pubkey::from_str(account).unwrap())
+                    .collect::<Vec<Pubkey>>(),
+                None => Vec::new(),
+            }
+        }
+        _ => {
+            return Err(anyhow!(
+                "Cluster being used is unsupported for this command."
+            ))
+        }
+    };
     spinner.finish_and_clear();
+
+    if metadata_pubkeys.is_empty() {
+        pb.finish_with_message(format!("{}", style("No NFTs found.").red().bold()));
+        return Err(anyhow!(
+            "No minted NFTs found for candy machine {}",
+            candy_machine_id
+        ));
+    }
+
+    pb.finish_with_message(format!(
+        "Found {:?} accounts",
+        metadata_pubkeys.len() as u64
+    ));
 
     println!(
         "{} {}Matching NFTs to cache values",
         style("[3/4]").bold().dim(),
         LOOKING_GLASS_EMOJI
     );
-    let metadata_pubkeys: Vec<Pubkey> = metadata_addresses
-        .iter()
-        .map(|a| Pubkey::from_str(a).unwrap())
-        .collect();
 
     let mut futures = Vec::new();
-    let client = Arc::new(RpcClient::new(&rpc_url));
+    let client = RpcClient::new(&rpc_url);
+    let client = Arc::new(client);
 
     // Get all metadata accounts.
     metadata_pubkeys.as_slice().chunks(100).for_each(|chunk| {
@@ -126,11 +171,11 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
         .map(|d| Metadata::deserialize(&mut d.as_slice()).unwrap())
         .collect();
 
-    // Convert cache to use NFT names as the keys.
-    let nft_lookup: HashMap<&String, &CacheItem> = cache
+    // Convert cache to make keys match NFT numbers.
+    let nft_lookup: HashMap<String, &CacheItem> = cache
         .items
-        .values()
-        .map(|item| (&item.name, item))
+        .iter()
+        .map(|(k, item)| (increment_key(k), item))
         .collect();
 
     let mut update_values = Vec::new();
@@ -141,12 +186,17 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
         UPLOAD_EMOJI
     );
 
+    let pattern = regex::Regex::new(r"#([0-9]+)").unwrap();
+
     let spinner = spinner_with_style();
     spinner.set_message("Setting up transactions...");
     for m in metadata {
         let name = m.data.name.trim_matches(char::from(0)).to_string();
+        let capture = pattern.captures(&name).map(|c| c[0].to_string()).unwrap();
+        let num = capture.split('#').nth(1).unwrap();
+
         let metadata_pubkey = find_metadata_pda(&m.mint);
-        let new_uri = nft_lookup.get(&name).unwrap().metadata_link.clone();
+        let new_uri = nft_lookup.get(num).unwrap().metadata_link.clone();
         update_values.push(MetadataUpdateValues {
             metadata_pubkey,
             metadata: m,
@@ -155,33 +205,64 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
     }
     spinner.finish_and_clear();
 
-    let spinner = spinner_with_style();
-    spinner.set_message("Running network requests and awaiting results...");
     let keypair = Arc::new(sugar_config.keypair);
     let sem = Arc::new(Semaphore::new(1000));
+    let reveal_results = Arc::new(Mutex::new(Vec::new()));
     let mut tx_tasks = Vec::new();
-    let mut transactions = Vec::new();
+
+    let pb = progress_bar_with_style(metadata_pubkeys.len() as u64);
+    pb.set_message("Updating NFTs...");
 
     for item in update_values {
         let permit = Arc::clone(&sem).acquire_owned().await.unwrap();
         let client = client.clone();
         let keypair = keypair.clone();
+        let reveal_results = reveal_results.clone();
+        let pb = pb.clone();
+
         tx_tasks.push(tokio::spawn(async move {
             // Move permit into the closure so it is dropped when the task is dropped.
             let _permit = permit;
-            update_metadata_value(client, keypair, item).await
+            let metadata_pubkey = item.metadata_pubkey;
+            let mut tx = RevealTx {
+                metadata_pubkey,
+                result: RevealResult::Success,
+            };
+
+            match update_metadata_value(client, keypair, item).await {
+                Ok(_) => reveal_results.lock().unwrap().push(tx),
+                Err(e) => {
+                    tx.result = RevealResult::Failure(e.to_string());
+                    reveal_results.lock().unwrap().push(tx);
+                }
+            }
+
+            pb.inc(1);
         }));
     }
 
     for task in tx_tasks {
-        let res = task.await.unwrap();
-        if let Ok(tx) = res {
-            transactions.push(tx);
-        }
+        task.await.unwrap();
     }
-    spinner.finish_and_clear();
+    pb.finish_and_clear();
 
-    println!("{}Reveal complete!", CONFETTI_EMOJI);
+    let results = reveal_results.lock().unwrap();
+
+    let errors: Vec<&RevealTx> = results
+        .iter()
+        .filter(|r| matches!(r.result, RevealResult::Failure(_)))
+        .collect();
+
+    if !errors.is_empty() {
+        println!(
+            "{}Some reveals failed. See the reveal cache file for details.",
+            WARNING_EMOJI
+        );
+        let f = File::create("sugar-reveal-cache.json").unwrap();
+        serde_json::to_writer_pretty(f, &errors).unwrap();
+    } else {
+        println!("{}Reveal complete!", CONFETTI_EMOJI);
+    }
 
     Ok(())
 }
@@ -234,4 +315,8 @@ async fn update_metadata_value(
     }
 
     Ok(())
+}
+
+fn increment_key(key: &str) -> String {
+    (key.parse::<u32>().unwrap() + 1).to_string()
 }
