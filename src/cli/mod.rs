@@ -163,10 +163,6 @@ pub enum Commands {
         /// Path to the config file
         #[clap(short, long, default_value = DEFAULT_CONFIG)]
         config: String,
-
-        /// Retry failed reveals
-        #[clap(long, default_value = "1")]
-        retries: u8,
     },
 
     /// Show the on-chain config of an existing candy machine

@@ -255,7 +255,7 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
 
     if !errors.is_empty() {
         println!(
-            "{}Some reveals failed. See the reveal cache file for details.",
+            "{}Some reveals failed. See the reveal cache file for details. Re-run the command.",
             WARNING_EMOJI
         );
         let f = File::create("sugar-reveal-cache.json").unwrap();
