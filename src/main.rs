@@ -67,7 +67,7 @@ fn setup_logging(level: Option<EnvFilter>) -> Result<()> {
     Ok(())
 }
 
-#[tokio::main(worker_threads = 4)]
+#[tokio::main]
 async fn main() {
     match run().await {
         Ok(()) => {
@@ -239,14 +239,17 @@ async fn run() -> Result<()> {
             number,
             receiver,
             candy_machine,
-        } => process_mint(MintArgs {
-            keypair,
-            rpc_url,
-            cache,
-            number,
-            receiver,
-            candy_machine,
-        })?,
+        } => {
+            process_mint(MintArgs {
+                keypair,
+                rpc_url,
+                cache,
+                number,
+                receiver,
+                candy_machine,
+            })
+            .await?
+        }
         Commands::Reveal {
             keypair,
             rpc_url,
