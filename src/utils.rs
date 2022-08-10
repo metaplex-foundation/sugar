@@ -151,6 +151,7 @@ pub fn f64_to_u64_safe(f: f64) -> Result<u64, FloatConversionError> {
         return Err(FloatConversionError::Overflow);
     }
     Ok(f.trunc() as u64)
+}
 
 pub fn get_cm_creator_accounts(
     client: &RpcClient,
