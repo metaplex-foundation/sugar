@@ -129,7 +129,10 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
     spinner.finish_and_clear();
 
     if metadata_pubkeys.is_empty() {
-        pb.finish_with_message(format!("{}", style("No NFTs found.").red().bold()));
+        pb.finish_with_message(format!(
+            "{}",
+            style("No NFTs found on {solana_cluster:?}.").red().bold()
+        ));
         return Err(anyhow!(
             "No minted NFTs found for candy machine {}",
             candy_machine_id
