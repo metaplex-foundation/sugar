@@ -188,9 +188,8 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
                 style("of the items").red().bold()
             ));
         }
+        pb.finish();
     }
-
-    pb.finish();
 
     Ok(())
 }
