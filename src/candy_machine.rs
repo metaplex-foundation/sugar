@@ -28,8 +28,8 @@ pub fn parse_config_price(client: &Client, config: &ConfigData) -> Result<u64> {
         let token_program = client.program(token_program_id());
         let token_mint = check_spl_token(&token_program, &spl_token.to_string())?;
 
-        let token_exp = 10f64.powf(token_mint.decimals as f64);
-        let config_price_base_units = config.price * token_exp;
+        let mutliplier = 10f64.powf(token_mint.decimals as f64);
+        let config_price_base_units = config.price * mutliplier;
 
         match f64_to_u64_safe(config_price_base_units) {
             Some(price) => price,
