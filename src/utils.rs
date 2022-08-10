@@ -15,7 +15,7 @@ pub use indicatif::{ProgressBar, ProgressStyle};
 use solana_client::rpc_client::RpcClient;
 use spl_token::state::{Account, Mint};
 
-use crate::config::data::Cluster;
+use crate::{common::FloatConversionError, config::data::Cluster};
 
 /// Hash for devnet cluster
 pub const DEVNET_HASH: &str = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
@@ -136,10 +136,12 @@ pub fn assert_correct_authority(user_keypair: &Pubkey, update_authority: &Pubkey
     Ok(())
 }
 
-pub fn f64_to_u64_safe(f: f64) -> Option<u64> {
-    if f.fract() == 0.0 && f >= u64::MIN as f64 && f <= u64::MAX as f64 {
-        return Some(f.trunc() as u64);
+pub fn f64_to_u64_safe(f: f64) -> Result<u64, FloatConversionError> {
+    if f.fract() != 0.0 {
+        return Err(FloatConversionError::Fractional);
     }
-
-    None
+    if f <= u64::MIN as f64 || f >= u64::MAX as f64 {
+        return Err(FloatConversionError::Overflow);
+    }
+    Ok(f.trunc() as u64)
 }

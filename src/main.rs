@@ -66,7 +66,7 @@ fn setup_logging(level: Option<EnvFilter>) -> Result<()> {
     Ok(())
 }
 
-#[tokio::main(worker_threads = 4)]
+#[tokio::main]
 async fn main() {
     match run().await {
         Ok(()) => {

@@ -5,6 +5,7 @@ use mpl_candy_machine::{CandyMachine, CandyMachineData, WhitelistMintMode, White
 use spl_token::id as token_program_id;
 
 use crate::{
+    common::FloatConversionError,
     config::{data::SugarConfig, price_as_lamports, ConfigData},
     setup::setup_client,
     utils::{check_spl_token, f64_to_u64_safe},
@@ -32,13 +33,24 @@ pub fn parse_config_price(client: &Client, config: &ConfigData) -> Result<u64> {
         let config_price_base_units = config.price * mutliplier;
 
         match f64_to_u64_safe(config_price_base_units) {
-            Some(price) => price,
-            None => {
-                return Err(anyhow!(
-                    "Can't convert price to u64: price may have more decimals than SPL token. Price: {}, decimals: {}.",
-                    config.price,
-                    token_mint.decimals
-                ))
+            Ok(price) => price,
+            Err(e) => {
+                match e {
+                    FloatConversionError::Fractional => {
+                        return Err(anyhow!(
+                            "Can't convert price to u64: price may have more decimals than SPL token. Price: {}, decimals: {}.",
+                            config.price,
+                            token_mint.decimals
+                        ))
+                    },
+                    FloatConversionError::Overflow => {
+                        return Err(anyhow!(
+                            "Can't convert price to u64 because of overflow: price is too large or too many SPL token decimals. Price: {}, decimals: {}.",
+                            config.price,
+                            token_mint.decimals
+                        ))
+                    },
+                }
             }
         }
     } else {
