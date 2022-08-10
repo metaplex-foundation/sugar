@@ -24,6 +24,7 @@ use sugar_cli::{
     launch::{process_launch, LaunchArgs},
     mint::{process_mint, MintArgs},
     parse::parse_sugar_errors,
+    reveal::{process_reveal, RevealArgs},
     show::{process_show, ShowArgs},
     sign::{process_sign, SignArgs},
     update::{process_update, UpdateArgs},
@@ -238,14 +239,31 @@ async fn run() -> Result<()> {
             number,
             receiver,
             candy_machine,
-        } => process_mint(MintArgs {
+        } => {
+            process_mint(MintArgs {
+                keypair,
+                rpc_url,
+                cache,
+                number,
+                receiver,
+                candy_machine,
+            })
+            .await?
+        }
+        Commands::Reveal {
             keypair,
             rpc_url,
             cache,
-            number,
-            receiver,
-            candy_machine,
-        })?,
+            config,
+        } => {
+            process_reveal(RevealArgs {
+                keypair,
+                rpc_url,
+                cache,
+                config,
+            })
+            .await?
+        }
         Commands::Show {
             keypair,
             rpc_url,
@@ -274,7 +292,6 @@ async fn run() -> Result<()> {
             new_authority,
             candy_machine,
         })?,
-
         Commands::Upload {
             assets_dir,
             config,

@@ -14,16 +14,9 @@ pub use anchor_client::{
 };
 use anyhow::Error;
 use console::style;
-use mpl_token_metadata::{
-    instruction::sign_metadata, ID as TOKEN_METADATA_PROGRAM_ID, ID as METAPLEX_PROGRAM_ID,
-};
+use mpl_token_metadata::{instruction::sign_metadata, ID as METAPLEX_PROGRAM_ID};
 use retry::{delay::Exponential, retry};
-use solana_account_decoder::UiAccountEncoding;
-use solana_client::{
-    rpc_client::RpcClient,
-    rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
-    rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType},
-};
+use solana_client::rpc_client::RpcClient;
 use solana_transaction_crawler::crawler::Crawler;
 use tokio::sync::Semaphore;
 
@@ -136,6 +129,9 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
 
         if account_keys.is_empty() {
             pb.finish_with_message(format!("{}", style("No NFTs found.").green().bold()));
+            return Err(anyhow!(format!(
+                "No NFTs found for candy machine id {candy_machine_id}.",
+            )));
         } else {
             pb.finish_with_message(format!("Found {:?} accounts", account_keys.len() as u64));
             println!(
@@ -166,10 +162,7 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
         }
 
         if !errors.is_empty() {
-            pb.abandon_with_message(format!(
-                "{}",
-                style("Signing all NFTs failed ").red().bold()
-            ));
+            pb.abandon_with_message(format!("{}", style("Signing command failed ").red().bold()));
             return Err(anyhow!(format!("Not all NFTs were signed.")));
         } else {
             pb.finish_with_message(format!(
@@ -203,56 +196,4 @@ async fn sign(config: Arc<SugarConfig>, metadata: Pubkey) -> Result<(), Error> {
     )?;
 
     Ok(())
-}
-
-pub fn get_cm_creator_accounts(
-    client: &RpcClient,
-    creator: &str,
-    position: usize,
-) -> Result<Vec<Pubkey>> {
-    if position > 4 {
-        error!("CM Creator position cannot be greator than 4");
-        std::process::exit(1);
-    }
-
-    let config = RpcProgramAccountsConfig {
-        filters: Some(vec![RpcFilterType::Memcmp(Memcmp {
-            offset: 1 + // key
-            32 + // update auth
-            32 + // mint
-            4 + // name string length
-            MAX_NAME_LENGTH + // name
-            4 + // uri string length
-            MAX_URI_LENGTH + // uri*
-            4 + // symbol string length
-            MAX_SYMBOL_LENGTH + // symbol
-            2 + // seller fee basis points
-            1 + // whether or not there is a creators vec
-            4 + // creators
-            position * // index for each creator
-            (
-                32 + // address
-                1 + // verified
-                1 // share
-            ),
-            bytes: MemcmpEncodedBytes::Base58(creator.to_string()),
-            encoding: None,
-        })]),
-        account_config: RpcAccountInfoConfig {
-            encoding: Some(UiAccountEncoding::Base64),
-            data_slice: None,
-            commitment: Some(CommitmentConfig {
-                commitment: CommitmentLevel::Confirmed,
-            }),
-        },
-        with_context: None,
-    };
-
-    let accounts = client
-        .get_program_accounts_with_config(&TOKEN_METADATA_PROGRAM_ID, config)?
-        .into_iter()
-        .map(|(pubkey, _account)| pubkey)
-        .collect::<Vec<Pubkey>>();
-
-    Ok(accounts)
 }
