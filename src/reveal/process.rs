@@ -28,7 +28,6 @@ pub struct RevealArgs {
     pub rpc_url: Option<String>,
     pub cache: String,
     pub config: String,
-    pub retries: u8,
 }
 
 #[derive(Clone, Debug)]

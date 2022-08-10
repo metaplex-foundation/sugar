@@ -252,14 +252,12 @@ async fn run() -> Result<()> {
             rpc_url,
             cache,
             config,
-            retries,
         } => {
             process_reveal(RevealArgs {
                 keypair,
                 rpc_url,
                 cache,
                 config,
-                retries,
             })
             .await?
         }
