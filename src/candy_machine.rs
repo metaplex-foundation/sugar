@@ -7,7 +7,7 @@ use spl_token::id as token_program_id;
 use crate::{
     config::{data::SugarConfig, price_as_lamports, ConfigData},
     setup::setup_client,
-    utils::check_spl_token,
+    utils::{check_spl_token, f64_to_u64_safe},
 };
 
 // To test a custom candy machine program, comment the mpl_candy_machine::ID line
@@ -28,9 +28,18 @@ pub fn parse_config_price(client: &Client, config: &ConfigData) -> Result<u64> {
         let token_program = client.program(token_program_id());
         let token_mint = check_spl_token(&token_program, &spl_token.to_string())?;
 
-        match (config.price as u64).checked_mul(10u64.pow(token_mint.decimals.into())) {
+        let token_exp = 10f64.powf(token_mint.decimals as f64);
+        let config_price_base_units = config.price * token_exp;
+
+        match f64_to_u64_safe(config_price_base_units) {
             Some(price) => price,
-            None => return Err(anyhow!("Price math overflow")),
+            None => {
+                return Err(anyhow!(
+                    "Can't convert price to u64: price may have more decimals than SPL token. Price: {}, decimals: {}.",
+                    config.price,
+                    token_mint.decimals
+                ))
+            }
         }
     } else {
         price_as_lamports(config.price)
