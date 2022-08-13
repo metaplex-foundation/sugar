@@ -98,7 +98,7 @@ where
 }
 
 pub fn parse_string_as_date(go_live_date: &str) -> Result<String> {
-    let date = dateparser::parse(&go_live_date)?;
+    let date = dateparser::parse(go_live_date)?;
     Ok(date.to_rfc3339())
 }
 
