@@ -20,37 +20,54 @@ const MAX_RETRY: u8 = 3;
 
 pub struct AWSMethod {
     pub bucket: Arc<Bucket>,
+    pub directory: String,
 }
 
 impl AWSMethod {
     pub async fn new(config_data: &ConfigData) -> Result<Self> {
         let credentials = Credentials::default()?;
-        let region = AWSMethod::load_region()?;
+        let region = AWSMethod::load_region(config_data)?;
 
-        if let Some(aws_s3_bucket) = &config_data.aws_s3_bucket {
+        if let Some(config) = &config_data.aws_config {
             Ok(Self {
-                bucket: Arc::new(Bucket::new(aws_s3_bucket, region, credentials)?),
+                bucket: Arc::new(Bucket::new(&config.bucket, region, credentials)?),
+                directory: config.directory.clone(),
             })
         } else {
             Err(anyhow!("Missing 'awsS3Bucket' value in config file."))
         }
     }
 
-    fn load_region() -> Result<Region> {
+    fn load_region(config_data: &ConfigData) -> Result<Region> {
         let home_dir = dirs::home_dir().expect("Couldn't find home dir.");
         let credentials = home_dir.join(Path::new(".aws/credentials"));
         let configuration = ini!(credentials
             .to_str()
             .ok_or_else(|| anyhow!("Failed to load AWS credentials"))?);
 
-        if let Some(region) = &configuration["default"]["region"] {
-            Ok(region.parse()?)
-        } else {
-            Err(anyhow!("Region configuration not found"))
-        }
+        let profile = &config_data
+            .aws_config
+            .as_ref()
+            .ok_or_else(|| anyhow!("AWS values not specified in config file!"))?
+            .profile;
+
+        let region = &configuration
+            .get(profile)
+            .ok_or_else(|| anyhow!("Profile not found in AWS credentials file!"))?
+            .get("region")
+            .unwrap()
+            .as_ref()
+            .ok_or_else(|| anyhow!("Region not found in AWS credentials file!"))?
+            .to_string();
+
+        Ok(region.parse()?)
     }
 
-    async fn send(bucket: Arc<Bucket>, asset_info: AssetInfo) -> Result<(String, String)> {
+    async fn send(
+        bucket: Arc<Bucket>,
+        directory: String,
+        asset_info: AssetInfo,
+    ) -> Result<(String, String)> {
         let data = match asset_info.data_type {
             DataType::Image => fs::read(&asset_info.content)?,
             DataType::Metadata => asset_info.content.into_bytes(),
@@ -58,11 +75,16 @@ impl AWSMethod {
         };
 
         let key = bs58::encode(&asset_info.name).into_string();
+        let path = Path::new(&directory).join(key.as_str());
+        let path_str = path
+            .to_str()
+            .ok_or_else(|| anyhow!("Failed to convert S3 bucket directory path to string."))?;
+
         let mut retry = MAX_RETRY;
         // send data to AWS S3 with a simple retry logic (mitigates dns lookup errors)
         loop {
             match bucket
-                .put_object_with_content_type(&key, &data, &asset_info.content_type)
+                .put_object_with_content_type(path_str, &data, &asset_info.content_type)
                 .await
             {
                 Ok(_) => break,
@@ -99,6 +121,8 @@ impl Prepare for AWSMethod {
 impl ParallelUploader for AWSMethod {
     fn upload_asset(&self, asset_info: AssetInfo) -> JoinHandle<Result<(String, String)>> {
         let bucket = self.bucket.clone();
-        tokio::spawn(async move { AWSMethod::send(bucket, asset_info).await })
+        let directory = self.directory.clone();
+
+        tokio::spawn(async move { AWSMethod::send(bucket, directory, asset_info).await })
     }
 }
