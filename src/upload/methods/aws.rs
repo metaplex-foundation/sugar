@@ -1,7 +1,6 @@
 use std::{fs, sync::Arc};
 
 use async_trait::async_trait;
-use bs58;
 use ini::ini;
 use s3::{bucket::Bucket, creds::Credentials, region::Region};
 use tokio::task::JoinHandle;
@@ -74,8 +73,10 @@ impl AWSMethod {
             DataType::Animation => fs::read(&asset_info.content)?,
         };
 
-        let key = bs58::encode(&asset_info.name).into_string();
-        let path = Path::new(&directory).join(key.as_str());
+        // Take care of any spaces in the directory path.
+        let directory = directory.replace(' ', "_");
+
+        let path = Path::new(&directory).join(&asset_info.name);
         let path_str = path
             .to_str()
             .ok_or_else(|| anyhow!("Failed to convert S3 bucket directory path to string."))?;
@@ -98,7 +99,7 @@ impl AWSMethod {
             }
         }
 
-        let link = format!("https://{}.s3.amazonaws.com/{}", bucket.name(), key);
+        let link = format!("https://{}.s3.amazonaws.com/{}", bucket.name(), path_str);
 
         Ok((asset_info.asset_id, link))
     }
