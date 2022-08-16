@@ -24,7 +24,13 @@ pub struct AWSMethod {
 
 impl AWSMethod {
     pub async fn new(config_data: &ConfigData) -> Result<Self> {
-        let credentials = Credentials::default()?;
+        let profile = &config_data
+            .aws_config
+            .as_ref()
+            .ok_or_else(|| anyhow!("AWS values not specified in config file!"))?
+            .profile;
+
+        let credentials = Credentials::from_profile(Some(profile))?;
         let region = AWSMethod::load_region(config_data)?;
 
         if let Some(config) = &config_data.aws_config {
@@ -33,7 +39,7 @@ impl AWSMethod {
                 directory: config.directory.clone(),
             })
         } else {
-            Err(anyhow!("Missing 'awsS3Bucket' value in config file."))
+            Err(anyhow!("Missing AwsConfig 'bucket' value in config file."))
         }
     }
 
@@ -88,7 +94,17 @@ impl AWSMethod {
                 .put_object_with_content_type(path_str, &data, &asset_info.content_type)
                 .await
             {
-                Ok(_) => break,
+                Ok((_, code)) => match code {
+                    200 => {
+                        break;
+                    }
+                    _ => {
+                        return Err(anyhow!(
+                            "Failed to upload {} to S3 with Http Code: {code}",
+                            asset_info.name
+                        ));
+                    }
+                },
                 Err(error) => {
                     if retry == 0 {
                         return Err(error.into());
