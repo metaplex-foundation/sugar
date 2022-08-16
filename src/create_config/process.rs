@@ -8,6 +8,7 @@ use std::{
 
 use anchor_lang::prelude::Pubkey;
 use anyhow::{anyhow, Result};
+use chrono::prelude::*;
 use console::style;
 use dialoguer::{Confirm, Input, MultiSelect, Select};
 use url::Url;
@@ -244,7 +245,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     let null_or_none = |input: &str| -> bool { input == "none" || input == "null" };
     let date= Input::with_theme(&theme)
-    .with_prompt("What is your go live date? Enter it this format, YYYY-MM-DD HH:MM:SS [+/-]UTC-OFFSET or type 'now' for \
+    .with_prompt("What is your go live date? Many common formats are supported. If unsure, try YYYY-MM-DD HH:MM:SS [+/-]UTC-OFFSET  or type 'now' for \
      current time. For example 2022-05-02 18:00:00 +0000 for May 2, 2022 18:00:00 UTC.")
      .validate_with(|input: &String| {
         let trimmed = input.trim().to_lowercase();
@@ -265,7 +266,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     } else if null_or_none(&trimmed) {
         None
     } else {
-        let date = dateparser::parse(&date)?;
+        let date = dateparser::parse_with(&date, &Local, NaiveTime::from_hms(0, 0, 0))?;
         Some(date.to_rfc3339())
     };
 
@@ -509,7 +510,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             EndSettingType::Date => {
                 println!("Date setting detected");
                 let date = Input::with_theme(&theme)
-                    .with_prompt("What is the date to stop the mint? Most common formats are supported. If unsure, try YYYY-MM-DD HH:MM:SS [+/-]UTC-OFFSET. \
+                    .with_prompt("What is the date to stop the mint? Many common formats are supported. If unsure, try YYYY-MM-DD HH:MM:SS [+/-]UTC-OFFSET. \
                     For example 2022-05-02 18:00:00 +0000 for May 2, 2022 18:00:00 UTC.")
                     .validate_with(date_validator)
                     .interact()

@@ -7,6 +7,7 @@ use anchor_client::solana_sdk::{
     native_token::LAMPORTS_PER_SOL, pubkey::Pubkey, signature::Keypair,
 };
 pub use anyhow::{anyhow, Result};
+use chrono::prelude::*;
 use dateparser::DateTimeUtc;
 use mpl_candy_machine::{
     Creator as CandyCreator, EndSettingType as CandyEndSettingType,
@@ -98,7 +99,8 @@ where
 }
 
 pub fn parse_string_as_date(go_live_date: &str) -> Result<String> {
-    let date = dateparser::parse(go_live_date)?;
+    let date = dateparser::parse_with(go_live_date, &Local, NaiveTime::from_hms(0, 0, 0))?;
+
     Ok(date.to_rfc3339())
 }
 
