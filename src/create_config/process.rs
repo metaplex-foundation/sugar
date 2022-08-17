@@ -245,7 +245,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     let null_or_none = |input: &str| -> bool { input == "none" || input == "null" };
     let date= Input::with_theme(&theme)
-    .with_prompt("What is your go live date? Many common formats are supported. If unsure, try YYYY-MM-DD HH:MM:SS [+/-]UTC-OFFSET  or type 'now' for \
+    .with_prompt("What is your go live date? Many common formats are supported. If unsure, try YYYY-MM-DD HH:MM:SS [+/-]UTC-OFFSET or type 'now' for \
      current time. For example 2022-05-02 18:00:00 +0000 for May 2, 2022 18:00:00 UTC.")
      .validate_with(|input: &String| {
         let trimmed = input.trim().to_lowercase();
