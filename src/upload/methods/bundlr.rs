@@ -197,7 +197,13 @@ impl BundlrMethod {
             .as_str()
             .expect("Failed to get an id from bundlr transaction.");
 
-        let link = format!("https://arweave.net/{}", id);
+        let link = match asset_info.data_type {
+            DataType::Image => format!("https://arweave.net/{id}?ext={}", asset_info.content_type),
+            DataType::Metadata => format!("https://arweave.net/{}", id),
+            DataType::Animation => {
+                format!("https://arweave.net/{id}?ext={}", asset_info.content_type)
+            }
+        };
 
         Ok((asset_info.asset_id, link))
     }
