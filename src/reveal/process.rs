@@ -199,16 +199,16 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
         let capture = pattern
             .captures(&name)
             .map(|c| c[0].to_string())
-            .ok_or_else(|| anyhow!("No cpatures found for {name}"))?;
+            .ok_or_else(|| anyhow!("No captures found for {name}"))?;
         let num = capture
             .split('#')
             .nth(1)
-            .ok_or_else(|| anyhow!("No NFT number found for name: {name:?}"))?;
+            .ok_or_else(|| anyhow!("No NFT number found for name: {name}"))?;
 
         let metadata_pubkey = find_metadata_pda(&m.mint);
         let new_uri = nft_lookup
             .get(num)
-            .ok_or_else(|| anyhow!("No URI found for number: {num:?}"))?
+            .ok_or_else(|| anyhow!("No URI found for number: {num}"))?
             .metadata_link
             .clone();
         update_values.push(MetadataUpdateValues {
