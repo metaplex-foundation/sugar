@@ -205,11 +205,8 @@ impl BundlrMethod {
             .ok_or_else(|| anyhow!("Failed context type to get extension"))?;
 
         let link = match asset_info.data_type {
-            DataType::Image => format!("https://arweave.net/{id}?ext={ext}"),
-            DataType::Metadata => format!("https://arweave.net/{}", id),
-            DataType::Animation => {
-                format!("https://arweave.net/{id}?ext={ext}")
-            }
+            DataType::Image | DataType::Animation => format!("https://arweave.net/{id}?ext={ext}"),
+            DataType::Metadata => format!("https://arweave.net/{id}"),
         };
 
         Ok((asset_info.asset_id, link))
