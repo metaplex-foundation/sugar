@@ -112,3 +112,5 @@ pub const ERROR_EMOJI: Emoji<'_, '_> = Emoji("🛑 ", "");
 pub const WARNING_EMOJI: Emoji<'_, '_> = Emoji("⚠️ ", "");
 
 pub const SIGNING_EMOJI: Emoji<'_, '_> = Emoji("✍️ ", "");
+
+pub const MAX_FREEZE_DAYS: u8 = 31;

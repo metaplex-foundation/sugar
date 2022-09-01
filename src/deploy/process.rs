@@ -237,6 +237,12 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         }
     }
 
+    // Freeze settings check
+    if let Some(freeze_time) = config_data.freeze_time {
+        // call set_freeze with freeze_time value
+        println!("{freeze_time}");
+    }
+
     // Hidden Settings check needs to be the last action in this command, so we can update the hash with the final cache state.
     if !hidden {
         let step_num = 2 + (collection_in_cache as u8);

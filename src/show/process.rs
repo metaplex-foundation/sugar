@@ -18,7 +18,7 @@ pub struct ShowArgs {
 
 // TODO: change the value '1' for the corresponding constant once the
 // new version of the mpl_candy_machine crate is published
-const SWAP_REMOVE_FEATURE_INDEX: usize = 1;
+const SWAP_REMOVE_FEATURE_INDEX: usize = 255;
 // number of indices per line
 const PER_LINE: usize = 11;
 
