@@ -1,3 +1,5 @@
+use spl_associated_token_account::create_associated_token_account;
+
 use super::*;
 
 pub struct SetFreezeArgs {
@@ -63,7 +65,12 @@ pub fn process_set_freeze(args: SetFreezeArgs) -> Result<()> {
     let pb = spinner_with_style();
     pb.set_message("Sending set freeze transaction...");
 
-    let signature = set_freeze(&program, &candy_pubkey, config_data.freeze_time.unwrap())?;
+    let signature = set_freeze(
+        &program,
+        &config_data,
+        &candy_pubkey,
+        config_data.freeze_time.unwrap(),
+    )?;
 
     pb.finish_with_message(format!(
         "{} {}",
@@ -74,17 +81,42 @@ pub fn process_set_freeze(args: SetFreezeArgs) -> Result<()> {
     Ok(())
 }
 
-fn set_freeze(program: &Program, candy_machine_id: &Pubkey, freeze_time: i64) -> Result<Signature> {
+fn set_freeze(
+    program: &Program,
+    config: &ConfigData,
+    candy_machine_id: &Pubkey,
+    freeze_time: i64,
+) -> Result<Signature> {
     let (freeze_pda, _) = find_freeze_pda(candy_machine_id);
 
-    let builder = program
-        .request()
+    let mut builder = program.request();
+
+    let mut additional_accounts = Vec::new();
+
+    // If spl token mint setting is enabled, added the freeze ata to the accounts.
+    if let Some(spl_token_mint) = config.spl_token {
+        let freeze_ata = get_associated_token_address(&freeze_pda, &spl_token_mint);
+        let freeze_ata_ix =
+            create_associated_token_account(&program.payer(), &freeze_pda, &spl_token_mint);
+
+        let freeze_ata_account = AccountMeta {
+            pubkey: freeze_ata,
+            is_signer: false,
+            is_writable: true,
+        };
+        additional_accounts.push(freeze_ata_account);
+
+        builder = builder.instruction(freeze_ata_ix);
+    }
+
+    builder = builder
         .accounts(nft_accounts::SetFreeze {
             candy_machine: *candy_machine_id,
             authority: program.payer(),
             freeze_pda,
             system_program: system_program::ID,
         })
+        .accounts(additional_accounts) // order matters so we have to add this account at the end
         .args(nft_instruction::SetFreeze { freeze_time });
 
     let sig = builder.send()?;
