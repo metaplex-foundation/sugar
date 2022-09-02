@@ -61,7 +61,7 @@ pub fn process_set_freeze(args: SetFreezeArgs) -> Result<()> {
     );
 
     let pb = spinner_with_style();
-    pb.set_message("Sending set collection transaction...");
+    pb.set_message("Sending set freeze transaction...");
 
     let signature = set_freeze(&program, &candy_pubkey, config_data.freeze_time.unwrap())?;
 

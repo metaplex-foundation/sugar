@@ -378,6 +378,25 @@ pub enum CollectionSubcommands {
 
 #[derive(Subcommand)]
 pub enum FreezeSubcommands {
+    /// Remove freeze from a candy machine.
+    Remove {
+        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
+        #[clap(short, long)]
+        keypair: Option<String>,
+
+        /// RPC Url
+        #[clap(short, long)]
+        rpc_url: Option<String>,
+
+        /// Path to the cache file, defaults to "cache.json"
+        #[clap(long, default_value = DEFAULT_CACHE)]
+        cache: String,
+
+        /// Address of candy machine to update.
+        #[clap(long)]
+        candy_machine: Option<String>,
+    },
+
     /// Turn on freeze for a candy machine that has not started minting yet.
     Set {
         /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"

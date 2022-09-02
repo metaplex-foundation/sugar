@@ -115,4 +115,8 @@ pub const SIGNING_EMOJI: Emoji<'_, '_> = Emoji("✍️ ", "");
 
 pub const ICE_CUBE_EMOJI: Emoji<'_, '_> = Emoji("🧊 ", "");
 
+pub const FIRE_EMOJI: Emoji<'_, '_> = Emoji("🔥 ", "");
+
+pub const RIGHT_ARROW_EMOJI: Emoji<'_, '_> = Emoji("➡️ ", "");
+
 pub const MAX_FREEZE_DAYS: u8 = 31;

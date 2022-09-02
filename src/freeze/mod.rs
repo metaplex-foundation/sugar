@@ -12,6 +12,8 @@ use crate::{
     utils::{assert_correct_authority, spinner_with_style},
 };
 
+pub mod remove;
 pub mod set;
 
+pub use remove::*;
 pub use set::*;
