@@ -13,13 +13,14 @@ use clap::Parser;
 use console::style;
 use sugar_cli::{
     bundlr::{process_bundlr, BundlrArgs},
-    cli::{Cli, CollectionSubcommands, Commands},
+    cli::{Cli, CollectionSubcommands, Commands, FreezeSubcommands},
     collections::{
         process_remove_collection, process_set_collection, RemoveCollectionArgs, SetCollectionArgs,
     },
     constants::{COMPLETE_EMOJI, ERROR_EMOJI},
     create_config::{process_create_config, CreateConfigArgs},
     deploy::{process_deploy, DeployArgs},
+    freeze::{process_set_freeze, SetFreezeArgs},
     hash::{process_hash, HashArgs},
     launch::{process_launch, LaunchArgs},
     mint::{process_mint, MintArgs},
@@ -202,6 +203,21 @@ async fn run() -> Result<()> {
             })
             .await?
         }
+        Commands::Freeze { command } => match command {
+            FreezeSubcommands::Set {
+                keypair,
+                rpc_url,
+                cache,
+                config,
+                candy_machine,
+            } => process_set_freeze(SetFreezeArgs {
+                keypair,
+                rpc_url,
+                cache,
+                config,
+                candy_machine,
+            })?,
+        },
         Commands::Hash {
             config,
             cache,
