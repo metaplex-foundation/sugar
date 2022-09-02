@@ -210,12 +210,14 @@ async fn run() -> Result<()> {
                 cache,
                 config,
                 candy_machine,
+                freeze_days,
             } => process_set_freeze(SetFreezeArgs {
                 keypair,
                 rpc_url,
                 cache,
                 config,
                 candy_machine,
+                freeze_days,
             })?,
             FreezeSubcommands::Remove {
                 keypair,

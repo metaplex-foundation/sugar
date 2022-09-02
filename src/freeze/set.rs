@@ -8,6 +8,7 @@ pub struct SetFreezeArgs {
     pub cache: String,
     pub config: String,
     pub candy_machine: Option<String>,
+    pub freeze_days: Option<u8>,
 }
 
 pub fn process_set_freeze(args: SetFreezeArgs) -> Result<()> {
@@ -28,9 +29,16 @@ pub fn process_set_freeze(args: SetFreezeArgs) -> Result<()> {
     let candy_pubkey = Pubkey::from_str(&candy_machine_id)
         .map_err(|_| anyhow!("Failed to parse candy machine id: {}", &candy_machine_id))?;
 
-    if config_data.freeze_time.is_none() {
-        return Err(anyhow!("Freeze time is not set in config"));
-    }
+    // Freeze days specified takes precedence over the one from the config.
+    let freeze_time = if let Some(freeze_days) = args.freeze_days {
+        (freeze_days * 24 * 60 * 60) as i64
+    } else if let Some(freeze_time) = config_data.freeze_time {
+        freeze_time
+    } else {
+        return Err(anyhow!(
+            "No freeze time specified either in config or as argument"
+        ));
+    };
 
     println!(
         "{} {}Loading candy machine",
@@ -65,12 +73,7 @@ pub fn process_set_freeze(args: SetFreezeArgs) -> Result<()> {
     let pb = spinner_with_style();
     pb.set_message("Sending set freeze transaction...");
 
-    let signature = set_freeze(
-        &program,
-        &config_data,
-        &candy_pubkey,
-        config_data.freeze_time.unwrap(),
-    )?;
+    let signature = set_freeze(&program, &config_data, &candy_pubkey, freeze_time)?;
 
     pb.finish_with_message(format!(
         "{} {}",
@@ -81,7 +84,7 @@ pub fn process_set_freeze(args: SetFreezeArgs) -> Result<()> {
     Ok(())
 }
 
-fn set_freeze(
+pub fn set_freeze(
     program: &Program,
     config: &ConfigData,
     candy_machine_id: &Pubkey,
@@ -108,6 +111,8 @@ fn set_freeze(
 
         builder = builder.instruction(freeze_ata_ix);
     }
+
+    println!("Program payer: {}", program.payer());
 
     builder = builder
         .accounts(nft_accounts::SetFreeze {

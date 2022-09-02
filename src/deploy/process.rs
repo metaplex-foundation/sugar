@@ -25,6 +25,7 @@ use crate::{
         create_and_set_collection, create_candy_machine_data, errors::*, generate_config_lines,
         initialize_candy_machine, upload_config_lines,
     },
+    freeze::set_freeze,
     hash::hash_and_update,
     setup::{setup_client, sugar_setup},
     update::{process_update, UpdateArgs},
@@ -76,6 +77,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
 
     let sugar_config = Arc::new(sugar_setup(args.keypair.clone(), args.rpc_url.clone())?);
     let client = setup_client(&sugar_config)?;
+    let program = client.program(CANDY_MACHINE_ID);
     let mut config_data = get_config_data(&args.config)?;
 
     let candy_machine_address = &cache.program.candy_machine;
@@ -101,7 +103,8 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         check_seller_fee_basis_points(config_data.seller_fee_basis_points)?;
     }
 
-    let total_steps = 2 + (collection_in_cache as u8) - (hidden as u8);
+    let total_steps = 2 + (collection_in_cache as u8) + (config_data.freeze_time.is_some() as u8)
+        - (hidden as u8);
 
     let candy_pubkey = if candy_machine_address.is_empty() {
         println!(
@@ -239,14 +242,30 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
 
     // Freeze settings check
     if let Some(freeze_time) = config_data.freeze_time {
-        // call set_freeze with freeze_time value
-        println!("{freeze_time}");
-        // TODO!
+        let step_num = 2 + (collection_in_cache as u8);
+        println!(
+            "\n{} {}Setting up candy machine with Freeze feature",
+            style(format!("[{}/{}]", step_num, total_steps))
+                .bold()
+                .dim(),
+            ICE_CUBE_EMOJI
+        );
+
+        if item_redeemed {
+            println!("\nAn item has already been minted and thus the freeze feature cannot be set. Skipping...");
+        } else {
+            let pb = spinner_with_style();
+            pb.set_message("Sending set freeze command...");
+            let sig = set_freeze(&program, &config_data, &candy_pubkey, freeze_time)?;
+
+            pb.finish_and_clear();
+            println!("{} {}", style("Tx signature:").bold(), sig);
+        }
     }
 
     // Hidden Settings check needs to be the last action in this command, so we can update the hash with the final cache state.
     if !hidden {
-        let step_num = 2 + (collection_in_cache as u8);
+        let step_num = 2 + (collection_in_cache as u8) + (config_data.freeze_time.is_some() as u8);
         println!(
             "\n{} {}Writing config lines",
             style(format!("[{}/{}]", step_num, total_steps))
