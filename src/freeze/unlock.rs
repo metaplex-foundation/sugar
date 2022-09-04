@@ -1,15 +1,14 @@
 use super::*;
 
-pub struct SetFreezeArgs {
+pub struct UnlockFundsArgs {
     pub keypair: Option<String>,
     pub rpc_url: Option<String>,
     pub cache: String,
     pub config: String,
     pub candy_machine: Option<String>,
-    pub freeze_days: Option<u8>,
 }
 
-pub fn process_set_freeze(args: SetFreezeArgs) -> Result<()> {
+pub fn process_unlock_funds(args: UnlockFundsArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair.clone(), args.rpc_url.clone())?;
     let client = setup_client(&sugar_config)?;
     let program = client.program(CANDY_MACHINE_ID);
@@ -71,7 +70,7 @@ pub fn process_set_freeze(args: SetFreezeArgs) -> Result<()> {
     let pb = spinner_with_style();
     pb.set_message("Sending set freeze transaction...");
 
-    let signature = set_freeze(&program, &config_data, &candy_pubkey, freeze_time)?;
+    let signature = unlock_funds(&program, &config_data, &candy_pubkey, freeze_time)?;
 
     pb.finish_with_message(format!(
         "{} {}",
@@ -82,7 +81,7 @@ pub fn process_set_freeze(args: SetFreezeArgs) -> Result<()> {
     Ok(())
 }
 
-pub fn set_freeze(
+pub fn unlock_funds(
     program: &Program,
     config: &ConfigData,
     candy_machine_id: &Pubkey,
@@ -112,7 +111,7 @@ pub fn set_freeze(
     println!("Program payer: {}", program.payer());
 
     builder = builder
-        .accounts(nft_accounts::SetFreeze {
+        .accounts(nft_accounts::UnlockFunds {
             candy_machine: *candy_machine_id,
             authority: program.payer(),
             freeze_pda,

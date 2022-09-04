@@ -3,7 +3,7 @@ use anyhow::Result;
 use console::style;
 use mpl_candy_machine::{accounts as nft_accounts, instruction as nft_instruction};
 use solana_program::instruction::AccountMeta;
-use spl_associated_token_account::get_associated_token_address;
+use spl_associated_token_account::{create_associated_token_account, get_associated_token_address};
 
 use crate::{
     cache::load_cache,
