@@ -20,7 +20,10 @@ use sugar_cli::{
     constants::{COMPLETE_EMOJI, ERROR_EMOJI},
     create_config::{process_create_config, CreateConfigArgs},
     deploy::{process_deploy, DeployArgs},
-    freeze::{process_remove_freeze, process_set_freeze, RemoveFreezeArgs, SetFreezeArgs},
+    freeze::{
+        process_remove_freeze, process_set_freeze, process_unlock_funds, RemoveFreezeArgs,
+        SetFreezeArgs, UnlockFundsArgs,
+    },
     hash::{process_hash, HashArgs},
     launch::{process_launch, LaunchArgs},
     mint::{process_mint, MintArgs},
@@ -225,6 +228,17 @@ async fn run() -> Result<()> {
                 cache,
                 candy_machine,
             } => process_remove_freeze(RemoveFreezeArgs {
+                keypair,
+                rpc_url,
+                cache,
+                candy_machine,
+            })?,
+            FreezeSubcommands::UnlockFunds {
+                keypair,
+                rpc_url,
+                cache,
+                candy_machine,
+            } => process_unlock_funds(UnlockFundsArgs {
                 keypair,
                 rpc_url,
                 cache,

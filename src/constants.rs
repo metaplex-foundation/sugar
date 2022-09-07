@@ -119,4 +119,6 @@ pub const FIRE_EMOJI: Emoji<'_, '_> = Emoji("🔥 ", "");
 
 pub const RIGHT_ARROW_EMOJI: Emoji<'_, '_> = Emoji("➡️ ", "");
 
+pub const MONEY_BAG_EMOJI: Emoji<'_, '_> = Emoji("💰 ", "");
+
 pub const MAX_FREEZE_DAYS: u8 = 31;

@@ -420,4 +420,22 @@ pub enum FreezeSubcommands {
         /// Number of days to freeze the candy machine for. Max: 31.
         freeze_days: Option<u8>,
     },
+
+    /// Unlock treasury funds after freeze is turned off or expires.
+    UnlockFunds {
+        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
+        #[clap(short, long)]
+        keypair: Option<String>,
+
+        /// RPC Url
+        #[clap(short, long)]
+        rpc_url: Option<String>,
+
+        /// Path to the cache file, defaults to "cache.json"
+        #[clap(long, default_value = DEFAULT_CACHE)]
+        cache: String,
+
+        /// Address of candy machine to update.
+        candy_machine: Option<String>,
+    },
 }

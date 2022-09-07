@@ -4,7 +4,6 @@ pub struct UnlockFundsArgs {
     pub keypair: Option<String>,
     pub rpc_url: Option<String>,
     pub cache: String,
-    pub config: String,
     pub candy_machine: Option<String>,
 }
 
@@ -12,7 +11,6 @@ pub fn process_unlock_funds(args: UnlockFundsArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair.clone(), args.rpc_url.clone())?;
     let client = setup_client(&sugar_config)?;
     let program = client.program(CANDY_MACHINE_ID);
-    let config_data = get_config_data(&args.config)?;
 
     // The candy machine id specified takes precedence over the one from the cache.
     let candy_machine_id = match args.candy_machine {
@@ -25,17 +23,6 @@ pub fn process_unlock_funds(args: UnlockFundsArgs) -> Result<()> {
 
     let candy_pubkey = Pubkey::from_str(&candy_machine_id)
         .map_err(|_| anyhow!("Failed to parse candy machine id: {}", &candy_machine_id))?;
-
-    // Freeze days specified takes precedence over the one from the config.
-    let freeze_time = if let Some(freeze_days) = args.freeze_days {
-        (freeze_days * 24 * 60 * 60) as i64
-    } else if let Some(freeze_time) = config_data.freeze_time {
-        freeze_time
-    } else {
-        return Err(anyhow!(
-            "No freeze time specified either in config or as argument"
-        ));
-    };
 
     println!(
         "{} {}Loading candy machine",
@@ -56,69 +43,38 @@ pub fn process_unlock_funds(args: UnlockFundsArgs) -> Result<()> {
         &candy_machine_state.authority,
     )?;
 
-    // Cannot set freeze if minting has started.
-    if candy_machine_state.items_redeemed > 0 {
-        return Err(anyhow!("Cannot set freeze after minting has started"));
-    }
-
     println!(
-        "\n{} {}Turning on freeze feature for candy machine",
+        "\n{} {}Unlocking treasury funds. . .",
         style("[2/2]").bold().dim(),
-        ICE_CUBE_EMOJI
+        MONEY_BAG_EMOJI
     );
 
     let pb = spinner_with_style();
-    pb.set_message("Sending set freeze transaction...");
+    pb.set_message("Sending unlock funds transaction...");
 
-    let signature = unlock_funds(&program, &config_data, &candy_pubkey, freeze_time)?;
+    let signature = unlock_funds(&program, &candy_pubkey)?;
 
     pb.finish_with_message(format!(
         "{} {}",
-        style("Set freeze signature:").bold(),
+        style("Unlock funds signature:").bold(),
         signature
     ));
 
     Ok(())
 }
 
-pub fn unlock_funds(
-    program: &Program,
-    config: &ConfigData,
-    candy_machine_id: &Pubkey,
-    freeze_time: i64,
-) -> Result<Signature> {
+pub fn unlock_funds(program: &Program, candy_machine_id: &Pubkey) -> Result<Signature> {
     let (freeze_pda, _) = find_freeze_pda(candy_machine_id);
 
-    let mut builder = program.request();
-    let mut additional_accounts = Vec::new();
-
-    // If spl token mint setting is enabled, add the freeze ata to the accounts.
-    if let Some(spl_token_mint) = config.spl_token {
-        let freeze_ata = get_associated_token_address(&freeze_pda, &spl_token_mint);
-        let freeze_ata_ix =
-            create_associated_token_account(&program.payer(), &freeze_pda, &spl_token_mint);
-
-        let freeze_ata_account = AccountMeta {
-            pubkey: freeze_ata,
-            is_signer: false,
-            is_writable: true,
-        };
-        additional_accounts.push(freeze_ata_account);
-
-        builder = builder.instruction(freeze_ata_ix);
-    }
-
-    println!("Program payer: {}", program.payer());
-
-    builder = builder
+    let builder = program
+        .request()
         .accounts(nft_accounts::UnlockFunds {
             candy_machine: *candy_machine_id,
             authority: program.payer(),
             freeze_pda,
             system_program: system_program::ID,
         })
-        .accounts(additional_accounts) // order matters so we have to add this account at the end
-        .args(nft_instruction::SetFreeze { freeze_time });
+        .args(nft_instruction::UnlockFunds {});
 
     let sig = builder.send()?;
 
