@@ -37,7 +37,7 @@ pub fn create_candy_machine_data(
     };
 
     // If SPL token is used, get the decimals from the token account, otherwise use 9 for SOL.
-    let decimals = if let Some(token_account) = &config.spl_token_account {
+    let decimals = if let Some(token_account) = &config.spl_token {
         let token_account = program.rpc().get_account(token_account)?;
         let token_account = spl_token::state::Mint::unpack(&token_account.data)?;
         token_account.decimals
