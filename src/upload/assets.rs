@@ -2,10 +2,8 @@ use std::{
     ffi::OsStr,
     fs::{self, DirEntry, File, OpenOptions},
     io::{BufReader, Read},
-    sync::Arc,
 };
 
-use bundlr_sdk::{tags::Tag, Bundlr, Ed25519Signer as SolanaSigner};
 use data_encoding::HEXLOWER;
 use glob::glob;
 use regex::{Regex, RegexBuilder};

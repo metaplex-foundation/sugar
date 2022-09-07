@@ -185,12 +185,10 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
     let mut errors = Vec::new();
 
     if need_upload {
-        let total_steps = if indices.animation.is_empty() { 4 } else { 5 }
+        let total_steps = if indices.animation.is_empty() { 4 } else { 5 };
         println!(
             "\n{} {}Initializing upload",
-            style(format!("[2/{}]", total_steps))
-            .bold()
-            .dim(),
+            style(format!("[2/{}]", total_steps)).bold().dim(),
             COMPUTER_EMOJI
         );
 
@@ -218,9 +216,7 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
 
         println!(
             "\n{} {}Uploading image files {}",
-            style(format!("[3/{}]", total_steps))
-            .bold()
-            .dim(),
+            style(format!("[3/{}]", total_steps)).bold().dim(),
             UPLOAD_EMOJI,
             if indices.image.is_empty() {
                 "(skipping)"
@@ -259,10 +255,9 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
 
         if !indices.animation.is_empty() {
             println!(
-                "\n{} {}Uploading animation files {}",
+                "\n{} {}Uploading animation files",
                 style("[4/5]").bold().dim(),
-                UPLOAD_EMOJI,
-                ""
+                UPLOAD_EMOJI
             );
         }
 
@@ -296,9 +291,9 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
 
         println!(
             "\n{} {}Uploading metadata files {}",
-            style(format!("[{}/{}]", total_steps))
-            .bold()
-            .dim(),
+            style(format!("[{}/{}]", total_steps, total_steps))
+                .bold()
+                .dim(),
             UPLOAD_EMOJI,
             if indices.metadata.is_empty() {
                 "(skipping)"

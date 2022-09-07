@@ -127,11 +127,13 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
                     return Err(anyhow!("If spl-token-account or spl-token is set then sol-treasury-account cannot be set"));
                 }
 
-                let token_account = config_data.spl_token_account.unwrap_or(get_associated_token_address(&program.payer, &spl_token))
+                let token_account = config_data
+                    .spl_token_account
+                    .unwrap_or_else(|| get_associated_token_address(&program.payer(), &spl_token));
 
                 // validates the mint address of the token accepted as payment
                 check_spl_token(&program, &spl_token.to_string())?;
-                
+
                 // validates the spl token wallet to receive proceedings from SPL token payments
                 check_spl_token_account(&program, &token_account.to_string())?;
                 token_account
