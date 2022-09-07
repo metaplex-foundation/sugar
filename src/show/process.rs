@@ -6,7 +6,13 @@ use chrono::NaiveDateTime;
 use console::style;
 use mpl_candy_machine::{utils::is_feature_active, EndSettingType, WhitelistMintMode};
 
-use crate::{cache::load_cache, candy_machine::*, common::*, pdas::get_collection_pda, utils::*};
+use crate::{
+    cache::load_cache,
+    candy_machine::*,
+    common::*,
+    pdas::{find_freeze_pda, get_collection_pda},
+    utils::*,
+};
 
 pub struct ShowArgs {
     pub keypair: Option<String>,
@@ -230,7 +236,8 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
 
     // freeze pda
     if let Some(freeze_pda) = freeze_pda {
-        print_with_style("", "freeze pda", String::new());
+        let (pda, _) = find_freeze_pda(&candy_machine_id);
+        print_with_style("", "freeze pda", pda.to_string());
         print_with_style(
             "    ",
             "candy_machine",

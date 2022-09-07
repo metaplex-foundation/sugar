@@ -16,8 +16,10 @@ use crate::{
 
 pub mod remove;
 pub mod set;
+pub mod thaw;
 pub mod unlock;
 
 pub use remove::*;
 pub use set::*;
+pub use thaw::*;
 pub use unlock::*;
