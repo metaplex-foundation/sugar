@@ -8,13 +8,10 @@ use anchor_client::{
     Client, Cluster,
 };
 use anyhow::{anyhow, Result};
+use console::style;
 use tracing::error;
 
-use crate::{
-    config::data::SugarConfig,
-    constants::{DEFAULT_KEYPATH, DEFAULT_RPC_DEVNET},
-    parse::*,
-};
+use crate::{config::data::SugarConfig, constants::DEFAULT_KEYPATH, parse::*};
 
 pub fn setup_client(sugar_config: &SugarConfig) -> Result<Client> {
     let rpc_url = sugar_config.rpc_url.clone();
@@ -88,7 +85,15 @@ pub fn get_rpc_url(rpc_url_opt: Option<String>) -> String {
         Some(rpc_url) => rpc_url,
         None => match sol_config_option {
             Some(ref sol_config) => sol_config.json_rpc_url.clone(),
-            None => String::from(DEFAULT_RPC_DEVNET),
+            None => {
+                println!(
+                    "{}",
+                    style("No RPCL URL found in Solana config file.")
+                        .bold()
+                        .red(),
+                );
+                std::process::exit(1);
+            }
         },
     }
 }
