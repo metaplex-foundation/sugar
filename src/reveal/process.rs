@@ -107,13 +107,13 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
     };
 
     let metadata_pubkeys = match solana_cluster {
-        Cluster::Devnet => {
+        Cluster::Devnet | Cluster::Localnet => {
             let client = RpcClient::new(&rpc_url);
             let (creator, _) = find_candy_machine_creator_pda(&candy_machine_id);
             let creator = bs58::encode(creator).into_string();
             get_cm_creator_accounts(&client, &creator, 0)?
         }
-        Cluster::Mainnet | Cluster::Localnet => {
+        Cluster::Mainnet => {
             let client = RpcClient::new(&rpc_url);
             let crawled_accounts = Crawler::get_cmv2_mints(client, candy_machine_id).await?;
             match crawled_accounts.get("metadata") {
