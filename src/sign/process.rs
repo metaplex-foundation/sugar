@@ -104,6 +104,12 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
         let solana_cluster: Cluster = get_cluster(program.rpc())?;
         let rpc_url = get_rpc_url(args.rpc_url);
 
+        let solana_cluster = if rpc_url.ends_with("8899") {
+            Cluster::Localnet
+        } else {
+            solana_cluster
+        };
+
         let account_keys = match solana_cluster {
             Cluster::Devnet => {
                 let client = RpcClient::new(&rpc_url);
@@ -111,7 +117,7 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
                 let creator = bs58::encode(creator).into_string();
                 get_cm_creator_accounts(&client, &creator, 0)?
             }
-            Cluster::Mainnet => {
+            Cluster::Mainnet | Cluster::Localnet => {
                 let client = RpcClient::new(&rpc_url);
                 let crawled_accounts = Crawler::get_cmv2_mints(client, candy_machine_id).await?;
                 match crawled_accounts.get("metadata") {
