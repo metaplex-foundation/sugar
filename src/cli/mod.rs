@@ -451,6 +451,28 @@ pub enum FreezeSubcommands {
         owner: Option<String>,
     },
 
+    /// Thaw a NFT or all NFTs in a candy machine.
+    ThawAll {
+        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
+        #[clap(short, long)]
+        keypair: Option<String>,
+
+        /// RPC Url
+        #[clap(short, long)]
+        rpc_url: Option<String>,
+
+        /// Path to the cache file, defaults to "cache.json"
+        #[clap(long, default_value = DEFAULT_CACHE)]
+        cache: String,
+
+        /// Path to the config file
+        #[clap(short, long, default_value = DEFAULT_CONFIG)]
+        config: String,
+
+        /// Address of candy machine to update.
+        candy_machine: Option<String>,
+    },
+
     /// Unlock treasury funds after freeze is turned off or expires.
     UnlockFunds {
         /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"

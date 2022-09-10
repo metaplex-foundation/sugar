@@ -247,6 +247,22 @@ async fn run() -> Result<()> {
                 nft_mint,
                 owner,
             })?,
+            FreezeSubcommands::ThawAll {
+                keypair,
+                rpc_url,
+                cache,
+                config,
+                candy_machine,
+            } => {
+                process_thaw_all(ThawAllArgs {
+                    keypair,
+                    rpc_url,
+                    cache,
+                    config,
+                    candy_machine,
+                })
+                .await?
+            }
             FreezeSubcommands::UnlockFunds {
                 keypair,
                 rpc_url,
