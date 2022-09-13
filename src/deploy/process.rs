@@ -14,6 +14,7 @@ use anchor_client::solana_sdk::{
 };
 use anyhow::Result;
 use console::style;
+use mpl_candy_machine::{constants::FREEZE_FEATURE_INDEX, utils::is_feature_active};
 use spl_associated_token_account::get_associated_token_address;
 
 use crate::{
@@ -88,6 +89,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
     let hidden = config_data.hidden_settings.is_some();
     let collection_in_cache = cache.items.get("-1").is_some();
     let mut item_redeemed = false;
+    let mut freeze_deployed = false;
 
     let cache_items_sans_collection = (cache.items.len() - collection_in_cache as usize) as u64;
 
@@ -194,6 +196,9 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
                 if candy_state.items_redeemed > 0 {
                     item_redeemed = true;
                 }
+                if is_feature_active(&candy_state.data.uuid, FREEZE_FEATURE_INDEX) {
+                    freeze_deployed = true;
+                }
             }
             Err(_) => {
                 return Err(anyhow!("Candy machine from cache does't exist on chain!"));
@@ -245,6 +250,8 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
 
         if item_redeemed {
             println!("\nAn item has already been minted and thus the freeze feature cannot be set. Skipping...");
+        } else if freeze_deployed {
+            println!("Freeze feature already deployed, skipping...");
         } else {
             let pb = spinner_with_style();
             pb.set_message("Sending set freeze command...");

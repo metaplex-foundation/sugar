@@ -137,7 +137,7 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
         let pb = progress_bar_with_style(number);
 
         let mut tasks = Vec::new();
-        let semaphore = Arc::new(Semaphore::new(100));
+        let semaphore = Arc::new(Semaphore::new(10));
         let config = Arc::new(sugar_config);
 
         for _i in 0..number {

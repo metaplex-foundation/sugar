@@ -18,11 +18,27 @@ pub struct ThawAllArgs {
     pub candy_machine: Option<String>,
 }
 
-#[allow(dead_code)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct FailedThaw {
+    nft: ThawNft,
+    error: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct ThawNft {
+    #[serde(serialize_with = "serialize_pubkey")]
     mint: Pubkey,
+    #[serde(serialize_with = "serialize_pubkey")]
     owner: Pubkey,
+    #[serde(serialize_with = "serialize_pubkey")]
     token_account: Pubkey,
+}
+
+fn serialize_pubkey<S>(p: &Pubkey, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    p.to_string().serialize(serializer)
 }
 
 #[derive(Debug, Deserialize)]
@@ -91,7 +107,16 @@ pub fn process_thaw(args: ThawArgs) -> Result<()> {
     let nft_mint_pubkey = Pubkey::from_str(&args.nft_mint)
         .map_err(|_| anyhow!("Failed to parse nft mint id: {}", &args.nft_mint))?;
 
-    let signature = thaw_nft(&program, &candy_pubkey, nft_mint_pubkey, owner)?;
+    let config = Arc::new(sugar_config);
+    let token_account = get_associated_token_address(&owner, &nft_mint_pubkey);
+
+    let nft = ThawNft {
+        mint: nft_mint_pubkey,
+        owner,
+        token_account,
+    };
+
+    let signature = thaw_nft(config, &candy_pubkey, &nft)?;
 
     pb.finish_with_message(format!(
         "{} {}",
@@ -180,13 +205,19 @@ pub async fn process_thaw_all(args: ThawAllArgs) -> Result<()> {
     }
 
     let pb = progress_bar_with_style(mint_pubkeys.len() as u64);
+    pb.set_message("Getting NFT information....");
 
     let semaphore = Arc::new(Semaphore::new(100));
     let client = Arc::new(client);
 
-    let mut join_handles = Vec::new();
+    let mut tasks = Vec::new();
+    let mut thaw_tasks = Vec::new();
     let errors = Arc::new(Mutex::new(Vec::new()));
+    let thaw_errors = Arc::new(Mutex::new(Vec::new()));
     let thaw_nfts = Arc::new(Mutex::new(Vec::new()));
+    let failed_thaws = Arc::new(Mutex::new(Vec::new()));
+
+    let mint_pubkeys_len = mint_pubkeys.len();
 
     for mint in mint_pubkeys {
         let permit = Arc::clone(&semaphore).acquire_owned().await.unwrap();
@@ -195,7 +226,7 @@ pub async fn process_thaw_all(args: ThawAllArgs) -> Result<()> {
         let errors = errors.clone();
         let thaw_nfts = thaw_nfts.clone();
 
-        join_handles.push(tokio::spawn(async move {
+        tasks.push(tokio::spawn(async move {
             let _permit = permit;
 
             let request = RpcRequest::Custom {
@@ -224,63 +255,128 @@ pub async fn process_thaw_all(args: ThawAllArgs) -> Result<()> {
                 .unwrap()
                 .value
                 .unwrap();
-            let owner = account.owner;
+            let account_data = SplAccount::unpack(&account.data).unwrap();
+            let owner = account_data.owner;
 
-            thaw_nfts.lock().unwrap().push(ThawNft {
-                mint,
-                token_account,
-                owner,
-            });
+            // Only thaw frozen accounts.
+            if account_data.is_frozen() {
+                thaw_nfts.lock().unwrap().push(ThawNft {
+                    mint,
+                    token_account,
+                    owner,
+                });
 
-            pb.inc(1);
+                pb.inc(1);
+            }
         }));
     }
 
-    for handle in join_handles {
-        handle
-            .await
+    for task in tasks {
+        task.await
             .map_err(|err| errors.lock().unwrap().push(anyhow!(err)))
             .ok();
     }
 
     if !errors.lock().unwrap().is_empty() {
-        pb.abandon_with_message(format!(
+        println!(
+            "{} {}/{} {}",
+            style("Found :").bold(),
+            errors.lock().unwrap().len(),
+            mint_pubkeys_len,
+            style("NFT information").bold()
+        );
+    }
+
+    pb.finish_with_message(format!(
+        "{}",
+        style("Finished fetching NFT information.").green().bold()
+    ));
+
+    let config = Arc::new(sugar_config);
+
+    let nfts = thaw_nfts.lock().unwrap().clone();
+    let thaw_pb = progress_bar_with_style(nfts.len() as u64);
+    thaw_pb.set_message("Thawing NFTs....");
+
+    for nft in nfts.into_iter() {
+        let permit = Arc::clone(&semaphore).acquire_owned().await.unwrap();
+        let thaw_pb = thaw_pb.clone();
+        let failed_thaws = failed_thaws.clone();
+
+        let config = config.clone();
+
+        thaw_tasks.push(tokio::spawn(async move {
+            let _permit = permit;
+
+            let _signature = thaw_nft(config, &candy_pubkey, &nft).map_err(|e| {
+                failed_thaws.lock().unwrap().push(FailedThaw {
+                    nft: nft.clone(),
+                    error: e.to_string(),
+                });
+            });
+
+            thaw_pb.inc(1);
+        }));
+    }
+
+    for task in thaw_tasks {
+        match task.await {
+            Ok(_) => {}
+            Err(err) => thaw_errors.lock().unwrap().push(anyhow!(err)),
+        }
+    }
+
+    if !thaw_errors.lock().unwrap().is_empty() {
+        thaw_pb.abandon_with_message(format!(
             "{}",
-            style("Failed get all the necessary information to Thaw all NFTs.")
-                .red()
-                .bold()
+            style("Failed to Thaw all NFTs.").red().bold()
         ));
+        let thaw_errors = Arc::try_unwrap(thaw_errors)
+            .unwrap()
+            .into_inner()
+            .unwrap()
+            .into_iter()
+            .map(|e| e.to_string())
+            .collect::<Vec<String>>();
+
+        let thaw_errors_cache = File::create("thaw_errors.json")?;
+        serde_json::to_writer(thaw_errors_cache, &thaw_errors)?;
+
         return Err(anyhow!("Not all NFTs were thawed.".to_string()));
     } else {
-        pb.finish_with_message(format!(
+        thaw_pb.finish_with_message(format!(
             "{}",
             style("All NFTs thawed successfully.").green().bold()
         ));
     }
 
+    let remaining_nfts = Arc::try_unwrap(failed_thaws).unwrap().into_inner().unwrap();
+
+    let remaining_items_cache = File::create("remaining_thaw_items_cache.json")?;
+    serde_json::to_writer_pretty(remaining_items_cache, &remaining_nfts)?;
+
     Ok(())
 }
 
-pub fn thaw_nft(
-    program: &Program,
+fn thaw_nft(
+    config: Arc<SugarConfig>,
     candy_machine_id: &Pubkey,
-    nft_mint: Pubkey,
-    owner: Pubkey,
+    nft: &ThawNft,
 ) -> Result<Signature> {
-    let (freeze_pda, _) = find_freeze_pda(candy_machine_id);
-    let edition = find_master_edition_pda(&nft_mint);
-    let token_account = get_associated_token_address(&owner, &nft_mint);
+    let client = setup_client(&config)?;
+    let program = client.program(CANDY_MACHINE_ID);
 
-    println!("Freeze PDA: {}", freeze_pda);
+    let (freeze_pda, _) = find_freeze_pda(candy_machine_id);
+    let edition = find_master_edition_pda(&nft.mint);
 
     let builder = program
         .request()
         .accounts(nft_accounts::ThawNFT {
             freeze_pda,
             candy_machine: *candy_machine_id,
-            token_account,
-            owner,
-            mint: nft_mint,
+            token_account: nft.token_account,
+            owner: nft.owner,
+            mint: nft.mint,
             edition,
             payer: program.payer(),
             token_program: spl_token::ID,
