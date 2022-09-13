@@ -26,7 +26,7 @@ use crate::{
         create_and_set_collection, create_candy_machine_data, errors::*, generate_config_lines,
         initialize_candy_machine, upload_config_lines,
     },
-    freeze::set_freeze,
+    freeze::enable_freeze,
     hash::hash_and_update,
     setup::{setup_client, sugar_setup},
     update::{process_update, UpdateArgs},
@@ -255,7 +255,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         } else {
             let pb = spinner_with_style();
             pb.set_message("Sending set freeze command...");
-            let sig = set_freeze(&program, &config_data, &candy_pubkey, freeze_time)?;
+            let sig = enable_freeze(&program, &config_data, &candy_pubkey, freeze_time)?;
 
             pb.finish_and_clear();
             println!("{} {}", style("Tx signature:").bold(), sig);

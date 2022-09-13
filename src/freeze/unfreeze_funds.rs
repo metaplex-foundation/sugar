@@ -1,13 +1,13 @@
 use super::*;
 
-pub struct RemoveFreezeArgs {
+pub struct UnlockFundsArgs {
     pub keypair: Option<String>,
     pub rpc_url: Option<String>,
     pub cache: String,
     pub candy_machine: Option<String>,
 }
 
-pub fn process_remove_freeze(args: RemoveFreezeArgs) -> Result<()> {
+pub fn process_unfreeze_funds(args: UnlockFundsArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair.clone(), args.rpc_url.clone())?;
     let client = setup_client(&sugar_config)?;
     let program = client.program(CANDY_MACHINE_ID);
@@ -44,38 +44,37 @@ pub fn process_remove_freeze(args: RemoveFreezeArgs) -> Result<()> {
     )?;
 
     println!(
-        "\n{}{}{}{}Turning off freeze feature for candy machine",
+        "\n{} {}Unlocking treasury funds. . .",
         style("[2/2]").bold().dim(),
-        FIRE_EMOJI,
-        RIGHT_ARROW_EMOJI,
-        ICE_CUBE_EMOJI
+        MONEY_BAG_EMOJI
     );
 
     let pb = spinner_with_style();
-    pb.set_message("Sending remove freeze transaction...");
+    pb.set_message("Sending unlock funds transaction...");
 
-    let signature = remove_freeze(&program, &candy_pubkey)?;
+    let signature = unlock_funds(&program, &candy_pubkey)?;
 
     pb.finish_with_message(format!(
         "{} {}",
-        style("Set freeze signature:").bold(),
+        style("Unlock funds signature:").bold(),
         signature
     ));
 
     Ok(())
 }
 
-fn remove_freeze(program: &Program, candy_machine_id: &Pubkey) -> Result<Signature> {
+pub fn unlock_funds(program: &Program, candy_machine_id: &Pubkey) -> Result<Signature> {
     let (freeze_pda, _) = find_freeze_pda(candy_machine_id);
 
     let builder = program
         .request()
-        .accounts(nft_accounts::RemoveFreeze {
+        .accounts(nft_accounts::UnlockFunds {
             candy_machine: *candy_machine_id,
             authority: program.payer(),
             freeze_pda,
+            system_program: system_program::ID,
         })
-        .args(nft_instruction::RemoveFreeze);
+        .args(nft_instruction::UnlockFunds);
 
     let sig = builder.send()?;
 

@@ -204,75 +204,31 @@ async fn run() -> Result<()> {
             .await?
         }
         Commands::Freeze { command } => match command {
-            FreezeSubcommands::Remove {
+            FreezeSubcommands::Disable {
                 keypair,
                 rpc_url,
                 cache,
                 candy_machine,
-            } => process_remove_freeze(RemoveFreezeArgs {
+            } => process_disable_freeze(DisableFreezeArgs {
                 keypair,
                 rpc_url,
                 cache,
                 candy_machine,
             })?,
-            FreezeSubcommands::Set {
+            FreezeSubcommands::Enable {
                 keypair,
                 rpc_url,
                 cache,
                 config,
                 candy_machine,
                 freeze_days,
-            } => process_set_freeze(SetFreezeArgs {
+            } => process_enable_freeze(EnableFreezeArgs {
                 keypair,
                 rpc_url,
                 cache,
                 config,
                 candy_machine,
                 freeze_days,
-            })?,
-            FreezeSubcommands::Thaw {
-                keypair,
-                rpc_url,
-                cache,
-                config,
-                candy_machine,
-                nft_mint,
-                owner,
-            } => process_thaw(ThawArgs {
-                keypair,
-                rpc_url,
-                cache,
-                config,
-                candy_machine,
-                nft_mint,
-                owner,
-            })?,
-            FreezeSubcommands::ThawAll {
-                keypair,
-                rpc_url,
-                cache,
-                config,
-                candy_machine,
-            } => {
-                process_thaw_all(ThawAllArgs {
-                    keypair,
-                    rpc_url,
-                    cache,
-                    config,
-                    candy_machine,
-                })
-                .await?
-            }
-            FreezeSubcommands::UnlockFunds {
-                keypair,
-                rpc_url,
-                cache,
-                candy_machine,
-            } => process_unlock_funds(UnlockFundsArgs {
-                keypair,
-                rpc_url,
-                cache,
-                candy_machine,
             })?,
         },
         Commands::Hash {
@@ -349,6 +305,37 @@ async fn run() -> Result<()> {
             cache,
             candy_machine,
             unminted,
+        })?,
+        Commands::Thaw {
+            keypair,
+            rpc_url,
+            cache,
+            config,
+            all,
+            nft_mint,
+            candy_machine,
+        } => {
+            process_thaw(ThawArgs {
+                keypair,
+                rpc_url,
+                cache,
+                config,
+                all,
+                nft_mint,
+                candy_machine,
+            })
+            .await?
+        }
+        Commands::UnfreezeFunds {
+            keypair,
+            rpc_url,
+            cache,
+            candy_machine,
+        } => process_unfreeze_funds(UnlockFundsArgs {
+            keypair,
+            rpc_url,
+            cache,
+            candy_machine,
         })?,
         Commands::Update {
             config,

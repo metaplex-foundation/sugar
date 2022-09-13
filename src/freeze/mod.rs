@@ -25,12 +25,12 @@ use crate::{
     },
 };
 
-pub mod remove;
-pub mod set;
+pub mod disable;
+pub mod enable;
 pub mod thaw;
-pub mod unlock;
+pub mod unfreeze_funds;
 
-pub use remove::*;
-pub use set::*;
+pub use disable::*;
+pub use enable::*;
 pub use thaw::*;
-pub use unlock::*;
+pub use unfreeze_funds::*;

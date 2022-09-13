@@ -216,6 +216,53 @@ pub enum Commands {
         candy_machine_id: Option<String>,
     },
 
+    /// Thaw a NFT or all NFTs in a candy machine.
+    Thaw {
+        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
+        #[clap(short, long)]
+        keypair: Option<String>,
+
+        /// RPC Url
+        #[clap(short, long)]
+        rpc_url: Option<String>,
+
+        /// Path to the cache file, defaults to "cache.json"
+        #[clap(long, default_value = DEFAULT_CACHE)]
+        cache: String,
+
+        /// Path to the config file
+        #[clap(short, long, default_value = DEFAULT_CONFIG)]
+        config: String,
+
+        /// Unthaw all NFTs in the candy machine.
+        #[clap(long)]
+        all: bool,
+
+        /// Address of the NFT to thaw.
+        nft_mint: Option<String>,
+
+        /// Address of candy machine to update [defaults to cache value].
+        candy_machine: Option<String>,
+    },
+
+    /// Unlock treasury funds after freeze is turned off or expires.
+    UnfreezeFunds {
+        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
+        #[clap(short, long)]
+        keypair: Option<String>,
+
+        /// RPC Url
+        #[clap(short, long)]
+        rpc_url: Option<String>,
+
+        /// Path to the cache file, defaults to "cache.json"
+        #[clap(long, default_value = DEFAULT_CACHE)]
+        cache: String,
+
+        /// Address of candy machine to update.
+        candy_machine: Option<String>,
+    },
+
     /// Update the candy machine config on-chain
     Update {
         /// Path to the config file, defaults to "config.json"
@@ -378,8 +425,8 @@ pub enum CollectionSubcommands {
 
 #[derive(Subcommand)]
 pub enum FreezeSubcommands {
-    /// Remove freeze from a candy machine.
-    Remove {
+    /// Disable freeze feature in a candy machine.
+    Disable {
         /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
         #[clap(short, long)]
         keypair: Option<String>,
@@ -396,8 +443,8 @@ pub enum FreezeSubcommands {
         candy_machine: Option<String>,
     },
 
-    /// Turn on freeze for a candy machine that has not started minting yet.
-    Set {
+    /// Enable freeze feature for a candy machine that has not started minting yet.
+    Enable {
         /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
         #[clap(short, long)]
         keypair: Option<String>,
@@ -419,75 +466,5 @@ pub enum FreezeSubcommands {
 
         /// Number of days to freeze the candy machine for. Max: 31.
         freeze_days: Option<u8>,
-    },
-
-    /// Thaw a NFT or all NFTs in a candy machine.
-    Thaw {
-        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
-        #[clap(short, long)]
-        keypair: Option<String>,
-
-        /// RPC Url
-        #[clap(short, long)]
-        rpc_url: Option<String>,
-
-        /// Path to the cache file, defaults to "cache.json"
-        #[clap(long, default_value = DEFAULT_CACHE)]
-        cache: String,
-
-        /// Path to the config file
-        #[clap(short, long, default_value = DEFAULT_CONFIG)]
-        config: String,
-
-        /// Address of candy machine to update.
-        candy_machine: Option<String>,
-
-        /// Address of the NFT to thaw.
-        #[clap(long)]
-        nft_mint: String,
-
-        /// The pubkey of the owner to thaw the NFT for.
-        #[clap(long)]
-        owner: Option<String>,
-    },
-
-    /// Thaw a NFT or all NFTs in a candy machine.
-    ThawAll {
-        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
-        #[clap(short, long)]
-        keypair: Option<String>,
-
-        /// RPC Url
-        #[clap(short, long)]
-        rpc_url: Option<String>,
-
-        /// Path to the cache file, defaults to "cache.json"
-        #[clap(long, default_value = DEFAULT_CACHE)]
-        cache: String,
-
-        /// Path to the config file
-        #[clap(short, long, default_value = DEFAULT_CONFIG)]
-        config: String,
-
-        /// Address of candy machine to update.
-        candy_machine: Option<String>,
-    },
-
-    /// Unlock treasury funds after freeze is turned off or expires.
-    UnlockFunds {
-        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
-        #[clap(short, long)]
-        keypair: Option<String>,
-
-        /// RPC Url
-        #[clap(short, long)]
-        rpc_url: Option<String>,
-
-        /// Path to the cache file, defaults to "cache.json"
-        #[clap(long, default_value = DEFAULT_CACHE)]
-        cache: String,
-
-        /// Address of candy machine to update.
-        candy_machine: Option<String>,
     },
 }

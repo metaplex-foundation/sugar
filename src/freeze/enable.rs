@@ -1,6 +1,6 @@
 use super::*;
 
-pub struct SetFreezeArgs {
+pub struct EnableFreezeArgs {
     pub keypair: Option<String>,
     pub rpc_url: Option<String>,
     pub cache: String,
@@ -9,7 +9,7 @@ pub struct SetFreezeArgs {
     pub freeze_days: Option<u8>,
 }
 
-pub fn process_set_freeze(args: SetFreezeArgs) -> Result<()> {
+pub fn process_enable_freeze(args: EnableFreezeArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair.clone(), args.rpc_url.clone())?;
     let client = setup_client(&sugar_config)?;
     let program = client.program(CANDY_MACHINE_ID);
@@ -57,9 +57,9 @@ pub fn process_set_freeze(args: SetFreezeArgs) -> Result<()> {
         &candy_machine_state.authority,
     )?;
 
-    // Cannot set freeze if minting has started.
+    // Cannot enable freeze if minting has started.
     if candy_machine_state.items_redeemed > 0 {
-        return Err(anyhow!("Cannot set freeze after minting has started"));
+        return Err(anyhow!("Cannot enable freeze after minting has started"));
     }
 
     println!(
@@ -69,20 +69,20 @@ pub fn process_set_freeze(args: SetFreezeArgs) -> Result<()> {
     );
 
     let pb = spinner_with_style();
-    pb.set_message("Sending set freeze transaction...");
+    pb.set_message("Sending Enable Freeze transaction...");
 
-    let signature = set_freeze(&program, &config_data, &candy_pubkey, freeze_time)?;
+    let signature = enable_freeze(&program, &config_data, &candy_pubkey, freeze_time)?;
 
     pb.finish_with_message(format!(
         "{} {}",
-        style("Set freeze signature:").bold(),
+        style("Enable freeze signature:").bold(),
         signature
     ));
 
     Ok(())
 }
 
-pub fn set_freeze(
+pub fn enable_freeze(
     program: &Program,
     config: &ConfigData,
     candy_machine_id: &Pubkey,

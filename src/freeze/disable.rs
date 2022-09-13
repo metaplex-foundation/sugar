@@ -1,13 +1,13 @@
 use super::*;
 
-pub struct UnlockFundsArgs {
+pub struct DisableFreezeArgs {
     pub keypair: Option<String>,
     pub rpc_url: Option<String>,
     pub cache: String,
     pub candy_machine: Option<String>,
 }
 
-pub fn process_unlock_funds(args: UnlockFundsArgs) -> Result<()> {
+pub fn process_disable_freeze(args: DisableFreezeArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair.clone(), args.rpc_url.clone())?;
     let client = setup_client(&sugar_config)?;
     let program = client.program(CANDY_MACHINE_ID);
@@ -44,37 +44,38 @@ pub fn process_unlock_funds(args: UnlockFundsArgs) -> Result<()> {
     )?;
 
     println!(
-        "\n{} {}Unlocking treasury funds. . .",
+        "\n{}{}{}{}Turning off freeze feature for candy machine",
         style("[2/2]").bold().dim(),
-        MONEY_BAG_EMOJI
+        FIRE_EMOJI,
+        RIGHT_ARROW_EMOJI,
+        ICE_CUBE_EMOJI
     );
 
     let pb = spinner_with_style();
-    pb.set_message("Sending unlock funds transaction...");
+    pb.set_message("Sending remove freeze transaction...");
 
-    let signature = unlock_funds(&program, &candy_pubkey)?;
+    let signature = disable_freeze(&program, &candy_pubkey)?;
 
     pb.finish_with_message(format!(
         "{} {}",
-        style("Unlock funds signature:").bold(),
+        style("Set freeze signature:").bold(),
         signature
     ));
 
     Ok(())
 }
 
-pub fn unlock_funds(program: &Program, candy_machine_id: &Pubkey) -> Result<Signature> {
+fn disable_freeze(program: &Program, candy_machine_id: &Pubkey) -> Result<Signature> {
     let (freeze_pda, _) = find_freeze_pda(candy_machine_id);
 
     let builder = program
         .request()
-        .accounts(nft_accounts::UnlockFunds {
+        .accounts(nft_accounts::RemoveFreeze {
             candy_machine: *candy_machine_id,
             authority: program.payer(),
             freeze_pda,
-            system_program: system_program::ID,
         })
-        .args(nft_instruction::UnlockFunds);
+        .args(nft_instruction::RemoveFreeze);
 
     let sig = builder.send()?;
 
