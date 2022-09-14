@@ -52,6 +52,15 @@ pub fn process_enable_freeze(args: EnableFreezeArgs) -> Result<()> {
 
     pb.finish_with_message("Done");
 
+    if is_feature_active(&candy_machine_state.data.uuid, FREEZE_FEATURE_INDEX) {
+        println!(
+            "{} {}",
+            style("Freeze feature is already enabled").bold(),
+            COMPLETE_EMOJI
+        );
+        return Ok(());
+    }
+
     assert_correct_authority(
         &sugar_config.keypair.pubkey(),
         &candy_machine_state.authority,
