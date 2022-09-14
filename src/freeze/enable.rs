@@ -29,6 +29,10 @@ pub fn process_enable_freeze(args: EnableFreezeArgs) -> Result<()> {
 
     // Freeze days specified takes precedence over the one from the config.
     let freeze_time = if let Some(freeze_days) = args.freeze_days {
+        if freeze_days > 30 {
+            return Err(anyhow!("Freeze days cannot be more than 30"));
+        }
+
         (freeze_days as i64) * 24 * 60 * 60
     } else if let Some(freeze_time) = config_data.freeze_time {
         freeze_time
@@ -117,8 +121,6 @@ pub fn enable_freeze(
 
         builder = builder.instruction(freeze_ata_ix);
     }
-
-    println!("Program payer: {}", program.payer());
 
     builder = builder
         .accounts(nft_accounts::SetFreeze {

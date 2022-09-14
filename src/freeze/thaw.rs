@@ -141,8 +141,8 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
 
         // Only thaw frozen accounts.
         if !account_data.is_frozen() {
-            println!("\n NFT is already thawed! NFT");
-            std::process::exit(0);
+            println!("\n NFT is already thawed!");
+            return Ok(());
         }
 
         let nft = ThawNft {

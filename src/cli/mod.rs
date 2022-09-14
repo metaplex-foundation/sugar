@@ -467,7 +467,7 @@ pub enum FreezeSubcommands {
         #[clap(long)]
         candy_machine: Option<String>,
 
-        /// Number of days to freeze the candy machine for. Max: 31.
+        /// Number of days to freeze the candy machine for. Max: 30.
         freeze_days: Option<u8>,
     },
 }
