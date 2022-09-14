@@ -441,6 +441,7 @@ pub enum FreezeSubcommands {
         cache: String,
 
         /// Address of candy machine to update.
+        #[clap(long)]
         candy_machine: Option<String>,
     },
 
@@ -463,6 +464,7 @@ pub enum FreezeSubcommands {
         config: String,
 
         /// Address of candy machine to update.
+        #[clap(long)]
         candy_machine: Option<String>,
 
         /// Number of days to freeze the candy machine for. Max: 31.

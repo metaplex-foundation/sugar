@@ -3,7 +3,10 @@ use std::sync::{Arc, Mutex};
 use anchor_client::solana_sdk::pubkey::Pubkey;
 use anyhow::Result;
 use console::style;
-use mpl_candy_machine::{accounts as nft_accounts, instruction as nft_instruction};
+use mpl_candy_machine::{
+    accounts as nft_accounts, constants::FREEZE_FEATURE_INDEX, instruction as nft_instruction,
+    is_feature_active,
+};
 use serde::{Deserialize, Serialize, Serializer};
 use solana_client::{rpc_client::RpcClient, rpc_request::RpcRequest};
 use solana_program::{instruction::AccountMeta, program_pack::Pack};

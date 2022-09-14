@@ -38,17 +38,24 @@ pub fn process_disable_freeze(args: DisableFreezeArgs) -> Result<()> {
 
     pb.finish_with_message("Done");
 
+    if !is_feature_active(&candy_machine_state.data.uuid, FREEZE_FEATURE_INDEX) {
+        println!(
+            "{} {}",
+            style("Freeze feature is already disabled").bold(),
+            COMPLETE_EMOJI
+        );
+        return Ok(());
+    }
+
     assert_correct_authority(
         &sugar_config.keypair.pubkey(),
         &candy_machine_state.authority,
     )?;
 
     println!(
-        "\n{}{}{}{}Turning off freeze feature for candy machine",
+        "\n{}{}Turning off freeze feature for candy machine",
         style("[2/2]").bold().dim(),
         FIRE_EMOJI,
-        RIGHT_ARROW_EMOJI,
-        ICE_CUBE_EMOJI
     );
 
     let pb = spinner_with_style();
