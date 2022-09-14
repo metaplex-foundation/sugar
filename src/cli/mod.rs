@@ -238,11 +238,12 @@ pub enum Commands {
         #[clap(long)]
         all: bool,
 
+        /// Address of candy machine to update [defaults to cache value].
+        #[clap(long)]
+        candy_machine: Option<String>,
+
         /// Address of the NFT to thaw.
         nft_mint: Option<String>,
-
-        /// Address of candy machine to update [defaults to cache value].
-        candy_machine: Option<String>,
     },
 
     /// Unlock treasury funds after freeze is turned off or expires.

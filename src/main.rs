@@ -312,8 +312,8 @@ async fn run() -> Result<()> {
             cache,
             config,
             all,
-            nft_mint,
             candy_machine,
+            nft_mint,
         } => {
             process_thaw(ThawArgs {
                 keypair,
@@ -321,8 +321,8 @@ async fn run() -> Result<()> {
                 cache,
                 config,
                 all,
-                nft_mint,
                 candy_machine,
+                nft_mint,
             })
             .await?
         }
