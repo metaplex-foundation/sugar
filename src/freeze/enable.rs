@@ -58,10 +58,11 @@ pub fn process_enable_freeze(args: EnableFreezeArgs) -> Result<()> {
 
     if is_feature_active(&candy_machine_state.data.uuid, FREEZE_FEATURE_INDEX) {
         println!(
-            "{} {}",
-            style("Freeze feature is already enabled").bold(),
+            "{} {}Freeze feature is already enabled",
+            style("[2/2]").bold().dim(),
             COMPLETE_EMOJI
         );
+
         return Ok(());
     }
 

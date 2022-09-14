@@ -40,7 +40,7 @@ pub fn process_unfreeze_funds(args: UnlockFundsArgs) -> Result<()> {
 
     if !is_feature_active(&candy_machine_state.data.uuid, FREEZE_LOCK_FEATURE_INDEX) {
         println!(
-            "{} {}Candy machine treasury funds are not frozen",
+            "{} {}Candy machine treasury funds are already unfrozen",
             style("[2/2]").bold().dim(),
             COMPLETE_EMOJI
         );
