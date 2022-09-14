@@ -53,7 +53,7 @@ pub fn process_disable_freeze(args: DisableFreezeArgs) -> Result<()> {
     )?;
 
     println!(
-        "\n{}{}Turning off freeze feature for candy machine",
+        "\n {}{}Turning off freeze feature for candy machine",
         style("[2/2]").bold().dim(),
         FIRE_EMOJI,
     );
