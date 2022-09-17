@@ -198,7 +198,7 @@ fn create_candy_machine_data(
         None
     };
 
-    // If SPL token is used, get the decimals from the token account, otherwise use 9 for SOL.
+    // If SPL token is used, get the decimals from the token mint account, otherwise use 9 for SOL.
     let decimals = get_mint_decimals(&program, config)?;
 
     let whitelist_mint_settings = config
