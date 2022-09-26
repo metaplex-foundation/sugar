@@ -97,10 +97,10 @@ pub fn process_validate(args: ValidateArgs) -> Result<()> {
         .collect::<Vec<usize>>();
 
     // Sum of series given we expect:
-    // a_0 = 0 , a_n = num_series.size() , n = num_series.size() => n * (a_0 + a_n) / 2
+    // a_0 = 0 , a_n = num_series.size() - 1 , n = num_series.size() => n * (a_0 + a_n) / 2
     // https://en.wikipedia.org/wiki/Arithmetic_progression
 
-    let target_sum = num_series.len() * num_series.len() / 2;
+    let target_sum = num_series.len() * (num_series.len() - 1) / 2;
     let mut sum: usize = 0;
     let mut redundant: HashMap<usize, usize> = HashMap::new();
     for num in &num_series {
