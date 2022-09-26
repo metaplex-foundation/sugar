@@ -18,7 +18,8 @@ use crate::{
         parser::get_config_data,
     },
     utils::{
-        assert_correct_authority, check_spl_token, check_spl_token_account, spinner_with_style,
+        assert_correct_authority, check_spl_token, check_spl_token_account, get_mint_decimals,
+        spinner_with_style,
     },
 };
 
@@ -186,6 +187,8 @@ fn create_candy_machine_data(
     config: &ConfigData,
     candy_machine: &CandyMachineData,
 ) -> Result<CandyMachineData> {
+    let program = client.program(CANDY_MACHINE_ID);
+
     info!("{:?}", config.go_live_date);
     let go_live_date: Option<i64> = go_live_date_as_timestamp(&config.go_live_date)?;
 
@@ -195,10 +198,13 @@ fn create_candy_machine_data(
         None
     };
 
+    // If SPL token is used, get the decimals from the token mint account, otherwise use 9 for SOL.
+    let decimals = get_mint_decimals(&program, config)?;
+
     let whitelist_mint_settings = config
         .whitelist_mint_settings
         .as_ref()
-        .map(|s| s.to_candy_format());
+        .map(|s| s.to_candy_format(decimals));
 
     let hidden_settings = config.hidden_settings.as_ref().map(|s| s.to_candy_format());
 

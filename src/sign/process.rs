@@ -26,7 +26,7 @@ use crate::{
     common::*,
     config::{Cluster, SugarConfig},
     pdas::{find_candy_machine_creator_pda, find_metadata_pda},
-    setup::{setup_client, sugar_setup},
+    setup::{get_rpc_url, setup_client, sugar_setup},
     utils::*,
 };
 
@@ -53,7 +53,7 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
     let pb = spinner_with_style();
     pb.set_message("Connecting...");
 
-    let sugar_config = Arc::new(sugar_setup(args.keypair, args.rpc_url)?);
+    let sugar_config = Arc::new(sugar_setup(args.keypair, args.rpc_url.clone())?);
 
     let client = setup_client(&sugar_config)?;
     let program = client.program(CANDY_MACHINE_ID);
@@ -102,15 +102,23 @@ pub async fn process_sign(args: SignArgs) -> Result<()> {
             .expect("Failed to parse pubkey from candy machine id.");
 
         let solana_cluster: Cluster = get_cluster(program.rpc())?;
+        let rpc_url = get_rpc_url(args.rpc_url);
+
+        let solana_cluster = if rpc_url.ends_with("8899") {
+            Cluster::Localnet
+        } else {
+            solana_cluster
+        };
+
         let account_keys = match solana_cluster {
-            Cluster::Devnet => {
-                let client = RpcClient::new("https://devnet.genesysgo.net/");
+            Cluster::Devnet | Cluster::Localnet => {
+                let client = RpcClient::new(&rpc_url);
                 let (creator, _) = find_candy_machine_creator_pda(&candy_machine_id);
                 let creator = bs58::encode(creator).into_string();
-                get_cm_creator_accounts(&client, &creator, 0)?
+                get_cm_creator_metadata_accounts(&client, &creator, 0)?
             }
             Cluster::Mainnet => {
-                let client = RpcClient::new("https://ssc-dao.genesysgo.net");
+                let client = RpcClient::new(&rpc_url);
                 let crawled_accounts = Crawler::get_cmv2_mints(client, candy_machine_id).await?;
                 match crawled_accounts.get("metadata") {
                     Some(accounts) => accounts

@@ -50,4 +50,7 @@ pub enum ValidateParserError {
 
     #[error("Asset list isn't continuous please check files")]
     NonContinuousSeries,
+
+    #[error("Invalid category '{0}': must be one of: {1}")]
+    InvalidCategory(String, String),
 }
