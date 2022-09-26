@@ -3,6 +3,7 @@ use std::{str::FromStr, thread::sleep, time::Duration};
 pub use anchor_client::solana_sdk::hash::Hash;
 use anchor_client::{
     solana_sdk::{
+        account::Account,
         commitment_config::{CommitmentConfig, CommitmentLevel},
         program_pack::{IsInitialized, Pack},
         pubkey::Pubkey,
@@ -20,9 +21,12 @@ use solana_client::{
     rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
     rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType},
 };
-use spl_token::state::{Account, Mint};
+use spl_token::state::{Account as SplAccount, Mint};
 
-use crate::{common::*, config::data::Cluster};
+use crate::{
+    common::*,
+    config::{data::Cluster, ConfigData},
+};
 
 /// Hash for devnet cluster
 pub const DEVNET_HASH: &str = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
@@ -68,7 +72,7 @@ pub fn check_spl_token(program: &Program, input: &str) -> Result<Mint> {
 pub fn check_spl_token_account(program: &Program, input: &str) -> Result<()> {
     let pubkey = Pubkey::from_str(input)?;
     let ata_data = program.rpc().get_account_data(&pubkey)?;
-    let ata_account = Account::unpack_unchecked(&ata_data)?;
+    let ata_account = SplAccount::unpack_unchecked(&ata_data)?;
 
     if IsInitialized::is_initialized(&ata_account) {
         Ok(())
@@ -153,11 +157,38 @@ pub fn f64_to_u64_safe(f: f64) -> Result<u64, FloatConversionError> {
     Ok(f.trunc() as u64)
 }
 
-pub fn get_cm_creator_accounts(
+pub fn get_cm_creator_metadata_accounts(
     client: &RpcClient,
     creator: &str,
     position: usize,
 ) -> Result<Vec<Pubkey>> {
+    let accounts = get_cm_creator_accounts(client, creator, position)?
+        .into_iter()
+        .map(|(pubkey, _account)| pubkey)
+        .collect::<Vec<Pubkey>>();
+
+    Ok(accounts)
+}
+
+pub fn get_cm_creator_mint_accounts(
+    client: &RpcClient,
+    creator: &str,
+    position: usize,
+) -> Result<Vec<Pubkey>> {
+    let accounts = get_cm_creator_accounts(client, creator, position)?
+        .into_iter()
+        .map(|(_, account)| account.data[33..65].to_vec())
+        .map(|data| Pubkey::new(&data))
+        .collect::<Vec<Pubkey>>();
+
+    Ok(accounts)
+}
+
+fn get_cm_creator_accounts(
+    client: &RpcClient,
+    creator: &str,
+    position: usize,
+) -> Result<Vec<(Pubkey, Account)>> {
     if position > 4 {
         error!("CM Creator position cannot be greator than 4");
         std::process::exit(1);
@@ -196,11 +227,18 @@ pub fn get_cm_creator_accounts(
         with_context: None,
     };
 
-    let accounts = client
-        .get_program_accounts_with_config(&TOKEN_METADATA_PROGRAM_ID, config)?
-        .into_iter()
-        .map(|(pubkey, _account)| pubkey)
-        .collect::<Vec<Pubkey>>();
+    let results = client.get_program_accounts_with_config(&TOKEN_METADATA_PROGRAM_ID, config)?;
 
-    Ok(accounts)
+    Ok(results)
+}
+
+pub fn get_mint_decimals(program: &Program, config: &ConfigData) -> Result<u8> {
+    // If SPL token is used, get the decimals from the token account, otherwise use 9 for SOL.
+    if let Some(mint_pubkey) = config.spl_token {
+        let mint_account = program.rpc().get_account(&mint_pubkey)?;
+        let mint = spl_token::state::Mint::unpack(&mint_account.data)?;
+        Ok(mint.decimals)
+    } else {
+        Ok(9)
+    }
 }

@@ -6,7 +6,7 @@ use anchor_client::solana_sdk::{
     signature::{Keypair, Signature, Signer},
     system_instruction, system_program, sysvar,
 };
-use anchor_lang::prelude::AccountMeta;
+use anchor_lang::{prelude::AccountMeta, ToAccountMetas};
 use anyhow::Result;
 use chrono::Utc;
 use console::style;
@@ -137,7 +137,7 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
         let pb = progress_bar_with_style(number);
 
         let mut tasks = Vec::new();
-        let semaphore = Arc::new(Semaphore::new(100));
+        let semaphore = Arc::new(Semaphore::new(10));
         let config = Arc::new(sugar_config);
 
         for _i in 0..number {
@@ -377,6 +377,34 @@ pub async fn mint(
         });
     }
 
+    // If the freeze PDA exists, add the additional account.
+    let (pda, _) = find_freeze_pda(&candy_machine_id);
+    let freeze_pda_opt = get_freeze_pda_account(&config, &candy_machine_id).ok();
+    if freeze_pda_opt.is_some() {
+        additional_accounts.push(AccountMeta {
+            pubkey: pda,
+            is_signer: false,
+            is_writable: true,
+        });
+        let nft_token_account = get_associated_token_address(&payer, &nft_mint.pubkey());
+
+        additional_accounts.push(AccountMeta {
+            pubkey: nft_token_account,
+            is_signer: false,
+            is_writable: false,
+        });
+
+        // Add freeze ata if SPL token mint is enabled.
+        if let Some(token_mint) = candy_machine_state.token_mint {
+            let freeze_ata = get_associated_token_address(&pda, &token_mint);
+            additional_accounts.push(AccountMeta {
+                pubkey: freeze_ata,
+                is_signer: false,
+                is_writable: true,
+            });
+        }
+    }
+
     let metadata_pda = find_metadata_pda(&nft_mint.pubkey());
     let master_edition_pda = find_master_edition_pda(&nft_mint.pubkey());
     let (candy_machine_creator_pda, creator_bump) =
@@ -422,20 +450,27 @@ pub async fn mint(
     if let Some((collection_pda_pubkey, collection_pda)) = collection_pda_info.as_ref() {
         let collection_authority_record =
             find_collection_authority_account(&collection_pda.mint, collection_pda_pubkey).0;
+
+        let mut accounts = nft_accounts::SetCollectionDuringMint {
+            candy_machine: candy_machine_id,
+            metadata: metadata_pda,
+            payer,
+            collection_pda: *collection_pda_pubkey,
+            token_metadata_program: mpl_token_metadata::ID,
+            instructions: sysvar::instructions::ID,
+            collection_mint: collection_pda.mint,
+            collection_metadata: find_metadata_pda(&collection_pda.mint),
+            collection_master_edition: find_master_edition_pda(&collection_pda.mint),
+            authority,
+            collection_authority_record,
+        }
+        .to_account_metas(None);
+
+        // Make collection metadata account mutable for sized collections.
+        accounts[7].is_writable = true;
+
         builder = builder
-            .accounts(nft_accounts::SetCollectionDuringMint {
-                candy_machine: candy_machine_id,
-                metadata: metadata_pda,
-                payer,
-                collection_pda: *collection_pda_pubkey,
-                token_metadata_program: mpl_token_metadata::ID,
-                instructions: sysvar::instructions::ID,
-                collection_mint: collection_pda.mint,
-                collection_metadata: find_metadata_pda(&collection_pda.mint),
-                collection_master_edition: find_master_edition_pda(&collection_pda.mint),
-                authority,
-                collection_authority_record,
-            })
+            .accounts(accounts)
             .args(nft_instruction::SetCollectionDuringMint {});
     }
 

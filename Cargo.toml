@@ -1,6 +1,6 @@
 [package]
 name = "sugar-cli"
-version = "0.6.3"
+version = "1.0.0"
 edition = "2021"
 description = "Command line tool for creating and managing Metaplex Candy Machines."
 license = "Apache-2.0"
@@ -34,8 +34,8 @@ indexmap = { version = "1.9.1", features = ["serde"] }
 indicatif = { version = "0.16.2", features = ["rayon"] }
 ini = "1.3.0"
 lazy_static = "1.4.0"
-mpl-candy-machine = { version = "4.1.0", features = ["no-entrypoint"] }
-mpl-token-metadata = "1.3.4"
+mpl-candy-machine = { version = "4.4", features = ["no-entrypoint"] }
+mpl-token-metadata = "~1.3.6"
 num_cpus = "1.13.1"
 phf = { version = "0.10", features = ["macros"] }
 rand = "0.8.5"
@@ -58,7 +58,6 @@ solana-program = "1.9.13"
 solana-transaction-status = "1.9.13"
 spl-associated-token-account = "1.0.3"
 spl-token = "=3.2.0"
-structopt = "0.3.26"
 thiserror = "1.0.31"
 tokio = "1.15.0"
 tracing = { version = "0.1.35", features = ["log"] }
