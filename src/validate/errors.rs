@@ -41,4 +41,13 @@ pub enum ValidateParserError {
 
     #[error("Missing seller fee basis points field")]
     MissingSellerFeeBasisPoints,
+
+    #[error("Redundant file {0}.json")]
+    RedundantFile(usize),
+
+    #[error("File {0}.json is out of expected range")]
+    FileOutOfRange(usize),
+
+    #[error("Asset list isn't continuous please check files")]
+    NonContinuousSeries,
 }

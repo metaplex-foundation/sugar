@@ -9,6 +9,7 @@ use console::{style, Style};
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use glob::glob;
 use rayon::prelude::*;
+use regex::Regex;
 
 use crate::{common::*, utils::*, validate::*};
 
@@ -81,6 +82,41 @@ pub fn process_validate(args: ValidateArgs) -> Result<()> {
         .into_iter()
         .map(Result::unwrap)
         .collect();
+
+    // Checking the assets are a proper series starting at 0 and ending at n-1
+    let num_re = Regex::new(r".*/(\d+).json$").unwrap();
+
+    let num_series = paths
+        .iter()
+        .filter_map(|path| {
+            let name = path.file_name().unwrap().to_str().unwrap();
+            num_re
+                .captures(name)
+                .map(|number| number[1].parse::<usize>().unwrap())
+        })
+        .collect::<Vec<usize>>();
+
+    // Sum of series given we expect:
+    // a_0 = 0 , a_n = num_series.size() , n = num_series.size() => n * (a_0 + a_n) / 2
+    // https://en.wikipedia.org/wiki/Arithmetic_progression
+
+    let target_sum = num_series.len() * num_series.len() / 2;
+    let mut sum: usize = 0;
+    let mut redundant: HashMap<usize, usize> = HashMap::new();
+    for num in &num_series {
+        if redundant.contains_key(num) {
+            return Err(ValidateParserError::RedundantFile(*num).into());
+        } else if num >= &num_series.len() {
+            return Err(ValidateParserError::FileOutOfRange(*num).into());
+        } else {
+            redundant.insert(*num, 1);
+            sum += num;
+        }
+    }
+
+    if sum != target_sum {
+        return Err(ValidateParserError::NonContinuousSeries.into());
+    }
 
     let pb = spinner_with_style();
     pb.enable_steady_tick(120);
