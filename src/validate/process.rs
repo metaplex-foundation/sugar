@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fs::File,
     path::Path,
     sync::{Arc, Mutex},
@@ -102,14 +103,14 @@ pub fn process_validate(args: ValidateArgs) -> Result<()> {
 
     let target_sum = num_series.len() * (num_series.len() - 1) / 2;
     let mut sum: usize = 0;
-    let mut redundant: HashMap<usize, usize> = HashMap::new();
+    let mut redundant: HashSet<usize> = HashSet::new();
     for num in &num_series {
-        if redundant.contains_key(num) {
+        if redundant.contains(num) {
             return Err(ValidateParserError::RedundantFile(*num).into());
         } else if num >= &num_series.len() {
             return Err(ValidateParserError::FileOutOfRange(*num).into());
         } else {
-            redundant.insert(*num, 1);
+            redundant.insert(*num);
             sum += num;
         }
     }
