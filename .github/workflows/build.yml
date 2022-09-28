@@ -35,8 +35,10 @@ jobs:
           default: true
           override: true
 
-      - name: Install rustfmt and clippy
-        run: rustup component add rustfmt clippy
+      - name: Install rustfmt, clippy and cargo-cache
+        run: |
+          rustup component add rustfmt clippy
+          cargo install cargo-cache
 
       - name: Cache Dependencies
         uses: actions/cache@v3
@@ -50,6 +52,9 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
+
+      - name: Cleanup Dependencies
+        run: cargo cache clean-unref
 
       - name: Build
         id: build
