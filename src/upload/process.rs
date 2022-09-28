@@ -278,7 +278,7 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
             // updates the list of metadata indices since the image upload
             // might fail - removes any index that the animation upload failed
             if !indices.metadata.is_empty() {
-                for index in indices.animation.clone() {
+                for index in indices.animation {
                     let item = cache.items.get(&index.to_string()).unwrap();
 
                     if item.animation_link.is_none() {
