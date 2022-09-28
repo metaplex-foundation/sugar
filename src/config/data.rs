@@ -402,6 +402,7 @@ pub struct AwsConfig {
     pub bucket: String,
     pub profile: String,
     pub directory: String,
+    pub domain: Option<String>,
 }
 
 impl AwsConfig {
@@ -410,6 +411,7 @@ impl AwsConfig {
             bucket,
             profile,
             directory,
+            domain: None,
         }
     }
 }
