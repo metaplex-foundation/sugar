@@ -222,9 +222,8 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
         println!("\nVerification successful. You're good to go!");
     } else {
         println!(
-            "\nVerification successful. You're good to go!\n\nSee your candy machine at:\n  -> https://www.solaneyes.com/address/{}?cluster={}",
+            "\nVerification successful. You're good to go!\n\nSee your candy machine at:\n  -> https://www.solaneyes.com/address/{}",
             cache.program.candy_machine,
-            cluster
         );
     }
     Ok(())
