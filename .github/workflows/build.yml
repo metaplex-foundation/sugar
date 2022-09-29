@@ -67,6 +67,11 @@ jobs:
           fi
           echo "::set-output name=binary_path::${binary_path}"
 
+          # clean build for release
+          if [[ "${GITHUB_REF}" = refs/tags/* ]]; then
+            cargo clean
+          fi
+
           cargo build --all --release --locked
           cp "target/release/sugar${binary_extension}" "${binary_path}"
           strip "${binary_path}"
