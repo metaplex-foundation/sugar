@@ -150,6 +150,10 @@ pub enum Commands {
         /// Address of candy machine to mint from.
         #[clap(long)]
         candy_machine: Option<String>,
+
+        /// List of airdrop targets.
+        #[clap(long)]
+        airdrop_list: Option<String>,
     },
 
     /// Reveal the NFTs from a hidden settings candy machine

@@ -29,6 +29,7 @@ use crate::{
     candy_machine::{CANDY_MACHINE_ID, *},
     common::*,
     config::{Cluster, SugarConfig},
+    mint::airdrop_utils::load_airdrop_list,
     pdas::*,
     utils::*,
 };
@@ -40,11 +41,16 @@ pub struct MintArgs {
     pub number: Option<u64>,
     pub receiver: Option<String>,
     pub candy_machine: Option<String>,
+    pub airdrop_list: Option<String>,
 }
 
 pub async fn process_mint(args: MintArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = Arc::new(setup_client(&sugar_config)?);
+    let _airdrop_list = match args.airdrop_list {
+        Some(airdrop_list) => Some(load_airdrop_list(airdrop_list)?),
+        None => None,
+    };
 
     // the candy machine id specified takes precedence over the one from the cache
 

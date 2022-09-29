@@ -268,6 +268,7 @@ async fn run() -> Result<()> {
             number,
             receiver,
             candy_machine,
+            airdrop_list,
         } => {
             process_mint(MintArgs {
                 keypair,
@@ -276,6 +277,7 @@ async fn run() -> Result<()> {
                 number,
                 receiver,
                 candy_machine,
+                airdrop_list,
             })
             .await?
         }
