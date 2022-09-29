@@ -7,6 +7,12 @@ use thiserror::Error;
 use crate::common::*;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct AirDropList {
+    pub targets: Vec<AirDropTarget>,
+    pub total: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AirDropTarget {
     pub address: Pubkey,
     pub num: u64,
@@ -34,9 +40,15 @@ pub enum AirDropError {
 
     #[error("Failed to parse AirDrop list file {0} with error {1}")]
     AirDropListFileWrongFormat(String, String),
+
+    #[error("Cannot use number and airdrop feature at the same time")]
+    CannotUseNumberAndAirdropFeatureAtTheSameTime,
+
+    #[error("Airdrop total {0} is higher than available {1}")]
+    AirdropTotalIsHigherThanAvailable(u64, u64),
 }
 
-pub fn load_airdrop_list(airdrop_list: String) -> Result<Vec<AirDropTarget>> {
+pub fn load_airdrop_list(airdrop_list: String) -> Result<AirDropList> {
     let airdrop_list_path = Path::new(&airdrop_list);
     if !airdrop_list_path.exists() {
         return Err(AirDropError::AirDropListFileNotFound(airdrop_list).into());
@@ -59,6 +71,10 @@ pub fn load_airdrop_list(airdrop_list: String) -> Result<Vec<AirDropTarget>> {
             );
         }
     };
+    let total = airdrop_list.iter().fold(0, |acc, x| acc + x.num);
 
-    Ok(airdrop_list)
+    Ok(AirDropList {
+        total,
+        targets: airdrop_list,
+    })
 }

@@ -29,7 +29,7 @@ use crate::{
     candy_machine::{CANDY_MACHINE_ID, *},
     common::*,
     config::{Cluster, SugarConfig},
-    mint::airdrop_utils::load_airdrop_list,
+    mint::airdrop_utils::{load_airdrop_list, AirDropError},
     pdas::*,
     utils::*,
 };
@@ -47,7 +47,7 @@ pub struct MintArgs {
 pub async fn process_mint(args: MintArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = Arc::new(setup_client(&sugar_config)?);
-    let _airdrop_list = match args.airdrop_list {
+    let airdrop_list = match args.airdrop_list {
         Some(airdrop_list) => Some(load_airdrop_list(airdrop_list)?),
         None => None,
     };
@@ -102,7 +102,20 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
     println!("\nMinting to {}", &receiver_pubkey);
 
     let number = args.number.unwrap_or(1);
+
+    if number > 1 && airdrop_list.is_some() {
+        return Err(AirDropError::CannotUseNumberAndAirdropFeatureAtTheSameTime.into());
+    }
+
     let available = candy_machine_state.data.items_available - candy_machine_state.items_redeemed;
+
+    if airdrop_list.as_ref().unwrap().total > available {
+        return Err(AirDropError::AirdropTotalIsHigherThanAvailable(
+            airdrop_list.as_ref().unwrap().total,
+            available,
+        )
+        .into());
+    }
 
     if number > available || number == 0 {
         let error = anyhow!("{} item(s) available, requested {}", available, number);
@@ -139,6 +152,64 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
         };
 
         pb.finish_with_message(result);
+    } else if airdrop_list.is_some() {
+        let pb = progress_bar_with_style(number);
+
+        let mut tasks = Vec::new();
+        let semaphore = Arc::new(Semaphore::new(10));
+        let config = Arc::new(sugar_config);
+
+        for target in airdrop_list.unwrap().targets {
+            for _i in 0..target.num {
+                let config = config.clone();
+                let permit = Arc::clone(&semaphore).acquire_owned().await.unwrap();
+                let candy_machine_state = candy_machine_state.clone();
+                let collection_pda_info = collection_pda_info.clone();
+                let pb = pb.clone();
+
+                // Start tasks
+                tasks.push(tokio::spawn(async move {
+                    let _permit = permit;
+                    let res = mint(
+                        config,
+                        candy_pubkey,
+                        candy_machine_state,
+                        collection_pda_info,
+                        target.address,
+                    )
+                    .await;
+                    pb.inc(1);
+                    res
+                }));
+            }
+        }
+
+        let mut error_count = 0;
+
+        // Resolve tasks
+        for task in tasks {
+            let res = task.await.unwrap();
+            if let Err(e) = res {
+                error_count += 1;
+                error!("{:?}, continuing. . .", e);
+            }
+        }
+
+        if error_count > 0 {
+            pb.abandon_with_message(format!(
+                "{} {} items failed.",
+                style("Some of the items failed to mint.").red().bold(),
+                error_count
+            ));
+            return Err(anyhow!(
+                "{} {}/{} {}",
+                style("Minted").red().bold(),
+                number - error_count,
+                number,
+                style("of the items").red().bold()
+            ));
+        }
+        pb.finish();
     } else {
         let pb = progress_bar_with_style(number);
 
