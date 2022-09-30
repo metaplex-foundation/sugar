@@ -46,6 +46,58 @@ pub enum AirDropError {
 
     #[error("Airdrop total {0} is higher than available {1}")]
     AirdropTotalIsHigherThanAvailable(u64, u64),
+
+    #[error("Failed to open AirDrop results file {0} with error {1}")]
+    FailedToOpenAirDropResultsFile(String, String),
+
+    #[error("Failed to parse AirDrop results file {0} with error {1}")]
+    AirDropResultsFileWrongFormat(String, String),
+}
+
+pub fn load_airdrop_results(airdrop_list: &mut AirDropList) -> Result<Vec<AirDropResult>> {
+    let airdrop_results_path = Path::new("airdrop_results.json");
+    if !airdrop_results_path.exists() {
+        return Ok(vec![]);
+    }
+
+    let file = match File::open(airdrop_results_path) {
+        Ok(file) => file,
+        Err(err) => {
+            return Err(AirDropError::FailedToOpenAirDropResultsFile(
+                path_to_string(airdrop_results_path)?,
+                err.to_string(),
+            )
+            .into());
+        }
+    };
+
+    let airdrop_results: Vec<AirDropResult> = match serde_json::from_reader(file) {
+        Ok(airdrop_results) => airdrop_results,
+        Err(err) => {
+            return Err(AirDropError::AirDropResultsFileWrongFormat(
+                path_to_string(airdrop_results_path)?,
+                err.to_string(),
+            )
+            .into());
+        }
+    };
+
+    // TODO: Seems inefficient, might need to refactor as HashMap
+    for result in airdrop_results.iter() {
+        for target in airdrop_list.targets.iter_mut() {
+            if target.address != result.address {
+                continue;
+            }
+            for transaction_result in result.transactions_results.iter() {
+                if transaction_result.status {
+                    target.num -= 1;
+                    airdrop_list.total -= 1;
+                }
+            }
+        }
+    }
+
+    Ok(airdrop_results)
 }
 
 pub fn load_airdrop_list(airdrop_list: String) -> Result<AirDropList> {

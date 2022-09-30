@@ -29,7 +29,7 @@ use crate::{
     candy_machine::{CANDY_MACHINE_ID, *},
     common::*,
     config::{Cluster, SugarConfig},
-    mint::airdrop_utils::{load_airdrop_list, AirDropError},
+    mint::airdrop_utils::{load_airdrop_list, AirDropError, AirDropList},
     pdas::*,
     utils::*,
 };
@@ -47,9 +47,20 @@ pub struct MintArgs {
 pub async fn process_mint(args: MintArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = Arc::new(setup_client(&sugar_config)?);
-    let airdrop_list = match args.airdrop_list {
-        Some(airdrop_list) => Some(load_airdrop_list(airdrop_list)?),
-        None => None,
+    let using_airdrop_list: bool;
+    let mut airdrop_list: AirDropList;
+    match args.airdrop_list {
+        Some(airdrop_list_arg) => {
+            using_airdrop_list = true;
+            airdrop_list = load_airdrop_list(airdrop_list_arg)?;
+        }
+        None => {
+            using_airdrop_list = false;
+            airdrop_list = AirDropList {
+                total: 0,
+                targets: vec![],
+            }
+        }
     };
 
     // the candy machine id specified takes precedence over the one from the cache
@@ -103,18 +114,16 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
 
     let number = args.number.unwrap_or(1);
 
-    if number > 1 && airdrop_list.is_some() {
+    if number > 1 && using_airdrop_list {
         return Err(AirDropError::CannotUseNumberAndAirdropFeatureAtTheSameTime.into());
     }
 
     let available = candy_machine_state.data.items_available - candy_machine_state.items_redeemed;
 
-    if airdrop_list.as_ref().unwrap().total > available {
-        return Err(AirDropError::AirdropTotalIsHigherThanAvailable(
-            airdrop_list.as_ref().unwrap().total,
-            available,
-        )
-        .into());
+    if airdrop_list.total > available {
+        return Err(
+            AirDropError::AirdropTotalIsHigherThanAvailable(airdrop_list.total, available).into(),
+        );
     }
 
     if number > available || number == 0 {
@@ -152,15 +161,17 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
         };
 
         pb.finish_with_message(result);
-    } else if airdrop_list.is_some() {
+    } else if using_airdrop_list {
+        // let mut airdrop_results = load_airdrop_results(&mut airdrop_list)?;
         let pb = progress_bar_with_style(number);
 
         let mut tasks = Vec::new();
         let semaphore = Arc::new(Semaphore::new(10));
         let config = Arc::new(sugar_config);
 
-        for target in airdrop_list.unwrap().targets {
-            for _i in 0..target.num {
+        while let Some(target) = airdrop_list.targets.pop() {
+            // for target in targets.drain() {
+            for _i in 0..target.clone().num {
                 let config = config.clone();
                 let permit = Arc::clone(&semaphore).acquire_owned().await.unwrap();
                 let candy_machine_state = candy_machine_state.clone();
