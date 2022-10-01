@@ -1,4 +1,7 @@
-use std::{str::FromStr, sync::Arc};
+use std::{
+    str::FromStr,
+    sync::{Arc, Mutex},
+};
 
 use anchor_client::solana_sdk::{
     program_pack::Pack,
@@ -29,7 +32,11 @@ use crate::{
     candy_machine::{CANDY_MACHINE_ID, *},
     common::*,
     config::{Cluster, SugarConfig},
-    mint::airdrop_utils::{load_airdrop_list, AirDropError, AirDropList},
+    mint::airdrop::{
+        errors::AirDropError,
+        structs::{AirDropTargets, TransactionResult},
+        utils::load_airdrop_list,
+    },
     pdas::*,
     utils::*,
 };
@@ -48,7 +55,7 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = Arc::new(setup_client(&sugar_config)?);
     let using_airdrop_list: bool;
-    let mut airdrop_list: AirDropList;
+    let mut airdrop_list: AirDropTargets;
     match args.airdrop_list {
         Some(airdrop_list_arg) => {
             using_airdrop_list = true;
@@ -56,12 +63,11 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
         }
         None => {
             using_airdrop_list = false;
-            airdrop_list = AirDropList {
-                total: 0,
-                targets: vec![],
-            }
+            airdrop_list = AirDropTargets::new()
         }
     };
+
+    let airdrop_total = airdrop_list.iter().fold(0, |acc, x| acc + x.1);
 
     // the candy machine id specified takes precedence over the one from the cache
 
@@ -120,9 +126,9 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
 
     let available = candy_machine_state.data.items_available - candy_machine_state.items_redeemed;
 
-    if airdrop_list.total > available {
+    if airdrop_total > available {
         return Err(
-            AirDropError::AirdropTotalIsHigherThanAvailable(airdrop_list.total, available).into(),
+            AirDropError::AirdropTotalIsHigherThanAvailable(airdrop_total, available).into(),
         );
     }
 
@@ -168,16 +174,18 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
         let mut tasks = Vec::new();
         let semaphore = Arc::new(Semaphore::new(10));
         let config = Arc::new(sugar_config);
+        let results: Arc<Mutex<HashMap<Pubkey, Vec<TransactionResult>>>> =
+            Arc::new(Mutex::new(HashMap::new()));
 
-        while let Some(target) = airdrop_list.targets.pop() {
-            // for target in targets.drain() {
-            for _i in 0..target.clone().num {
+        // while let Some(target) = airdrop_list.targets.pop() {
+        for (address, num) in airdrop_list.drain() {
+            for _i in 0..num {
+                let results = results.clone();
                 let config = config.clone();
                 let permit = Arc::clone(&semaphore).acquire_owned().await.unwrap();
                 let candy_machine_state = candy_machine_state.clone();
                 let collection_pda_info = collection_pda_info.clone();
                 let pb = pb.clone();
-
                 // Start tasks
                 tasks.push(tokio::spawn(async move {
                     let _permit = permit;
@@ -186,10 +194,30 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
                         candy_pubkey,
                         candy_machine_state,
                         collection_pda_info,
-                        target.address,
+                        address,
                     )
                     .await;
                     pb.inc(1);
+
+                    let mut results = results.lock().unwrap();
+                    results.entry(address).or_insert_with(Vec::new);
+                    let signatures = results.get_mut(&address).unwrap();
+
+                    match &res {
+                        Ok(signature) => {
+                            signatures.push(TransactionResult {
+                                signature: signature.to_string(),
+                                status: true,
+                            });
+                        }
+                        Err(err) => {
+                            signatures.push(TransactionResult {
+                                signature: err.to_string(),
+                                status: false,
+                            });
+                        }
+                    }
+
                     res
                 }));
             }

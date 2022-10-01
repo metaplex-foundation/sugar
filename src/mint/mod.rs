@@ -1,4 +1,4 @@
-pub mod airdrop_utils;
+pub mod airdrop;
 pub mod process;
 
 pub use process::*;
