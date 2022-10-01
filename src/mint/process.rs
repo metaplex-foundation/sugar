@@ -34,8 +34,8 @@ use crate::{
     config::{Cluster, SugarConfig},
     mint::airdrop::{
         errors::AirDropError,
-        structs::{AirDropResults, AirDropTargets, TransactionResult},
-        utils::{load_airdrop_list, write_airdrop_results},
+        structs::{AirDropTargets, TransactionResult},
+        utils::{load_airdrop_list, load_airdrop_results, write_airdrop_results},
     },
     pdas::*,
     utils::*,
@@ -67,6 +67,7 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
         }
     };
 
+    let airdrop_results = Arc::new(Mutex::new(load_airdrop_results(&mut airdrop_list)?));
     let airdrop_total = airdrop_list.iter().fold(0, |acc, x| acc + x.1);
 
     // the candy machine id specified takes precedence over the one from the cache
@@ -118,7 +119,10 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
     };
     println!("\nMinting to {}", &receiver_pubkey);
 
-    let number = args.number.unwrap_or(1);
+    let number = match using_airdrop_list {
+        true => 0,
+        false => args.number.unwrap_or(1),
+    };
 
     if number > 1 && using_airdrop_list {
         return Err(AirDropError::CannotUseNumberAndAirdropFeatureAtTheSameTime.into());
@@ -132,7 +136,7 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
         );
     }
 
-    if number > available || number == 0 {
+    if number > available || number == 0 && !using_airdrop_list {
         let error = anyhow!("{} item(s) available, requested {}", available, number);
         error!("{:?}", error);
         return Err(error);
@@ -168,13 +172,10 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
 
         pb.finish_with_message(result);
     } else if using_airdrop_list {
-        // let mut airdrop_results = load_airdrop_results(&mut airdrop_list)?;
         let pb = progress_bar_with_style(number);
-
         let mut tasks = Vec::new();
         let semaphore = Arc::new(Semaphore::new(10));
         let config = Arc::new(sugar_config);
-        let airdrop_results: Arc<Mutex<AirDropResults>> = Arc::new(Mutex::new(HashMap::new()));
 
         // while let Some(target) = airdrop_list.targets.pop() {
         for (address, num) in airdrop_list.drain() {
@@ -185,6 +186,8 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
                 let candy_machine_state = candy_machine_state.clone();
                 let collection_pda_info = collection_pda_info.clone();
                 let pb = pb.clone();
+                let address = address.clone();
+                let target = Pubkey::from_str(address.as_str()).unwrap();
                 // Start tasks
                 tasks.push(tokio::spawn(async move {
                     let _permit = permit;
@@ -193,13 +196,13 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
                         candy_pubkey,
                         candy_machine_state,
                         collection_pda_info,
-                        address,
+                        target,
                     )
                     .await;
                     pb.inc(1);
 
                     let mut results = results.lock().unwrap();
-                    results.entry(address).or_insert_with(Vec::new);
+                    results.entry(address.clone()).or_insert_with(Vec::new);
                     let signatures = results.get_mut(&address).unwrap();
 
                     match &res {

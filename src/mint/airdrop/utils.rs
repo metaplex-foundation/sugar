@@ -59,7 +59,7 @@ pub fn load_airdrop_results(airdrop_list: &mut AirDropTargets) -> Result<AirDrop
                 // airdrop_list.total -= 1;
             }
         }
-        airdrop_list.insert(*address, target);
+        airdrop_list.insert(address.clone(), target);
     }
 
     Ok(results)

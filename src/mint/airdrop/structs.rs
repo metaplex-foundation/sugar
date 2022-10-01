@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::common::*;
 
 // #[derive(Clone, Debug, Deserialize, Serialize)]
-pub type AirDropTargets = HashMap<Pubkey, u64>;
+pub type AirDropTargets = HashMap<String, u64>;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TransactionResult {
@@ -12,4 +12,4 @@ pub struct TransactionResult {
 }
 
 // #[derive(Clone, Debug, Deserialize, Serialize)]
-pub type AirDropResults = HashMap<Pubkey, Vec<TransactionResult>>;
+pub type AirDropResults = HashMap<String, Vec<TransactionResult>>;
