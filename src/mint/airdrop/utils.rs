@@ -10,6 +10,13 @@ use crate::{
     },
 };
 
+pub fn write_airdrop_results(airdrop_results: &AirDropResults) -> Result<()> {
+    let airdrop_results_path = Path::new("airdrop_results.json");
+    let f = File::create(airdrop_results_path)?;
+    serde_json::to_writer_pretty(f, airdrop_results)?;
+    Ok(())
+}
+
 pub fn load_airdrop_results(airdrop_list: &mut AirDropTargets) -> Result<AirDropResults> {
     let airdrop_results_path = Path::new("airdrop_results.json");
     if !airdrop_results_path.exists() {

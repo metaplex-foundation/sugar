@@ -34,8 +34,8 @@ use crate::{
     config::{Cluster, SugarConfig},
     mint::airdrop::{
         errors::AirDropError,
-        structs::{AirDropTargets, TransactionResult},
-        utils::load_airdrop_list,
+        structs::{AirDropResults, AirDropTargets, TransactionResult},
+        utils::{load_airdrop_list, write_airdrop_results},
     },
     pdas::*,
     utils::*,
@@ -174,13 +174,12 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
         let mut tasks = Vec::new();
         let semaphore = Arc::new(Semaphore::new(10));
         let config = Arc::new(sugar_config);
-        let results: Arc<Mutex<HashMap<Pubkey, Vec<TransactionResult>>>> =
-            Arc::new(Mutex::new(HashMap::new()));
+        let airdrop_results: Arc<Mutex<AirDropResults>> = Arc::new(Mutex::new(HashMap::new()));
 
         // while let Some(target) = airdrop_list.targets.pop() {
         for (address, num) in airdrop_list.drain() {
             for _i in 0..num {
-                let results = results.clone();
+                let results = airdrop_results.clone();
                 let config = config.clone();
                 let permit = Arc::clone(&semaphore).acquire_owned().await.unwrap();
                 let candy_machine_state = candy_machine_state.clone();
@@ -248,6 +247,7 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
                 style("of the items").red().bold()
             ));
         }
+        write_airdrop_results(&airdrop_results.lock().unwrap())?;
         pb.finish();
     } else {
         let pb = progress_bar_with_style(number);
