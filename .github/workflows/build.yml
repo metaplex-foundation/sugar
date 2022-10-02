@@ -53,9 +53,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Cleanup Dependencies
-        run: cargo cache clean-unref
-
       - name: Build
         id: build
         shell: bash
@@ -92,6 +89,9 @@ jobs:
         with:
           command: clippy
           args: -- -D warnings
+
+      - name: Cleanup Dependencies
+        run: cargo cache clean-unref
 
       - name: Publish Artifacts
         uses: actions/upload-artifact@v3
