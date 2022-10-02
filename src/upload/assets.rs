@@ -10,6 +10,7 @@ use regex::{Regex, RegexBuilder};
 use ring::digest::{Context, SHA256};
 use serde::Serialize;
 use serde_json;
+use url::Url;
 
 use crate::{common::*, validate::format::Metadata};
 
@@ -171,49 +172,6 @@ pub fn get_asset_pairs(assets_dir: &str) -> Result<HashMap<isize, AssetPair>> {
             return Err(error);
         };
 
-        let img_pattern = format!("^{}\\.((jpg)|(jpeg)|(gif)|(png))$", i);
-
-        let img_regex = RegexBuilder::new(&img_pattern)
-            .case_insensitive(true)
-            .build()
-            .expect("Failed to create regex.");
-
-        let img_filenames = paths_ref
-            .clone()
-            .into_iter()
-            .filter(|p| img_regex.is_match(p))
-            .collect::<Vec<String>>();
-
-        let img_filename = if img_filenames.len() != 1 {
-            let error = if is_collection_index {
-                anyhow!("Couldn't find the collection image filename.")
-            } else {
-                anyhow!(
-                    "Couldn't find an image filename at index {}.",
-                    i.parse::<isize>().unwrap()
-                )
-            };
-            error!("{:?}", error);
-            return Err(error);
-        } else {
-            &img_filenames[0]
-        };
-
-        // need a similar check for animation as above, this one checking if there is animation
-        // on specific index
-
-        let animation_pattern = format!("^{}\\.((mp3)|(mp4)|(mov)|(webm)|(glb))$", i);
-        let animation_regex = RegexBuilder::new(&animation_pattern)
-            .case_insensitive(true)
-            .build()
-            .expect("Failed to create regex.");
-
-        let animation_filenames = paths_ref
-            .clone()
-            .into_iter()
-            .filter(|p| animation_regex.is_match(p))
-            .collect::<Vec<String>>();
-
         let metadata_filepath = Path::new(assets_dir)
             .join(&metadata_filename)
             .to_str()
@@ -224,24 +182,97 @@ pub fn get_asset_pairs(assets_dir: &str) -> Result<HashMap<isize, AssetPair>> {
         let metadata: Metadata = serde_json::from_reader(m).map_err(|e| {
             anyhow!("Failed to read metadata file '{metadata_filepath}' with error: {e}")
         })?;
+
         let name = metadata.name.clone();
 
-        let img_filepath = Path::new(assets_dir)
-            .join(img_filename)
-            .to_str()
-            .expect("Failed to convert image path from unicode.")
-            .to_string();
+        let img_filepath = match is_valid_url(&metadata.image) {
+            Ok(()) => {
+                println!("skipping upload for image url {}", metadata.image);
+                metadata.image
+            }
+            Err(e) => {
+                // print warning only if path looks like url
+                if metadata.image.contains("://") {
+                    println!(
+                        "warning: ignoring image url '{}' in '{}': {}",
+                        metadata.image, metadata_filepath, e
+                    );
+                }
 
-        let animation_filename = if animation_filenames.len() == 1 {
-            let animation_filepath = Path::new(assets_dir)
-                .join(&animation_filenames[0])
-                .to_str()
-                .expect("Failed to convert image path from unicode.")
-                .to_string();
+                let img_pattern = format!("^{}\\.((jpg)|(jpeg)|(gif)|(png))$", i);
+                let img_regex = RegexBuilder::new(&img_pattern)
+                    .case_insensitive(true)
+                    .build()
+                    .expect("Failed to create regex.");
 
-            Some(animation_filepath)
-        } else {
-            None
+                let img_filenames = paths_ref
+                    .clone()
+                    .into_iter()
+                    .filter(|p| img_regex.is_match(p))
+                    .collect::<Vec<String>>();
+
+                let img_filename = if img_filenames.len() != 1 {
+                    let error = if is_collection_index {
+                        anyhow!("Couldn't find the collection image filename.")
+                    } else {
+                        anyhow!(
+                            "Couldn't find an image filename at index {}.",
+                            i.parse::<isize>().unwrap()
+                        )
+                    };
+                    error!("{:?}", error);
+                    return Err(error);
+                } else {
+                    &img_filenames[0]
+                };
+
+                Path::new(assets_dir)
+                    .join(img_filename)
+                    .to_str()
+                    .expect("Failed to convert image path from unicode.")
+                    .to_string()
+            }
+        };
+
+        let mut animation_filename = None;
+        if let Some(url) = metadata.animation_url {
+            match is_valid_url(&url) {
+                Ok(()) => println!("skipping upload for animation url {}", url),
+                Err(e) => {
+                    // print warning only if path looks like url
+                    if url.contains("://") {
+                        println!(
+                            "warning: ignoring animation url '{}' in '{}': {}",
+                            url, metadata_filepath, e
+                        );
+                    }
+                }
+            }
+        }
+        if animation_filename.is_none() {
+            let animation_pattern = format!("^{}\\.((mp3)|(mp4)|(mov)|(webm)|(glb))$", i);
+            let animation_regex = RegexBuilder::new(&animation_pattern)
+                .case_insensitive(true)
+                .build()
+                .expect("Failed to create regex.");
+
+            let animation_filenames = paths_ref
+                .clone()
+                .into_iter()
+                .filter(|p| animation_regex.is_match(p))
+                .collect::<Vec<String>>();
+
+            animation_filename = if animation_filenames.len() == 1 {
+                let animation_filepath = Path::new(assets_dir)
+                    .join(&animation_filenames[0])
+                    .to_str()
+                    .expect("Failed to convert image path from unicode.")
+                    .to_string();
+
+                Some(animation_filepath)
+            } else {
+                None
+            }
         };
 
         let animation_hash = if let Some(animation_file) = &animation_filename {
@@ -352,4 +383,21 @@ pub fn get_updated_metadata(
     }
 
     Ok(serde_json::to_string(&metadata).unwrap())
+}
+
+// check if a string is a valid url and doesn't need to be processed
+// return true if:
+//   - string can be parsed as a url
+//   - protocol is one of: data (for data-uris), http, https, ipfs, arweave
+pub fn is_valid_url(string: &str) -> Result<(), String> {
+    return match Url::parse(string) {
+        Ok(url) => match url.scheme() {
+            "data" | "http" | "https" | "ipfs" | "arweave" => Ok(()),
+            _ => Err(format!(
+                "unsupported url protocol '{}', must be one of: data, http, https, ipfs, arweave",
+                url.scheme()
+            )),
+        },
+        Err(e) => Err(format!("could not parse string as url: {:#?}", e)),
+    };
 }
