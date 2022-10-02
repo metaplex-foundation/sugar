@@ -109,7 +109,13 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         - (hidden as u8);
 
     let mut candy_pubkey = Pubkey::default();
-    if !candy_machine_address.is_empty() {
+    if candy_machine_address.is_empty() {
+        println!(
+            "{} {}Creating candy machine",
+            style(format!("[1/{}]", total_steps)).bold().dim(),
+            CANDY_EMOJI
+        );
+    } else {
         println!(
             "{} {}Loading candy machine",
             style(format!("[1/{}]", total_steps)).bold().dim(),
@@ -148,6 +154,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
                     "{} This can happen if the deploy transaction fails or times out",
                     WARNING_EMOJI
                 );
+                println!("{} Creating candy machine", CANDY_EMOJI);
 
                 candy_pubkey = Pubkey::default();
             }
@@ -155,12 +162,6 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
     }
 
     if candy_pubkey == Pubkey::default() {
-        println!(
-            "{} {}Creating candy machine",
-            style(format!("[1/{}]", total_steps)).bold().dim(),
-            CANDY_EMOJI
-        );
-
         let spinner = spinner_with_style();
         spinner.set_message("Creating candy machine...");
 
