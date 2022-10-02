@@ -41,7 +41,7 @@ impl AssetPair {
             metadata_link: String::new(),
             on_chain: false,
             animation_hash: self.animation_hash,
-            animation_link: self.animation,
+            animation_link: None,
         }
     }
 }
@@ -345,7 +345,11 @@ pub fn get_updated_metadata(
     }
 
     metadata.image = image_link.to_string();
-    metadata.animation_url = animation_link.clone();
+
+    if animation_link.is_some() {
+        // only updates the link if we have a new value
+        metadata.animation_url = animation_link.clone();
+    }
 
     Ok(serde_json::to_string(&metadata).unwrap())
 }
