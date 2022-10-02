@@ -665,14 +665,14 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             .unwrap();
 
         let api_gateway = Input::with_theme(&theme)
-            .with_prompt("What is the Pinata gateway for upload?")
-            .default(String::from("default"))
+            .with_prompt("What is the Pinata API gateway for upload?")
+            .default(String::from("https://api.pinata.cloud"))
             .interact()
             .unwrap();
 
         let content_gateway = Input::with_theme(&theme)
             .with_prompt("What is the Pinata gateway for content retrieval?")
-            .default(api_gateway.to_string())
+            .default(String::from("https://gateway.pinata.cloud"))
             .interact()
             .unwrap();
 
