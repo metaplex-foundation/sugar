@@ -165,7 +165,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         spinner.set_message("Creating candy machine...");
 
         let candy_keypair = Keypair::new();
-        let candy_pubkey = candy_keypair.pubkey();
+        candy_pubkey = candy_keypair.pubkey();
 
         let uuid = DEFAULT_UUID.to_string();
         let candy_data = create_candy_machine_data(&client, &config_data, uuid)?;
