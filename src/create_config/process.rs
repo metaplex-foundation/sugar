@@ -687,7 +687,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         config_data.pinata_config = Some(PinataConfig {
             jwt,
             api_gateway,
-            content_gateway: Some(content_gateway),
+            content_gateway,
             parallel_limit: Some(parallel_limit),
         });
     }
