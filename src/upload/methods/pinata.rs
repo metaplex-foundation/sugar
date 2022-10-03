@@ -60,14 +60,9 @@ impl PinataMethod {
             match response.status() {
                 StatusCode::OK => {
                     // upload endpoint
-                    let endpoint = format!("{}{}", &pinata_config.api_gateway, UPLOAD_ENDPOINT);
-                    // gateway for content access
-                    let content_gateway =
-                        if let Some(content_gateway) = &pinata_config.content_gateway {
-                            content_gateway.to_string()
-                        } else {
-                            pinata_config.api_gateway.to_string()
-                        };
+                    let endpoint_url =
+                        url::Url::parse(&pinata_config.api_gateway)?.join(UPLOAD_ENDPOINT)?;
+
                     // maximum number of concurrent uploads
                     let parallel_limit = if let Some(parallel_limit) = pinata_config.parallel_limit
                     {
@@ -78,8 +73,8 @@ impl PinataMethod {
 
                     Ok(Self(Arc::new(Config {
                         client,
-                        endpoint,
-                        content_gateway,
+                        endpoint: endpoint_url.to_string(),
+                        content_gateway: pinata_config.content_gateway.clone(),
                         parallel_limit,
                     })))
                 }
@@ -185,12 +180,11 @@ impl Config {
         if status.is_success() {
             let body = response.json::<Value>().await?;
             let PinataResponse { ipfs_hash } = serde_json::from_value(body)?;
-            let uri = format!(
-                "{}/ipfs/{}/{}",
-                self.content_gateway, ipfs_hash, asset_info.name
-            );
 
-            Ok((asset_info.asset_id, uri))
+            let uri = url::Url::parse(&self.content_gateway)?
+                .join(&format!("/ipfs/{}/{}", ipfs_hash, asset_info.name))?;
+
+            Ok((asset_info.asset_id, uri.to_string()))
         } else {
             let body = response.json::<Value>().await?;
             let details = if let Some(details) = &body["error"]["details"].as_str() {
