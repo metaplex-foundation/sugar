@@ -18,6 +18,7 @@ pub fn write_airdrop_results(airdrop_results: &AirDropResults) -> Result<()> {
 }
 
 pub fn load_airdrop_results(airdrop_list: &mut AirDropTargets) -> Result<AirDropResults> {
+    // Will load previous airdrop results from file and will also sync the results with the targets
     let airdrop_results_path = Path::new("airdrop_results.json");
     if !airdrop_results_path.exists() {
         return Ok(AirDropResults::new());
@@ -53,10 +54,11 @@ pub fn load_airdrop_results(airdrop_list: &mut AirDropTargets) -> Result<AirDrop
         let mut target = *airdrop_list.get(address).unwrap();
         for transaction in transactions.iter() {
             if transaction.status {
-                // target = &mut target.checked_sub(1).ok_or(AirDropError::OverflowDuringSyncOfResultsAndTargetsForAddress(address.to_string()).into())?;
-                target -= 1;
-                // airdrop_list.total = airdrop_list.total.checked_sub(1).ok_or(AirDropError::OverflowDuringSyncOfResultsAndTargetsForAddress(address.to_string()).into())?;
-                // airdrop_list.total -= 1;
+                target = target.checked_sub(1).ok_or_else(|| {
+                    AirDropError::OverflowDuringSyncOfResultsAndTargetsForAddress(
+                        address.to_string(),
+                    )
+                })?;
             }
         }
         airdrop_list.insert(address.clone(), target);

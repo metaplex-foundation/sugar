@@ -67,6 +67,7 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
         }
     };
 
+    // load_airdrop_results syncs airdrop_list and airdrop_results in case of rerun failures
     let airdrop_results = Arc::new(Mutex::new(load_airdrop_results(&mut airdrop_list)?));
     let airdrop_total = airdrop_list.iter().fold(0, |acc, x| acc + x.1);
 
@@ -177,7 +178,6 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
         let semaphore = Arc::new(Semaphore::new(10));
         let config = Arc::new(sugar_config);
 
-        // while let Some(target) = airdrop_list.targets.pop() {
         for (address, num) in airdrop_list.drain() {
             for _i in 0..num {
                 let results = airdrop_results.clone();
