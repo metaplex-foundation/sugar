@@ -281,7 +281,7 @@ if [ -z ${PINATA_JWT+x} ]; then
     fi
 fi
 
-if [ -z ${PINATA_GATEWAY+x} ]; then
+if [ -z ${PINATA_API_GATEWAY+x} ]; then
     PINATA_API_GATEWAY="https://api.pinata.cloud"
 
     if [ "$STORAGE" = "pinata" ]; then

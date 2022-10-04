@@ -422,16 +422,16 @@ impl AwsConfig {
 pub struct PinataConfig {
     pub jwt: String,
     pub api_gateway: String,
-    pub content_gateway: Option<String>,
+    pub content_gateway: String,
     pub parallel_limit: Option<u16>,
 }
 
 impl PinataConfig {
-    pub fn new(jwt: String, api_gateway: String) -> PinataConfig {
+    pub fn new(jwt: String, api_gateway: String, content_gateway: String) -> PinataConfig {
         PinataConfig {
             jwt,
             api_gateway,
-            content_gateway: None,
+            content_gateway,
             parallel_limit: None,
         }
     }
