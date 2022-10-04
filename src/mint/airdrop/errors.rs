@@ -2,7 +2,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum AirDropError {
-    #[error("AirDrop lisst file {0} not found")]
+    #[error("AirDrop list file {0} not found")]
     AirDropListFileNotFound(String),
 
     #[error("Failed to open AirDrop list file {0} with error {1}")]
