@@ -77,6 +77,9 @@ function default_settings() {
     INFURA_ID="null"
     INFURA_SECRET="null"
     AWS_BUCKET="null"
+    AWS_PROFILE="null"
+    AWS_DIRECTORY="null"
+    AWS_DOMAIN="null"
     NFT_STORAGE_TOKEN="null"
     SHDW_STORAGE_ACCOUNT="null"
 }
@@ -97,6 +100,9 @@ function max_settings() {
     INFURA_ID="null"
     INFURA_SECRET="null"
     AWS_BUCKET="null"
+    AWS_PROFILE="null"
+    AWS_DIRECTORY="null"
+    AWS_DOMAIN="null"
     NFT_STORAGE_TOKEN="null"
     SHDW_STORAGE_ACCOUNT="null"
 }
@@ -276,6 +282,19 @@ if [ -z ${AWS_DIRECTORY+x} ]; then
     if [ "$STORAGE" = "aws" ]; then
         echo -n $(CYN "AWS directory name: ")
         read AWS_DIRECTORY
+    fi
+fi
+
+if [ -z ${AWS_DOMAIN+x} ]; then
+    AWS_DOMAIN="https://$AWS_BUCKET.s3.amazonaws.com"
+
+    if [ "$STORAGE" = "aws" ]; then
+        echo -n "$(CYN "AWS custom domain") (default $AWS_DOMAIN): "
+        read Domain
+
+        if [ ! -z "$Domain" ]; then
+             AWS_DOMAIN=$Domain
+        fi
     fi
 fi
 
@@ -629,7 +648,8 @@ cat >$CONFIG_FILE <<-EOM
     "awsConfig": {
         "bucket": "${AWS_BUCKET}",
         "profile": "${AWS_PROFILE}",
-        "directory": "${AWS_DIRECTORY}"
+        "directory": "${AWS_DIRECTORY}",
+        "domain": "${AWS_DOMAIN}"
     },
     "nftStorageAuthToken": "${NFT_STORAGE_TOKEN}",
     "shdwStorageAccount": $SHDW,
@@ -666,6 +686,7 @@ INFURA_SECRET="$INFURA_SECRET"
 AWS_BUCKET="$AWS_BUCKET"
 AWS_PROFILE="$AWS_PROFILE"
 AWS_DIRECTORY="$AWS_DIRECTORY"
+AWS_DOMAIN="$AWS_DOMAIN"
 NFT_STORAGE_TOKEN="$NFT_STORAGE_TOKEN"
 SHDW_STORAGE_ACCOUNT="$SHDW_STORAGE_ACCOUNT"
 

@@ -36,9 +36,14 @@ impl AWSMethod {
 
         if let Some(config) = &config_data.aws_config {
             let domain = if let Some(domain) = &config.domain {
-                domain.to_string()
+                match url::Url::parse(&domain.to_string()) {
+                    Ok(url) => url.to_string(),
+                    Err(error) => {
+                        return Err(anyhow!("Malformed domain URL ({})", error.to_string()))
+                    }
+                }
             } else {
-                format!("https://{}.s3.amazonaws.com/", &config.bucket)
+                format!("https://{}.s3.amazonaws.com", &config.bucket)
             };
 
             Ok(Self {
@@ -124,9 +129,9 @@ impl AWSMethod {
             }
         }
 
-        let link = format!("{}/{}", domain, path_str);
+        let link = url::Url::parse(&domain)?.join(path_str)?;
 
-        Ok((asset_info.asset_id, link))
+        Ok((asset_info.asset_id, link.to_string()))
     }
 }
 
