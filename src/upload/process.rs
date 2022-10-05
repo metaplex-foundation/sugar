@@ -278,7 +278,7 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
             // updates the list of metadata indices since the image upload
             // might fail - removes any index that the animation upload failed
             if !indices.metadata.is_empty() {
-                for index in indices.animation.clone() {
+                for index in indices.animation {
                     let item = cache.items.get(&index.to_string()).unwrap();
 
                     if item.animation_link.is_none() {
@@ -320,21 +320,53 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
         println!("\n....no files need uploading, skipping remaining steps.");
     }
 
-    // sanity check
+    // move all non-numeric keys to the beginning and sort as strings
+    // sort numeric keys as integers
+    cache
+        .items
+        .sort_by(|key_a, _, key_b, _| -> std::cmp::Ordering {
+            let a = key_a.parse::<i32>();
+            let b = key_b.parse::<i32>();
 
-    cache.items.sort_keys();
+            if a.is_err() && b.is_err() {
+                // string, string
+                key_a.cmp(key_b)
+            } else if a.is_ok() && b.is_err() {
+                // number, string
+                std::cmp::Ordering::Greater
+            } else if a.is_err() && b.is_ok() {
+                // string, number
+                std::cmp::Ordering::Less
+            } else {
+                // number, number
+                a.unwrap().cmp(&b.unwrap())
+            }
+        });
     cache.sync_file()?;
+
+    // sanity check
 
     let mut count = 0;
 
-    for (_index, item) in &cache.items.0 {
-        let has_animation = if let Some(animation_link) = &item.animation_link {
-            animation_link.is_empty()
+    for (index, item) in &cache.items.0 {
+        let asset_pair = asset_pairs.get(&isize::from_str(index)?).unwrap();
+
+        // we first check that the asset has an animation file; if there is one,
+        // we need to check that the cache item has the link and the link is not empty
+        let missing_animation_link = if asset_pair.animation.is_some() {
+            if let Some(link) = &item.animation_link {
+                link.is_empty()
+            } else {
+                true
+            }
         } else {
+            // the asset does not have animation file
             false
         };
 
-        if !(item.image_link.is_empty() || item.metadata_link.is_empty() || has_animation) {
+        // only increment the count if the cache item is complete (all links are present)
+        if !(item.image_link.is_empty() || item.metadata_link.is_empty() || missing_animation_link)
+        {
             count += 1;
         }
     }
