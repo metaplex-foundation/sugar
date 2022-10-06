@@ -125,9 +125,9 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
         .await
         {
             Ok(signature) => {
-                println!("Signature: {}",signature);
+                println!("Signature: {}", signature);
                 format!("{}", style("Mint success").bold())
-            },
+            }
             Err(err) => {
                 pb.abandon_with_message(format!("{}", style("Mint failed ").red().bold()));
                 error!("{:?}", err);
