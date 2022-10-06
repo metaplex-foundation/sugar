@@ -40,6 +40,7 @@ jobs:
           fi
           cargo build --all --release --locked
           binary_extension=""
+          binary_path="sugar-ubuntu-latest${binary_extension}"
           if [[ "${RUNNER_OS}" == "Windows" ]]; then
             binary_extension=".exe"
           fi
