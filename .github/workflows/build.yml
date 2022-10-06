@@ -47,7 +47,7 @@ jobs:
           if [[ "${RUNNER_OS}" == "macOS" ]]; then
             binary_path="sugar-macos-intel-latest"
           fi
-          cargo build --all --release
+          cargo build --all --release --locked
           mv "target/release/sugar${binary_extension}" "${binary_path}"
           echo "::set-output name=binary_path::${binary_path}"
           strip "${binary_path}"
