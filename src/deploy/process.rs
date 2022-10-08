@@ -160,6 +160,15 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
                 );
                 println!("{} Creating candy machine", CANDY_EMOJI);
 
+                // We set cache items onChain values to false, in case they are set to true
+                // from a previous run. This ensures the config items are actually uploaded.
+                cache
+                    .items
+                    .0
+                    .iter_mut()
+                    .for_each(|(_, item)| item.on_chain = false);
+                cache.sync_file()?;
+
                 candy_pubkey = Pubkey::default();
             }
         }
@@ -203,14 +212,6 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         // in case the transaction doesn't confirm in time the next run should pickup the pubkey
         // and check if the deploy succeeded
         cache.program = CacheProgram::new_from_cm(&candy_pubkey);
-
-        // If cache items are true, leftover from another run, we need to set them to false first
-        // so the config items are actually uploaded.
-        cache
-            .items
-            .0
-            .iter_mut()
-            .for_each(|(_, item)| item.on_chain = false);
         cache.sync_file()?;
 
         // all good, let's create the candy machine
