@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install libudev-dev on Ubuntu
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.os == 'Ubuntu'
         run: |
           sudo apt-get update
           sudo apt-get install libudev-dev
@@ -60,7 +60,14 @@ jobs:
           binary_extension=""
           if [[ "${RUNNER_OS}" == "Windows" ]]; then
             binary_extension=".exe"
-            binary_path="sugar-${{ matrix.os }}${binary_extension}"
+            binary_path="sugar-windows-latest${binary_extension}"
+          elif [[ "${RUNNER_OS}" == "macOS" ]]; then
+            binary_path="sugar-macos-intel-latest"
+          elif [[ "${RUNNER_OS}" == "Ubuntu" ]]; then
+            binary_path="sugar-ubuntu-latest"
+          else
+            echo "error: unknown OS: ${RUNNER_OS}"
+            exit 1
           fi
           echo "::set-output name=binary_path::${binary_path}"
 
