@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use anchor_client::solana_sdk::account::Account;
 use anchor_lang::AnchorDeserialize;
@@ -108,7 +111,7 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
 
     let metadata_pubkeys = match solana_cluster {
         Cluster::Devnet | Cluster::Localnet | Cluster::Mainnet => {
-            let client = RpcClient::new(&rpc_url);
+            let client = RpcClient::new_with_timeout(&rpc_url, Duration::from_secs(300));
             let (creator, _) = find_candy_machine_creator_pda(&candy_machine_id);
             let creator = bs58::encode(creator).into_string();
             get_cm_creator_metadata_accounts(&client, &creator, 0)?
