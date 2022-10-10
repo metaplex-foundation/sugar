@@ -3,11 +3,11 @@ use std::path::Path;
 use anyhow::Result;
 
 use crate::{
-    common::*,
-    mint::airdrop::{
+    airdrop::{
         errors::AirDropError,
         structs::{AirDropResults, AirDropTargets},
     },
+    common::*,
 };
 
 pub fn write_airdrop_results(airdrop_results: &AirDropResults) -> Result<()> {
@@ -19,32 +19,25 @@ pub fn write_airdrop_results(airdrop_results: &AirDropResults) -> Result<()> {
 
 pub fn load_airdrop_results(airdrop_list: &mut AirDropTargets) -> Result<AirDropResults> {
     // Will load previous airdrop results from file and will also sync the results with the targets
-    let airdrop_results_path = Path::new("airdrop_results.json");
+    let airdrop_result_path_name = "airdrop_results.json";
+    let airdrop_results_path = Path::new(airdrop_result_path_name);
     if !airdrop_results_path.exists() {
         return Ok(AirDropResults::new());
     }
 
-    let file = match File::open(airdrop_results_path) {
-        Ok(file) => file,
-        Err(err) => {
-            return Err(AirDropError::FailedToOpenAirDropResultsFile(
-                path_to_string(airdrop_results_path)?,
-                err.to_string(),
-            )
-            .into());
-        }
-    };
+    let file = File::open(airdrop_results_path).map_err(|err| {
+        AirDropError::FailedToOpenAirDropResultsFile(
+            airdrop_result_path_name.to_string(),
+            err.to_string(),
+        )
+    })?;
 
-    let results: AirDropResults = match serde_json::from_reader(file) {
-        Ok(airdrop_results) => airdrop_results,
-        Err(err) => {
-            return Err(AirDropError::AirDropResultsFileWrongFormat(
-                path_to_string(airdrop_results_path)?,
-                err.to_string(),
-            )
-            .into());
-        }
-    };
+    let results: AirDropResults = serde_json::from_reader(file).map_err(|err| {
+        AirDropError::AirDropResultsFileWrongFormat(
+            airdrop_result_path_name.to_string(),
+            err.to_string(),
+        )
+    })?;
 
     for (address, transactions) in results.iter() {
         if !airdrop_list.contains_key(address) {
@@ -73,22 +66,15 @@ pub fn load_airdrop_list(airdrop_list: String) -> Result<AirDropTargets> {
         return Err(AirDropError::AirDropListFileNotFound(airdrop_list).into());
     }
 
-    let file = match File::open(airdrop_list_path) {
-        Ok(file) => file,
-        Err(err) => {
-            return Err(
-                AirDropError::FailedToOpenAirDropListFile(airdrop_list, err.to_string()).into(),
-            );
-        }
-    };
+    let file = File::open(airdrop_list_path).map_err(|err| {
+        AirDropError::FailedToOpenAirDropListFile(airdrop_list.clone(), err.to_string())
+    })?;
 
-    let targets: AirDropTargets = match serde_json::from_reader(file) {
-        Ok(airdrop_list) => airdrop_list,
-        Err(err) => {
-            return Err(
-                AirDropError::AirDropListFileWrongFormat(airdrop_list, err.to_string()).into(),
-            );
-        }
+    let targets: AirDropTargets = match serde_json::from_reader(file).map_err(|err| {
+        AirDropError::AirDropListFileWrongFormat(airdrop_list.clone(), err.to_string())
+    }) {
+        Ok(targets) => targets,
+        Err(err) => return Err(err.into()),
     };
 
     Ok(targets)

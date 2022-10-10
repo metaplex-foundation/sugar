@@ -1,7 +1,4 @@
-use std::{
-    str::FromStr,
-    sync::{Arc, Mutex},
-};
+use std::{str::FromStr, sync::Arc};
 
 use anchor_client::solana_sdk::{
     program_pack::Pack,
@@ -32,11 +29,6 @@ use crate::{
     candy_machine::{CANDY_MACHINE_ID, *},
     common::*,
     config::{Cluster, SugarConfig},
-    mint::airdrop::{
-        errors::AirDropError,
-        structs::{AirDropTargets, TransactionResult},
-        utils::{load_airdrop_list, load_airdrop_results, write_airdrop_results},
-    },
     pdas::*,
     utils::*,
 };
@@ -48,28 +40,11 @@ pub struct MintArgs {
     pub number: Option<u64>,
     pub receiver: Option<String>,
     pub candy_machine: Option<String>,
-    pub airdrop_list: Option<String>,
 }
 
 pub async fn process_mint(args: MintArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = Arc::new(setup_client(&sugar_config)?);
-    let using_airdrop_list: bool;
-    let mut airdrop_list: AirDropTargets;
-    match args.airdrop_list {
-        Some(airdrop_list_arg) => {
-            using_airdrop_list = true;
-            airdrop_list = load_airdrop_list(airdrop_list_arg)?;
-        }
-        None => {
-            using_airdrop_list = false;
-            airdrop_list = AirDropTargets::new()
-        }
-    };
-
-    // load_airdrop_results syncs airdrop_list and airdrop_results in case of rerun failures
-    let airdrop_results = Arc::new(Mutex::new(load_airdrop_results(&mut airdrop_list)?));
-    let airdrop_total = airdrop_list.iter().fold(0, |acc, x| acc + x.1);
 
     // the candy machine id specified takes precedence over the one from the cache
 
@@ -120,24 +95,10 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
     };
     println!("\nMinting to {}", &receiver_pubkey);
 
-    let number = match using_airdrop_list {
-        true => 0,
-        false => args.number.unwrap_or(1),
-    };
-
-    if number > 1 && using_airdrop_list {
-        return Err(AirDropError::CannotUseNumberAndAirdropFeatureAtTheSameTime.into());
-    }
-
+    let number = args.number.unwrap_or(1);
     let available = candy_machine_state.data.items_available - candy_machine_state.items_redeemed;
 
-    if airdrop_total > available {
-        return Err(
-            AirDropError::AirdropTotalIsHigherThanAvailable(airdrop_total, available).into(),
-        );
-    }
-
-    if number > available || number == 0 && !using_airdrop_list {
+    if number > available || number == 0 {
         let error = anyhow!("{} item(s) available, requested {}", available, number);
         error!("{:?}", error);
         return Err(error);
@@ -172,86 +133,6 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
         };
 
         pb.finish_with_message(result);
-    } else if using_airdrop_list {
-        let pb = progress_bar_with_style(number);
-        let mut tasks = Vec::new();
-        let semaphore = Arc::new(Semaphore::new(10));
-        let config = Arc::new(sugar_config);
-
-        for (address, num) in airdrop_list.drain() {
-            for _i in 0..num {
-                let results = airdrop_results.clone();
-                let config = config.clone();
-                let permit = Arc::clone(&semaphore).acquire_owned().await.unwrap();
-                let candy_machine_state = candy_machine_state.clone();
-                let collection_pda_info = collection_pda_info.clone();
-                let pb = pb.clone();
-                let address = address.clone();
-                let target = Pubkey::from_str(address.as_str()).unwrap();
-                // Start tasks
-                tasks.push(tokio::spawn(async move {
-                    let _permit = permit;
-                    let res = mint(
-                        config,
-                        candy_pubkey,
-                        candy_machine_state,
-                        collection_pda_info,
-                        target,
-                    )
-                    .await;
-                    pb.inc(1);
-
-                    let mut results = results.lock().unwrap();
-                    results.entry(address.clone()).or_insert_with(Vec::new);
-                    let signatures = results.get_mut(&address).unwrap();
-
-                    match &res {
-                        Ok(signature) => {
-                            signatures.push(TransactionResult {
-                                signature: signature.to_string(),
-                                status: true,
-                            });
-                        }
-                        Err(err) => {
-                            signatures.push(TransactionResult {
-                                signature: err.to_string(),
-                                status: false,
-                            });
-                        }
-                    }
-
-                    res
-                }));
-            }
-        }
-
-        let mut error_count = 0;
-
-        // Resolve tasks
-        for task in tasks {
-            let res = task.await.unwrap();
-            if let Err(e) = res {
-                error_count += 1;
-                error!("{:?}, continuing. . .", e);
-            }
-        }
-
-        if error_count > 0 {
-            pb.abandon_with_message(format!(
-                "{} {} items failed.",
-                style("Some of the items failed to mint.").red().bold(),
-                error_count
-            ));
-            return Err(anyhow!(
-                "{} {}/{} {}",
-                style("Minted").red().bold(),
-                number - error_count,
-                number,
-                style("of the items").red().bold()
-            ));
-        }
-        write_airdrop_results(&airdrop_results.lock().unwrap())?;
-        pb.finish();
     } else {
         let pb = progress_bar_with_style(number);
 

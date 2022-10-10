@@ -19,7 +19,7 @@ CACHE_FILE="cache.json"
 \cp -f ${CONFIG_FILE_BACKUP} ${CONFIG_FILE}
 
 $SUGAR_BIN launch -c ${CONFIG_FILE} --keypair ${CM_CREATOR} -r ${RPC} ${ASSETS_DIR}
-$SUGAR_BIN mint --keypair ${CM_CREATOR} -r ${RPC} --airdrop-list ${AIRDROP_LIST}
+$SUGAR_BIN airdrop --keypair ${CM_CREATOR} -r ${RPC} --airdrop-list ${AIRDROP_LIST}
 
 TARGET_1=$(jq -r '."9kEvUrVDiJAD2wrPHF3Jv9cFfXZpid9Gca51vkV4g7H2" | length' ${AIRDROP_RESULTS})
 TARGET_2=$(jq -r '."6Jex93Vgk7zhoiBatP1PHw9Uc29FbjQQP7BkPV7Kmb9R" | length' ${AIRDROP_RESULTS})
@@ -29,7 +29,7 @@ if [ "$TARGET_1" -ne 5 ] ; then
     exit 1
 fi
 
-if [ "$TARGET_2" -ne 1 ]; then
+if [ "$TARGET_2" -ne 3 ]; then
     echo "Airdrop results are not correct for target-2"
     exit 1
 fi
