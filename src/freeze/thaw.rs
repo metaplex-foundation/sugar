@@ -193,19 +193,6 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
             let creator = bs58::encode(creator).into_string();
             get_cm_creator_mint_accounts(&client, &creator, 0)?
         }
-        // Cluster::Mainnet => {
-        //     // New client instance because we have to move it into the crawler.
-        //     let client = RpcClient::new(&rpc_url);
-
-        //     let crawled_accounts = Crawler::get_cmv2_mints(client, candy_pubkey).await?;
-        //     match crawled_accounts.get("mint") {
-        //         Some(accounts) => accounts
-        //             .iter()
-        //             .map(|account| Pubkey::from_str(account).unwrap())
-        //             .collect::<Vec<Pubkey>>(),
-        //         None => Vec::new(),
-        //     }
-        // }
         _ => {
             return Err(anyhow!(
                 "Cluster being used is unsupported for this command."

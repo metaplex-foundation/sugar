@@ -116,17 +116,6 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
             let creator = bs58::encode(creator).into_string();
             get_cm_creator_metadata_accounts(&client, &creator, 0)?
         }
-        // Cluster::Mainnet => {
-        //     let client = RpcClient::new(&rpc_url);
-        //     let crawled_accounts = Crawler::get_cmv2_mints(client, candy_machine_id).await?;
-        //     match crawled_accounts.get("metadata") {
-        //         Some(accounts) => accounts
-        //             .iter()
-        //             .map(|account| Pubkey::from_str(account).unwrap())
-        //             .collect::<Vec<Pubkey>>(),
-        //         None => Vec::new(),
-        //     }
-        // }
         _ => {
             return Err(anyhow!(
                 "Cluster being used is unsupported for this command."
