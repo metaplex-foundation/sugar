@@ -2,8 +2,9 @@ name: Build and Release
 
 on:
   workflow_dispatch:
+  pull_request:
   push:
-    branches: "*"
+    branches: "**"
     tags:
       - "v*.*.*"
 
