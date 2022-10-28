@@ -5,6 +5,7 @@ use anchor_client::solana_sdk::{
     pubkey::Pubkey,
     signature::{Keypair, Signature, Signer},
     system_instruction, system_program, sysvar,
+    transaction::Transaction,
 };
 use anchor_lang::{prelude::AccountMeta, ToAccountMetas};
 use anyhow::Result;
@@ -274,6 +275,8 @@ pub async fn mint(
     let nft_mint = Keypair::new();
     let metaplex_program_id = Pubkey::from_str(METAPLEX_PROGRAM_ID)?;
 
+    let mut instructions = vec![];
+
     // Allocate memory for the account
     let min_rent = program
         .rpc()
@@ -287,6 +290,7 @@ pub async fn mint(
         MINT_LAYOUT,
         &TOKEN_PROGRAM_ID,
     );
+    instructions.push(create_mint_account_ix);
 
     // Initialize mint ix
     let init_mint_ix = initialize_mint(
@@ -296,6 +300,7 @@ pub async fn mint(
         Some(&payer),
         0,
     )?;
+    instructions.push(init_mint_ix);
 
     // Derive associated token account
     let assoc = get_associated_token_address(&receiver, &nft_mint.pubkey());
@@ -303,6 +308,7 @@ pub async fn mint(
     // Create associated account instruction
     let create_assoc_account_ix =
         create_associated_token_account(&payer, &receiver, &nft_mint.pubkey());
+    instructions.push(create_assoc_account_ix);
 
     // Mint to instruction
     let mint_to_ix = mint_to(
@@ -313,6 +319,7 @@ pub async fn mint(
         &[],
         1,
     )?;
+    instructions.push(mint_to_ix);
 
     let mut additional_accounts: Vec<AccountMeta> = Vec::new();
 
@@ -442,15 +449,7 @@ pub async fn mint(
         mint_ix = mint_ix.accounts(additional_accounts);
     }
     let mint_ix = mint_ix.instructions()?;
-
-    let mut builder = program
-        .request()
-        .instruction(create_mint_account_ix)
-        .instruction(init_mint_ix)
-        .instruction(create_assoc_account_ix)
-        .instruction(mint_to_ix)
-        .instruction(mint_ix[0].clone())
-        .signer(&nft_mint);
+    instructions.extend(mint_ix);
 
     if let Some((collection_pda_pubkey, collection_pda)) = collection_pda_info.as_ref() {
         let collection_authority_record =
@@ -474,12 +473,24 @@ pub async fn mint(
         // Make collection metadata account mutable for sized collections.
         accounts[7].is_writable = true;
 
-        builder = builder
+        let set_collection_during_mint_ix = program
+            .request()
             .accounts(accounts)
-            .args(nft_instruction::SetCollectionDuringMint {});
+            .args(nft_instruction::SetCollectionDuringMint {})
+            .instructions()?;
+        instructions.extend(set_collection_during_mint_ix);
     }
 
-    let sig = builder.send()?;
+    let latest_blockhash = program.rpc().get_latest_blockhash()?;
+
+    let tx = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&payer),
+        &[&config.keypair, &nft_mint],
+        latest_blockhash,
+    );
+
+    let sig = program.rpc().send_and_confirm_transaction(&tx)?;
 
     if let Err(_) | Ok(Response { value: None, .. }) = program
         .rpc()
