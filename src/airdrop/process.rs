@@ -160,6 +160,7 @@ pub async fn process_airdrop(args: AirdropArgs) -> Result<()> {
         }
     }
 
+    write_airdrop_results(&airdrop_results.lock().unwrap())?;
     if error_count > 0 {
         pb.abandon_with_message(format!(
             "{} {} items failed.",
@@ -174,7 +175,6 @@ pub async fn process_airdrop(args: AirdropArgs) -> Result<()> {
             style("of the items").red().bold()
         ));
     }
-    write_airdrop_results(&airdrop_results.lock().unwrap())?;
     pb.finish();
 
     Ok(())
