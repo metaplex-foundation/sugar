@@ -1,7 +1,9 @@
+use anchor_lang::prelude::Pubkey;
 use console::Emoji;
 pub use mpl_token_metadata::state::{
     MAX_CREATOR_LEN, MAX_CREATOR_LIMIT, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH,
 };
+use solana_program::pubkey;
 
 /// Metaplex program id.
 pub const METAPLEX_PROGRAM_ID: &str = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s";
@@ -81,6 +83,8 @@ pub const BUNDLR_MAINNET: &str = "https://node1.bundlr.network";
 pub const CIVIC_NETWORK: &str = "ignREusXmGrscGNUesoU9mxfds9AiYTezUKex2PsZV6";
 
 pub const ENCORE_NETWORK: &str = "tibePmPaoTgrs929rWpu755EXaxC7M3SthVCf6GzjZt";
+
+pub const METAPLEX_LUT: Pubkey = pubkey!("WevHzmrQDSfhXXTjBkuR5KJFLzx7GwziEhR8CpRqVTr");
 
 pub const LOOKING_GLASS_EMOJI: Emoji<'_, '_> = Emoji("🔍 ", "");
 
