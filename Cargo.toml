@@ -17,6 +17,8 @@ anchor-lang = "0.25.0"
 anchor-spl = "0.25.0"
 anyhow = "1.0.58"
 async-trait = "0.1.57"
+base64 = "0.13.1"
+bincode = "1.3.3"
 borsh = "0.9.3"
 bs58 = "0.4.0"
 bundlr-sdk = { version = "0.3.0", default-features = false, features = ["solana"] }
@@ -51,19 +53,20 @@ serde_yaml = "0.8.24"
 sha2 = "0.10.2"
 shellexpand = "2.1.0"
 solana-account-decoder = "1.10"
-solana-client = "1.10"
+solana-client = "1.10" 
 solana-transaction-crawler = "0.0.6"
 solana-logger = "1.10"
 solana-program = "1.10"
 solana-transaction-status = "1.10"
 spl-associated-token-account = "1.0.3"
-spl-token = "3.3.0"
+spl-token = { package = "spl-token", version = "3.3.0" }
 thiserror = "1.0.31"
 tokio = "1.14.0"
 tracing = { version = "0.1.35", features = ["log"] }
 tracing-bunyan-formatter = "0.3.3"
 tracing-subscriber = { version = "0.3.14", features = ["registry", "env-filter"] }
 url = "2.2.2"
+uplook = { path = "../uplook" }
 
 [dev-dependencies.cargo-husky]
 version = "1"

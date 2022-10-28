@@ -84,7 +84,8 @@ pub const CIVIC_NETWORK: &str = "ignREusXmGrscGNUesoU9mxfds9AiYTezUKex2PsZV6";
 
 pub const ENCORE_NETWORK: &str = "tibePmPaoTgrs929rWpu755EXaxC7M3SthVCf6GzjZt";
 
-pub const METAPLEX_LUT: Pubkey = pubkey!("WevHzmrQDSfhXXTjBkuR5KJFLzx7GwziEhR8CpRqVTr");
+pub const METAPLEX_DEVNET_LUT: Pubkey = pubkey!("Ah9xbf5VRhmtWVuFVrGLFCGfaepaFeAgEh8b68SHeQdL");
+pub const METAPLEX_MAINNET_LUT: Pubkey = pubkey!("WevHzmrQDSfhXXTjBkuR5KJFLzx7GwziEhR8CpRqVTr");
 
 pub const LOOKING_GLASS_EMOJI: Emoji<'_, '_> = Emoji("🔍 ", "");
 

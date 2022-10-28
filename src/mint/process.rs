@@ -1,14 +1,15 @@
-use std::{str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc, thread};
 
 use anchor_client::solana_sdk::{
+    commitment_config::CommitmentLevel,
     program_pack::Pack,
     pubkey::Pubkey,
     signature::{Keypair, Signature, Signer},
     system_instruction, system_program, sysvar,
-    transaction::Transaction,
+    transaction::VersionedTransaction,
 };
 use anchor_lang::{prelude::AccountMeta, ToAccountMetas};
-use anyhow::Result;
+use anyhow::{bail, Result};
 use chrono::Utc;
 use console::style;
 use mpl_candy_machine::{
@@ -16,7 +17,9 @@ use mpl_candy_machine::{
     CollectionPDA, EndSettingType, WhitelistMintMode,
 };
 use mpl_token_metadata::pda::find_collection_authority_account;
-use solana_client::rpc_response::Response;
+use solana_client::{rpc_config::RpcSendTransactionConfig, rpc_request::RpcRequest};
+use solana_program::message::{v0::Message, VersionedMessage};
+use solana_transaction_status::UiTransactionEncoding;
 use spl_associated_token_account::{
     get_associated_token_address, instruction::create_associated_token_account,
 };
@@ -26,6 +29,7 @@ use spl_token::{
     ID as TOKEN_PROGRAM_ID,
 };
 use tokio::sync::Semaphore;
+use uplook::{AddressLookupTable, AddressLookupTableAccount, Compile};
 
 use crate::{
     cache::load_cache,
@@ -111,14 +115,14 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
     info!("Candy machine program id: {:?}", CANDY_MACHINE_ID);
 
     if number == 1 {
-        let pb = spinner_with_style();
-        pb.set_message(format!(
-            "{} item(s) remaining",
-            candy_machine_state.data.items_available - candy_machine_state.items_redeemed
-        ));
+        // let pb = spinner_with_style();
+        // pb.set_message(format!(
+        //     "{} item(s) remaining",
+        //     candy_machine_state.data.items_available - candy_machine_state.items_redeemed
+        // ));
         let config = Arc::new(sugar_config);
 
-        let result = match mint(
+        match mint(
             Arc::clone(&config),
             candy_pubkey,
             Arc::clone(&candy_machine_state),
@@ -132,13 +136,13 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
                 format!("{}", style("Mint success").bold())
             }
             Err(err) => {
-                pb.abandon_with_message(format!("{}", style("Mint failed ").red().bold()));
+                // pb.abandon_with_message(format!("{}", style("Mint failed ").red().bold()));
                 error!("{:?}", err);
                 return Err(err);
             }
         };
 
-        pb.finish_with_message(result);
+        // pb.finish_with_message(result);
     } else {
         let pb = progress_bar_with_style(number);
 
@@ -483,31 +487,97 @@ pub async fn mint(
 
     let latest_blockhash = program.rpc().get_latest_blockhash()?;
 
-    let tx = Transaction::new_signed_with_payer(
+    let lut = match get_cluster(program.rpc()).unwrap_or(Cluster::Mainnet) {
+        Cluster::Devnet => METAPLEX_DEVNET_LUT,
+        Cluster::Mainnet => METAPLEX_MAINNET_LUT,
+        _ => bail!("Unsupported cluster"),
+    };
+
+    let raw_account = program.rpc().get_account(&lut)?;
+    let address_lookup_table = AddressLookupTable::deserialize(&raw_account.data)?;
+    let address_lookup_table_account = AddressLookupTableAccount {
+        key: lut,
+        addresses: address_lookup_table.addresses.to_vec(),
+    };
+
+    let versioned_message = VersionedMessage::V0(Message::try_compile(
+        &payer,
         &instructions,
-        Some(&payer),
-        &[&config.keypair, &nft_mint],
+        &[address_lookup_table_account],
         latest_blockhash,
+    )?);
+
+    println!(
+        "transmitted accounts: {:?}",
+        versioned_message.static_account_keys()
     );
 
-    let sig = program.rpc().send_and_confirm_transaction(&tx)?;
+    println!(
+        "address lookups: {:?}",
+        versioned_message.address_table_lookups()
+    );
 
-    if let Err(_) | Ok(Response { value: None, .. }) = program
+    let versioned_tx =
+        VersionedTransaction::try_new(versioned_message, &[&config.keypair, &nft_mint])?;
+
+    let serialized_versioned_tx = bincode::serialize(&versioned_tx)?;
+    println!(
+        "The serialized versioned tx is {} bytes",
+        serialized_versioned_tx.len()
+    );
+
+    let serialized_encoded = base64::encode(serialized_versioned_tx);
+    let rpc_config = RpcSendTransactionConfig {
+        skip_preflight: false,
+        preflight_commitment: Some(CommitmentLevel::Processed),
+        encoding: Some(UiTransactionEncoding::Base64),
+        ..RpcSendTransactionConfig::default()
+    };
+
+    // Have to do some manual RPC calls here because the v1.10 RPC client doesn't support
+    // sending versioned transactions.
+
+    let signature = program
         .rpc()
-        .get_account_with_commitment(&metadata_pda, CommitmentConfig::processed())
-    {
-        let cluster_param = match get_cluster(program.rpc()).unwrap_or(Cluster::Mainnet) {
-            Cluster::Devnet => "?devnet",
-            _ => "",
-        };
-        return Err(anyhow!(
-            "Minting most likely failed with a bot tax. Check the transaction link for more details: https://explorer.solana.com/tx/{}{}",
-            sig.to_string(),
-            cluster_param,
-        ));
-    }
+        .send::<String>(
+            RpcRequest::SendTransaction,
+            json!([serialized_encoded, rpc_config]),
+        )
+        .unwrap();
+    println!("Multi swap txid: {}", signature);
 
-    info!("Minted! TxId: {}", sig);
+    program
+        .rpc()
+        .confirm_transaction_with_commitment(
+            &Signature::from_str(signature.as_str()).unwrap(),
+            CommitmentConfig::finalized(),
+        )
+        .unwrap();
 
-    Ok(sig)
+    thread::sleep(std::time::Duration::from_secs(2));
+
+    let client = reqwest::blocking::Client::new();
+    let res = client
+        .post(&config.rpc_url)
+        .json(&json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "getTransaction",
+            "params": [
+                signature,
+                {"encoding": "json", "commitment": "confirmed", "maxSupportedTransactionVersion": 0}
+            ]
+        }))
+        .send()
+        .unwrap();
+    let json: Value = res.json().unwrap();
+
+    println!(
+        "{:?}",
+        json.pointer("/result/meta/loadedAddresses").unwrap()
+    );
+
+    info!("Minted! TxId: {}", signature);
+
+    Ok(Signature::from_str(&signature).unwrap())
 }
