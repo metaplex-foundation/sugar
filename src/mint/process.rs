@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc, thread};
+use std::{str::FromStr, sync::Arc};
 
 use anchor_client::solana_sdk::{
     commitment_config::CommitmentLevel,
@@ -29,7 +29,7 @@ use spl_token::{
     ID as TOKEN_PROGRAM_ID,
 };
 use tokio::sync::Semaphore;
-use uplook::{AddressLookupTable, AddressLookupTableAccount, Compile};
+use uplook::{AddressLookupTable, AddressLookupTableAccount, TryCompileMsg};
 
 use crate::{
     cache::load_cache,
@@ -115,14 +115,14 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
     info!("Candy machine program id: {:?}", CANDY_MACHINE_ID);
 
     if number == 1 {
-        // let pb = spinner_with_style();
-        // pb.set_message(format!(
-        //     "{} item(s) remaining",
-        //     candy_machine_state.data.items_available - candy_machine_state.items_redeemed
-        // ));
+        let pb = spinner_with_style();
+        pb.set_message(format!(
+            "{} item(s) remaining",
+            candy_machine_state.data.items_available - candy_machine_state.items_redeemed
+        ));
         let config = Arc::new(sugar_config);
 
-        match mint(
+        let result = match mint(
             Arc::clone(&config),
             candy_pubkey,
             Arc::clone(&candy_machine_state),
@@ -136,13 +136,13 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
                 format!("{}", style("Mint success").bold())
             }
             Err(err) => {
-                // pb.abandon_with_message(format!("{}", style("Mint failed ").red().bold()));
+                pb.abandon_with_message(format!("{}", style("Mint failed ").red().bold()));
                 error!("{:?}", err);
                 return Err(err);
             }
         };
 
-        // pb.finish_with_message(result);
+        pb.finish_with_message(result);
     } else {
         let pb = progress_bar_with_style(number);
 
@@ -507,24 +507,10 @@ pub async fn mint(
         latest_blockhash,
     )?);
 
-    println!(
-        "transmitted accounts: {:?}",
-        versioned_message.static_account_keys()
-    );
-
-    println!(
-        "address lookups: {:?}",
-        versioned_message.address_table_lookups()
-    );
-
     let versioned_tx =
         VersionedTransaction::try_new(versioned_message, &[&config.keypair, &nft_mint])?;
 
     let serialized_versioned_tx = bincode::serialize(&versioned_tx)?;
-    println!(
-        "The serialized versioned tx is {} bytes",
-        serialized_versioned_tx.len()
-    );
 
     let serialized_encoded = base64::encode(serialized_versioned_tx);
     let rpc_config = RpcSendTransactionConfig {
@@ -537,45 +523,15 @@ pub async fn mint(
     // Have to do some manual RPC calls here because the v1.10 RPC client doesn't support
     // sending versioned transactions.
 
-    let signature = program
-        .rpc()
-        .send::<String>(
-            RpcRequest::SendTransaction,
-            json!([serialized_encoded, rpc_config]),
-        )
-        .unwrap();
-    println!("Multi swap txid: {}", signature);
+    let signature = program.rpc().send::<String>(
+        RpcRequest::SendTransaction,
+        json!([serialized_encoded, rpc_config]),
+    )?;
 
-    program
-        .rpc()
-        .confirm_transaction_with_commitment(
-            &Signature::from_str(signature.as_str()).unwrap(),
-            CommitmentConfig::finalized(),
-        )
-        .unwrap();
-
-    thread::sleep(std::time::Duration::from_secs(2));
-
-    let client = reqwest::blocking::Client::new();
-    let res = client
-        .post(&config.rpc_url)
-        .json(&json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "getTransaction",
-            "params": [
-                signature,
-                {"encoding": "json", "commitment": "confirmed", "maxSupportedTransactionVersion": 0}
-            ]
-        }))
-        .send()
-        .unwrap();
-    let json: Value = res.json().unwrap();
-
-    println!(
-        "{:?}",
-        json.pointer("/result/meta/loadedAddresses").unwrap()
-    );
+    program.rpc().confirm_transaction_with_commitment(
+        &Signature::from_str(signature.as_str()).unwrap(),
+        CommitmentConfig::finalized(),
+    )?;
 
     info!("Minted! TxId: {}", signature);
 
