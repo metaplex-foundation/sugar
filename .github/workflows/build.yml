@@ -21,7 +21,18 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Checkout
+      - name: Checkout Windows
+       if: runner.os == 'Windows'
+       run: |
+            mkdir C:/sugar.git
+            git clone https://github.com/metaplex-foundation/sugar.git C:/sugar.git --depth 1
+
+      - name: Checkout Linux
+        if: runner.os == 'Linux'
+        uses: actions/checkout@v3
+
+      - name: Checkout MacOs
+        if: runner.os == 'macOS'
         uses: actions/checkout@v3
 
       - name: Install libudev-dev on Ubuntu
