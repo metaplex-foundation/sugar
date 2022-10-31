@@ -4890,8 +4890,8 @@ dependencies = [
  "tracing",
  "tracing-bunyan-formatter",
  "tracing-subscriber",
- "uplook",
  "url",
+ "vtlut-110",
 ]
 
 [[package]]
@@ -5432,17 +5432,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
 
 [[package]]
-name = "uplook"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "bytemuck",
- "serde",
- "solana-program",
- "thiserror",
-]
-
-[[package]]
 name = "uriparse"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5502,6 +5491,23 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
+
+[[package]]
+name = "vtlut-110"
+version = "0.1.0"
+source = "git+https://github.com/metaplex-foundation/vtlut-110#0af4ea7e354bf925ed148d6c0c52f74638b5cacf"
+dependencies = [
+ "base64 0.13.1",
+ "bincode",
+ "bytemuck",
+ "serde",
+ "serde_json",
+ "solana-client",
+ "solana-program",
+ "solana-sdk",
+ "solana-transaction-status",
+ "thiserror",
+]
 
 [[package]]
 name = "walkdir"

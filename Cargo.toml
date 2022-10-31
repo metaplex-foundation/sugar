@@ -66,7 +66,7 @@ tracing = { version = "0.1.35", features = ["log"] }
 tracing-bunyan-formatter = "0.3.3"
 tracing-subscriber = { version = "0.3.14", features = ["registry", "env-filter"] }
 url = "2.2.2"
-uplook = { path = "../uplook" }
+vtlut-110 = { git = "https://github.com/metaplex-foundation/vtlut-110" }
 
 [dev-dependencies.cargo-husky]
 version = "1"

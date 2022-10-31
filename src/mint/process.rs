@@ -1,12 +1,10 @@
 use std::{str::FromStr, sync::Arc};
 
 use anchor_client::solana_sdk::{
-    commitment_config::CommitmentLevel,
     program_pack::Pack,
     pubkey::Pubkey,
     signature::{Keypair, Signature, Signer},
     system_instruction, system_program, sysvar,
-    transaction::VersionedTransaction,
 };
 use anchor_lang::{prelude::AccountMeta, ToAccountMetas};
 use anyhow::{bail, Result};
@@ -17,9 +15,6 @@ use mpl_candy_machine::{
     CollectionPDA, EndSettingType, WhitelistMintMode,
 };
 use mpl_token_metadata::pda::find_collection_authority_account;
-use solana_client::{rpc_config::RpcSendTransactionConfig, rpc_request::RpcRequest};
-use solana_program::message::{v0::Message, VersionedMessage};
-use solana_transaction_status::UiTransactionEncoding;
 use spl_associated_token_account::{
     get_associated_token_address, instruction::create_associated_token_account,
 };
@@ -29,7 +24,10 @@ use spl_token::{
     ID as TOKEN_PROGRAM_ID,
 };
 use tokio::sync::Semaphore;
-use uplook::{AddressLookupTable, AddressLookupTableAccount, TryCompileMsg};
+use vtlut_110::{
+    vt::{VersionedMessageArgs, Vt},
+    AddressLookupTable, AddressLookupTableAccount,
+};
 
 use crate::{
     cache::load_cache,
@@ -500,40 +498,20 @@ pub async fn mint(
         addresses: address_lookup_table.addresses.to_vec(),
     };
 
-    let versioned_message = VersionedMessage::V0(Message::try_compile(
-        &payer,
-        &instructions,
-        &[address_lookup_table_account],
+    let vm = VersionedMessageArgs {
+        payer,
+        instructions,
+        address_luts: vec![address_lookup_table_account],
         latest_blockhash,
-    )?);
-
-    let versioned_tx =
-        VersionedTransaction::try_new(versioned_message, &[&config.keypair, &nft_mint])?;
-
-    let serialized_versioned_tx = bincode::serialize(&versioned_tx)?;
-
-    let serialized_encoded = base64::encode(serialized_versioned_tx);
-    let rpc_config = RpcSendTransactionConfig {
-        skip_preflight: false,
-        preflight_commitment: Some(CommitmentLevel::Processed),
-        encoding: Some(UiTransactionEncoding::Base64),
-        ..RpcSendTransactionConfig::default()
     };
 
-    // Have to do some manual RPC calls here because the v1.10 RPC client doesn't support
-    // sending versioned transactions.
+    let payer_kp = Keypair::from_bytes(&config.keypair.to_bytes()).unwrap();
 
-    let signature = program.rpc().send::<String>(
-        RpcRequest::SendTransaction,
-        json!([serialized_encoded, rpc_config]),
-    )?;
+    let vt = Vt::new(vm, vec![payer_kp, nft_mint])?;
 
-    program.rpc().confirm_transaction_with_commitment(
-        &Signature::from_str(signature.as_str()).unwrap(),
-        CommitmentConfig::finalized(),
-    )?;
+    let signature = vt.sign_and_send(&program.rpc())?;
 
     info!("Minted! TxId: {}", signature);
 
-    Ok(Signature::from_str(&signature).unwrap())
+    Ok(signature)
 }
