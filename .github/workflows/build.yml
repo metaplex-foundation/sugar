@@ -23,8 +23,7 @@ jobs:
     steps:
       - name: Checkout Windows
         if: runner.os == 'Windows'
-        run: |
-          git clone https://github.com/metaplex-foundation/sugar.git C:/ --depth 1
+        uses: actions/checkout@v3
 
       - name: Checkout Linux
         if: runner.os == 'Linux'
