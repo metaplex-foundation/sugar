@@ -24,8 +24,7 @@ jobs:
       - name: Checkout Windows
         if: runner.os == 'Windows'
         run: |
-          mkdir C:/sugar.git
-          git clone https://github.com/metaplex-foundation/sugar.git C:/sugar.git --depth 1
+          git clone https://github.com/metaplex-foundation/sugar.git C:/ --depth 1
 
       - name: Checkout Linux
         if: runner.os == 'Linux'
