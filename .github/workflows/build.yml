@@ -21,16 +21,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Checkout Windows
-        if: runner.os == 'Windows'
-        uses: actions/checkout@v3
-
-      - name: Checkout Linux
-        if: runner.os == 'Linux'
-        uses: actions/checkout@v3
-
-      - name: Checkout MacOs
-        if: runner.os == 'macOS'
+      - name: Checkout
         uses: actions/checkout@v3
 
       - name: Install libudev-dev on Ubuntu
@@ -52,6 +43,7 @@ jobs:
           cargo install cargo-cache
 
       - name: Cache Dependencies
+        if: runner.os == 'Linux' || runner.os == 'macOS'
         uses: actions/cache@v3
         with:
           path: |
