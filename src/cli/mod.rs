@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use crate::constants::{DEFAULT_ASSETS, DEFAULT_CACHE, DEFAULT_CONFIG};
+use crate::constants::{DEFAULT_AIRDROP_LIST, DEFAULT_ASSETS, DEFAULT_CACHE, DEFAULT_CONFIG};
 
 #[derive(Parser)]
 #[clap(author, version, about)]
@@ -170,8 +170,8 @@ pub enum Commands {
         candy_machine: Option<String>,
 
         /// List of airdrop targets.
-        #[clap(long)]
-        airdrop_list: Option<String>,
+        #[clap(long, default_value = DEFAULT_AIRDROP_LIST)]
+        airdrop_list: String,
     },
 
     /// Reveal the NFTs from a hidden settings candy machine

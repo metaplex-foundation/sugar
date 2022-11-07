@@ -27,21 +27,25 @@ pub struct AirdropArgs {
     pub rpc_url: Option<String>,
     pub cache: String,
     pub candy_machine: Option<String>,
-    pub airdrop_list: Option<String>,
+    pub airdrop_list: String,
 }
 
 pub async fn process_airdrop(args: AirdropArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = Arc::new(setup_client(&sugar_config)?);
-    let mut airdrop_list: AirDropTargets;
-    match args.airdrop_list {
-        Some(airdrop_list_arg) => airdrop_list = load_airdrop_list(airdrop_list_arg)?,
-        None => airdrop_list = AirDropTargets::new(),
-    };
+    let mut airdrop_list: AirDropTargets = load_airdrop_list(args.airdrop_list)?;
 
     // load_airdrop_results syncs airdrop_list and airdrop_results in case of rerun failures
+    let airdrop_total_original = airdrop_list.iter().fold(0, |acc, x| acc + x.1);
     let airdrop_results = Arc::new(Mutex::new(load_airdrop_results(&mut airdrop_list)?));
     let airdrop_total = airdrop_list.iter().fold(0, |acc, x| acc + x.1);
+
+    if airdrop_total_original != airdrop_total {
+        print!(
+            "Skipping mints {} due to existing transactions in airdrop_results.json",
+            airdrop_total_original - airdrop_total
+        );
+    }
 
     // the candy machine id specified takes precedence over the one from the cache
 
@@ -108,8 +112,7 @@ pub async fn process_airdrop(args: AirdropArgs) -> Result<()> {
             let permit = Arc::clone(&semaphore).acquire_owned().await.unwrap();
             let candy_machine_state = candy_machine_state.clone();
             let collection_pda_info = collection_pda_info.clone();
-            let address = address.clone();
-            let target = Pubkey::from_str(address.as_str()).unwrap();
+            let target = address.0;
             let pb = pb.clone();
 
             // Start tasks
@@ -126,7 +129,7 @@ pub async fn process_airdrop(args: AirdropArgs) -> Result<()> {
                 pb.inc(1);
 
                 let mut results = results.lock().unwrap();
-                results.entry(address.clone()).or_insert_with(Vec::new);
+                results.entry(address).or_insert_with(Vec::new);
                 let signatures = results.get_mut(&address).unwrap();
 
                 match &res {

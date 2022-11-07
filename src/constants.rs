@@ -66,6 +66,9 @@ pub const DEFAULT_ASSETS: &str = "assets";
 /// Default path for cache file.
 pub const DEFAULT_CACHE: &str = "cache.json";
 
+/// Default path for airdrop list
+pub const DEFAULT_AIRDROP_LIST: &str = "airdrop_list.json";
+
 /// Default path for config file.
 pub const DEFAULT_CONFIG: &str = "config.json";
 

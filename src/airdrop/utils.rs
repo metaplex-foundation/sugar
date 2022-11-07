@@ -54,7 +54,7 @@ pub fn load_airdrop_results(airdrop_list: &mut AirDropTargets) -> Result<AirDrop
                 })?;
             }
         }
-        airdrop_list.insert(address.clone(), target);
+        airdrop_list.insert(*address, target);
     }
 
     Ok(results)
