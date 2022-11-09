@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use crate::constants::{DEFAULT_AIRDROP_LIST, DEFAULT_ASSETS, DEFAULT_CACHE, DEFAULT_CONFIG};
+use crate::constants::{DEFAULT_AIRDROP_LIST, DEFAULT_ASSETS, DEFAULT_CACHE, DEFAULT_CONFIG, DEFAULT_AIRDROP_LIST_HELP};
 
 #[derive(Parser)]
 #[clap(author, version, about)]
@@ -170,7 +170,7 @@ pub enum Commands {
         candy_machine: Option<String>,
 
         /// List of airdrop targets.
-        #[clap(long, default_value = DEFAULT_AIRDROP_LIST)]
+        #[clap(long, default_value = DEFAULT_AIRDROP_LIST, help = DEFAULT_AIRDROP_LIST_HELP)]
         airdrop_list: String,
     },
 

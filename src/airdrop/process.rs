@@ -42,7 +42,7 @@ pub async fn process_airdrop(args: AirdropArgs) -> Result<()> {
 
     if airdrop_total_original != airdrop_total {
         print!(
-            "Skipping mints {} due to existing transactions in airdrop_results.json",
+            "Skipping {} mints due to existing transactions in airdrop_results.json",
             airdrop_total_original - airdrop_total
         );
     }
