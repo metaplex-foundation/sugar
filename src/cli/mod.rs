@@ -1,6 +1,8 @@
 use clap::{Parser, Subcommand};
 
-use crate::constants::{DEFAULT_AIRDROP_LIST, DEFAULT_ASSETS, DEFAULT_CACHE, DEFAULT_CONFIG, DEFAULT_AIRDROP_LIST_HELP};
+use crate::constants::{
+    DEFAULT_AIRDROP_LIST, DEFAULT_AIRDROP_LIST_HELP, DEFAULT_ASSETS, DEFAULT_CACHE, DEFAULT_CONFIG,
+};
 
 #[derive(Parser)]
 #[clap(author, version, about)]
