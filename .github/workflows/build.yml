@@ -11,15 +11,14 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        os:
-          - windows-latest
-          - ubuntu-latest-16-cores
-          - macos-latest
+    # strategy:
+    #   matrix:
+    #     os:
+    #       - windows-latest
+    #       - ubuntu-latest-16-cores
+    #       - macos-latest
 
-    runs-on:
-      labels: ${{ matrix.os }}
+    runs-on: ubuntu-latest-16-cores
 
     steps:
       - name: Checkout
