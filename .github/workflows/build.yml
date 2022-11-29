@@ -18,7 +18,8 @@ jobs:
           - ubuntu-latest-16-cores
           - macos-latest
 
-    runs-on: ${{ matrix.os }}
+    runs-on:
+      labels: ${{ matrix.os }}
 
     steps:
       - name: Checkout
