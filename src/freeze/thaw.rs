@@ -166,7 +166,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
 
     // Thaw all frozen NFTs.
     println!(
-        "\n{LOOKING_GLASS_EMOJI} {candy_machine_id}Getting minted NFTs for candy machine {}",
+        "\n{} {LOOKING_GLASS_EMOJI}Getting minted NFTs for candy machine {candy_machine_id}",
         style(format!("[2/{total_steps}]")).bold().dim()
     );
 
