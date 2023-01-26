@@ -292,13 +292,15 @@ impl Prepare for BundlrMethod {
         };
 
         if lamports_fee > balance {
+            let amount = ((lamports_fee - balance) as f64 * 1.3).ceil() as u64;
+
             BundlrMethod::fund_bundlr_address(
                 rpc_client,
                 &http_client,
                 &self.pubkey,
                 &self.node,
                 &sugar_config.keypair,
-                lamports_fee - balance,
+                amount,
             )
             .await?;
 
