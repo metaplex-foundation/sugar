@@ -1,4 +1,4 @@
-#![allow(clippy::uninlined_format_args)]
+// #![allow(clippy::uninlined_format_args)]
 
 pub mod airdrop;
 pub mod bundlr;
