@@ -84,14 +84,14 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
             serde_json::from_reader(&m)?
         };
 
-        // retrieve the existring image uri from the metadata
+        // retrieve the existing image uri from the metadata
         let existing_image = if is_complete_uri(&m.image) {
             m.image.clone()
         } else {
             String::new()
         };
 
-        // retrieve the existring animation uri from the metadata
+        // retrieve the existing animation uri from the metadata
         let existing_animation = match m.animation_url {
             Some(ref url) => {
                 if is_complete_uri(url) {
