@@ -39,6 +39,7 @@ pub struct DeployArgs {
     pub keypair: Option<String>,
     pub rpc_url: Option<String>,
     pub interrupted: Arc<AtomicBool>,
+    pub collection_mint: Option<String>,
 }
 
 pub async fn process_deploy(args: DeployArgs) -> Result<()> {
@@ -111,10 +112,14 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         let candy_keypair = Keypair::new();
         let candy_pubkey = candy_keypair.pubkey();
 
+        // collection_item could be missing when args.collection_mint is provided
         let collection_item = if let Some(collection_item) = cache.items.get_mut("-1") {
-            collection_item
+            Some(collection_item)
         } else {
-            return Err(anyhow!("Missing collection item in cache"));
+            match args.collection_mint {
+                Some(_) => None, // existing collection provided
+                None => return Err(anyhow!("Missing collection item in cache")),
+            }
         };
 
         println!(
@@ -123,9 +128,18 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
             COLLECTION_EMOJI
         );
 
-        let collection_mint = if collection_item.on_chain {
+        let collection_minted = match collection_item {
+            Some(item) => item.on_chain,
+            None => args.collection_mint.is_some(), // the provided collection must have been minted
+        };
+        let collection_str = args
+            .collection_mint
+            .clone()
+            .unwrap_or(cache.program.collection_mint.clone());
+
+        let collection_mint = if collection_minted {
             println!("\nCollection mint already deployed.");
-            Pubkey::from_str(&cache.program.collection_mint)?
+            Pubkey::from_str(&collection_str)?
         } else {
             let pb = spinner_with_style();
             pb.set_message("Creating NFT...");

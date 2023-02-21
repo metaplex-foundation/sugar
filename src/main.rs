@@ -187,6 +187,7 @@ async fn run() -> Result<()> {
             keypair,
             rpc_url,
             cache,
+            collection_mint,
         } => {
             process_deploy(DeployArgs {
                 config,
@@ -194,6 +195,7 @@ async fn run() -> Result<()> {
                 rpc_url,
                 cache,
                 interrupted: interrupted.clone(),
+                collection_mint,
             })
             .await?
         }
