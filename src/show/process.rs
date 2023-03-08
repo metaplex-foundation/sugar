@@ -3,7 +3,8 @@ use std::str::FromStr;
 use anchor_client::solana_sdk::pubkey::Pubkey;
 use anyhow::Result;
 use console::style;
-use mpl_candy_machine_core::constants::NULL_STRING;
+use mpl_candy_machine_core::{constants::NULL_STRING, AccountVersion};
+use mpl_token_metadata::state::TokenStandard;
 
 use crate::{cache::load_cache, candy_machine::*, common::*, utils::*};
 
@@ -77,15 +78,26 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
         cndy_state.collection_mint.to_string(),
     );
 
+    if matches!(cndy_state.version, AccountVersion::V1) {
+        print_with_style("", "account version", "V1");
+        print_with_style("", "token standard", "NonFungible");
+    } else {
+        print_with_style("", "account version", "V2");
+        print_with_style(
+            "",
+            "token standard",
+            if cndy_state.token_standard == TokenStandard::NonFungible as u8 {
+                "NonFungible"
+            } else {
+                "ProgrammableNonFungible"
+            },
+        );
+    }
+    print_with_style("", "features", "none");
+
     print_with_style("", "max supply", cndy_data.max_supply.to_string());
     print_with_style("", "items redeemed", cndy_state.items_redeemed.to_string());
     print_with_style("", "items available", cndy_data.items_available.to_string());
-
-    if cndy_state.features.count_ones() > 0 {
-        print_with_style("", "features", cndy_state.features);
-    } else {
-        print_with_style("", "features", "none");
-    }
 
     print_with_style("", "symbol", cndy_data.symbol.trim_end_matches(NULL_STRING));
     print_with_style(

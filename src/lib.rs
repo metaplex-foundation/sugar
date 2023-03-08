@@ -1,5 +1,3 @@
-#![allow(clippy::uninlined_format_args)]
-
 pub mod airdrop;
 pub mod bundlr;
 pub mod cache;

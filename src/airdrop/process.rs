@@ -18,6 +18,7 @@ use crate::{
     candy_machine::{CANDY_MACHINE_ID, *},
     common::*,
     mint::mint,
+    pdas::get_metadata_pda,
     utils::*,
 };
 
@@ -31,6 +32,9 @@ pub struct AirdropArgs {
 
 pub async fn process_airdrop(args: AirdropArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
+    let client = setup_client(&sugar_config)?;
+    let program = client.program(CANDY_MACHINE_ID);
+
     let mut airdrop_list: AirDropTargets = load_airdrop_list(args.airdrop_list)?;
 
     // load_airdrop_results syncs airdrop_list and airdrop_results in case of rerun failures
@@ -75,6 +79,9 @@ pub async fn process_airdrop(args: AirdropArgs) -> Result<()> {
     pb.set_message("Connecting...");
 
     let candy_machine_state = Arc::new(get_candy_machine_state(&sugar_config, &candy_pubkey)?);
+    let (_, collection_metadata) =
+        get_metadata_pda(&candy_machine_state.collection_mint, &program)?;
+    let collection_update_authority = collection_metadata.update_authority;
 
     pb.finish_with_message("Done");
 
@@ -112,7 +119,14 @@ pub async fn process_airdrop(args: AirdropArgs) -> Result<()> {
             // Start tasks
             tasks.push(tokio::spawn(async move {
                 let _permit = permit;
-                let res = mint(config, candy_pubkey, candy_machine_state, target).await;
+                let res = mint(
+                    config,
+                    candy_pubkey,
+                    candy_machine_state,
+                    collection_update_authority,
+                    target,
+                )
+                .await;
                 pb.inc(1);
 
                 let mut results = results.lock().unwrap();

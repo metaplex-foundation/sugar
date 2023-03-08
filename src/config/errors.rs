@@ -19,4 +19,7 @@ pub enum ConfigError {
 
     #[error("Invalid upload method '{0}'")]
     InvalidUploadMethod(String),
+
+    #[error("Invalid token standard '{0}'")]
+    InvalidTokenStandard(String),
 }

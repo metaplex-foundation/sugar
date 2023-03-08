@@ -1,7 +1,11 @@
 use clap::{Parser, Subcommand};
 
-use crate::constants::{
-    DEFAULT_AIRDROP_LIST, DEFAULT_AIRDROP_LIST_HELP, DEFAULT_ASSETS, DEFAULT_CACHE, DEFAULT_CONFIG,
+use crate::{
+    config::TokenStandard,
+    constants::{
+        DEFAULT_AIRDROP_LIST, DEFAULT_AIRDROP_LIST_HELP, DEFAULT_ASSETS, DEFAULT_CACHE,
+        DEFAULT_CONFIG,
+    },
 };
 
 #[derive(Parser)]
@@ -37,23 +41,10 @@ pub enum Commands {
         command: CollectionSubcommands,
     },
 
-    /// Interactive process to create the config file
-    CreateConfig {
-        /// Path to the config file
-        #[clap(short, long)]
-        config: Option<String>,
-
-        /// RPC Url
-        #[clap(short, long)]
-        rpc_url: Option<String>,
-
-        /// Path to the keypair file [default: solana config or "~/.config/solana/id.json"]
-        #[clap(short, long)]
-        keypair: Option<String>,
-
-        /// Path to the directory with the assets
-        #[clap(default_value = DEFAULT_ASSETS)]
-        assets_dir: String,
+    /// Manage candy machine configuration
+    Config {
+        #[clap(subcommand)]
+        command: ConfigSubcommands,
     },
 
     /// Deploy cache items into candy machine config on-chain
@@ -250,33 +241,6 @@ pub enum Commands {
         candy_machine_id: Option<String>,
     },
 
-    /// Update the candy machine config on-chain
-    Update {
-        /// Path to the config file, defaults to "config.json"
-        #[clap(short, long, default_value = DEFAULT_CONFIG)]
-        config: String,
-
-        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
-        #[clap(short, long)]
-        keypair: Option<String>,
-
-        /// RPC Url
-        #[clap(short, long)]
-        rpc_url: Option<String>,
-
-        /// Path to the cache file, defaults to "cache.json"
-        #[clap(long, default_value = DEFAULT_CACHE)]
-        cache: String,
-
-        /// Pubkey for the new authority
-        #[clap(short, long)]
-        new_authority: Option<String>,
-
-        /// Address of candy machine to update.
-        #[clap(long)]
-        candy_machine: Option<String>,
-    },
-
     /// Upload assets to storage and creates the cache config
     Upload {
         /// Path to the directory with the assets to upload
@@ -356,6 +320,80 @@ pub enum BundlrAction {
     Balance,
     /// Withdraw funds from bundlr
     Withdraw,
+}
+
+#[derive(Subcommand)]
+pub enum ConfigSubcommands {
+    /// Interactive process to create a config file
+    Create {
+        /// Path to the config file
+        #[clap(short, long)]
+        config: Option<String>,
+
+        /// RPC Url
+        #[clap(short, long)]
+        rpc_url: Option<String>,
+
+        /// Path to the keypair file [default: solana config or "~/.config/solana/id.json"]
+        #[clap(short, long)]
+        keypair: Option<String>,
+
+        /// Path to the directory with the assets
+        #[clap(default_value = DEFAULT_ASSETS)]
+        assets_dir: String,
+    },
+    /// Update the candy machine config on-chain
+    Update {
+        /// Path to the config file, defaults to "config.json"
+        #[clap(short, long, default_value = DEFAULT_CONFIG)]
+        config: String,
+
+        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
+        #[clap(short, long)]
+        keypair: Option<String>,
+
+        /// RPC Url
+        #[clap(short, long)]
+        rpc_url: Option<String>,
+
+        /// Path to the cache file, defaults to "cache.json"
+        #[clap(long, default_value = DEFAULT_CACHE)]
+        cache: String,
+
+        /// Pubkey for the new authority
+        #[clap(short, long)]
+        new_authority: Option<String>,
+
+        /// Address of candy machine to update.
+        #[clap(long)]
+        candy_machine: Option<String>,
+    },
+    /// Set specific candy machine config values
+    Set {
+        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
+        #[clap(short, long)]
+        keypair: Option<String>,
+
+        /// RPC Url
+        #[clap(short, long)]
+        rpc_url: Option<String>,
+
+        /// Path to the cache file, defaults to "cache.json"
+        #[clap(long, default_value = DEFAULT_CACHE)]
+        cache: String,
+
+        /// Token Standard
+        #[clap(short, long)]
+        token_standard: TokenStandard,
+
+        /// Address of candy machine to update.
+        #[clap(long)]
+        candy_machine: Option<String>,
+
+        /// Address of the rule set to use.
+        #[clap(long)]
+        rule_set: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]

@@ -40,6 +40,7 @@ function default_settings() {
     MANUAL_CACHE="n"
     ITEMS=10
     MULTIPLE=1
+    TOKEN_STANDARD="nft"
 
     RESET="Y"
     EXT="png"
@@ -116,12 +117,13 @@ echo "4. manual cache"
 echo "5. hidden settings"
 echo "6. animation"
 echo "7. sugar launch"
+echo "8. programmable NFT"
 
 if [ -f "$RESUME_FILE" ]; then
-    echo "8. previous run ($(RED "resume"))"
-    echo -n "$(CYN "Select test template [1-8]") (default 3): "
+    echo "9. previous run ($(RED "resume"))"
+    echo -n "$(CYN "Select test template [1-9]") (default 3): "
 else
-    echo -n "$(CYN "Select test template [1-7]") (default 3): "
+    echo -n "$(CYN "Select test template [1-8]") (default 3): "
 fi
 
 read Template
@@ -156,6 +158,11 @@ case "$Template" in
         LAUNCH="Y"
     ;;
     8)
+        devnet_env
+        default_settings
+        TOKEN_STANDARD="pnft"
+    ;;
+    9)
         source $RESUME_FILE
         RESUME=1
         RESET="n"
@@ -393,6 +400,21 @@ else
         RED "[$(date "+%T")] Aborting: invalid asset type ${EXT}"
         exit 1
         ;;
+    esac
+fi
+
+# Token standard
+
+if [ -z ${TOKEN_STANDARD+x} ]; then
+    echo ""
+    CYN "Token Standard:"
+    echo "1. Non-Fungible (default)"
+    echo "2. Programmable Non-Fungible"
+    echo -n "$(CYN "Select the token standard [1-2]") (default 1): "
+    read Input
+    case "$Input" in
+        2) TOKEN_STANDARD="pnft" ;;
+        *) TOKEN_STANDARD="nft" ;;
     esac
 fi
 
@@ -649,6 +671,7 @@ fi
 
 cat >$CONFIG_FILE <<-EOM
 {
+    "tokenStandard": "${TOKEN_STANDARD}",
     "number": $ITEMS,
     "symbol": "TEST",
     "sellerFeeBasisPoints": 500,
@@ -687,6 +710,7 @@ cat >$RESUME_FILE <<-EOM
 MANUAL_CACHE="$MANUAL_CACHE"
 ITEMS=$ITEMS
 MULTIPLE=$MULTIPLE
+TOKEN_STANDARD="$TOKEN_STANDARD"
 
 RESET="$RESET"
 EXT="$EXT"

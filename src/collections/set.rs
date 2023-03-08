@@ -3,10 +3,13 @@ use std::str::FromStr;
 use anchor_client::solana_sdk::{pubkey::Pubkey, system_program};
 use anyhow::Result;
 use console::style;
-use mpl_candy_machine_core::{accounts as nft_accounts, instruction as nft_instruction};
+use mpl_candy_machine_core::{
+    accounts as nft_accounts, instruction as nft_instruction, AccountVersion,
+};
 use mpl_token_metadata::{
     error::MetadataError,
-    pda::find_collection_authority_account,
+    instruction::MetadataDelegateRole,
+    pda::{find_collection_authority_account, find_metadata_delegate_record_account},
     state::{MasterEditionV2, Metadata},
 };
 
@@ -167,8 +170,13 @@ pub fn set_collection(
     let (new_collection_metadata_pubkey, new_collection_metadata) = new_collection_metadata_info;
     let (new_collection_edition_pubkey, new_collection_edition) = new_collection_edition_info;
 
-    let new_collection_authority_record =
-        find_collection_authority_account(new_collection_mint_pubkey, &authority_pda).0;
+    let new_collection_delegate_record = find_metadata_delegate_record_account(
+        new_collection_mint_pubkey,
+        MetadataDelegateRole::Collection,
+        &new_collection_metadata.update_authority,
+        &authority_pda,
+    )
+    .0;
 
     if new_collection_metadata.update_authority != payer {
         return Err(anyhow!(CustomCandyError::AuthorityMismatch(
@@ -188,32 +196,47 @@ pub fn set_collection(
     }
 
     let collection_mint = candy_machine_state.collection_mint;
+    let (_, collection_metadata) = get_metadata_pda(&candy_machine_state.collection_mint, program)?;
 
     let (authority_pda, _) = find_candy_machine_creator_pda(candy_pubkey);
-    let collection_authority_record =
-        find_collection_authority_account(&collection_mint, &authority_pda).0;
+    let collection_delegate_record = if matches!(candy_machine_state.version, AccountVersion::V1) {
+        find_collection_authority_account(&collection_mint, &authority_pda).0
+    } else {
+        find_metadata_delegate_record_account(
+            &collection_mint,
+            MetadataDelegateRole::Collection,
+            &collection_metadata.update_authority,
+            &authority_pda,
+        )
+        .0
+    };
 
+    let collection_update_authority = collection_metadata.update_authority;
     let collection_metadata = find_metadata_pda(&collection_mint);
 
     let builder = program
         .request()
-        .accounts(nft_accounts::SetCollection {
+        .accounts(nft_accounts::SetCollectionV2 {
             candy_machine: *candy_pubkey,
             authority: payer,
             authority_pda,
             payer,
             collection_mint,
             collection_metadata,
-            collection_authority_record,
+            collection_update_authority,
+            collection_delegate_record,
             new_collection_metadata: *new_collection_metadata_pubkey,
             new_collection_mint: *new_collection_mint_pubkey,
             new_collection_master_edition: *new_collection_edition_pubkey,
-            new_collection_authority_record,
+            new_collection_delegate_record,
             new_collection_update_authority: new_collection_metadata.update_authority,
             token_metadata_program: mpl_token_metadata::ID,
             system_program: system_program::id(),
+            sysvar_instructions: sysvar::instructions::ID,
+            authorization_rules_program: None,
+            authorization_rules: None,
         })
-        .args(nft_instruction::SetCollection);
+        .args(nft_instruction::SetCollectionV2);
 
     let sig = builder.send()?;
 

@@ -1,27 +1,27 @@
 use std::{str::FromStr, sync::Arc};
 
 use anchor_client::solana_sdk::{
+    compute_budget::ComputeBudgetInstruction,
     pubkey::Pubkey,
     signature::{Keypair, Signature, Signer},
-    system_instruction, system_program, sysvar,
+    system_program, sysvar,
 };
 use anyhow::Result;
 use console::style;
 use mpl_candy_machine_core::{
-    accounts as nft_accounts, instruction as nft_instruction, CandyMachine,
+    accounts as nft_accounts, instruction as nft_instruction, AccountVersion, CandyMachine,
 };
 use mpl_token_metadata::{
-    pda::find_collection_authority_account,
+    instruction::MetadataDelegateRole,
+    pda::{
+        find_collection_authority_account, find_metadata_delegate_record_account,
+        find_token_record_account,
+    },
     state::{Metadata, TokenMetadataAccount},
 };
 use solana_client::rpc_response::Response;
-use spl_associated_token_account::{
-    get_associated_token_address, instruction::create_associated_token_account,
-};
-use spl_token::{
-    instruction::{initialize_mint, mint_to},
-    ID as TOKEN_PROGRAM_ID,
-};
+use spl_associated_token_account::get_associated_token_address;
+use spl_token::ID as TOKEN_PROGRAM_ID;
 use tokio::sync::Semaphore;
 
 use crate::{
@@ -44,6 +44,8 @@ pub struct MintArgs {
 
 pub async fn process_mint(args: MintArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
+    let client = setup_client(&sugar_config)?;
+    let program = client.program(CANDY_MACHINE_ID);
 
     // the candy machine id specified takes precedence over the one from the cache
 
@@ -75,6 +77,9 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
     pb.set_message("Connecting...");
 
     let candy_machine_state = Arc::new(get_candy_machine_state(&sugar_config, &candy_pubkey)?);
+    let (_, collection_metadata) =
+        get_metadata_pda(&candy_machine_state.collection_mint, &program)?;
+    let collection_update_authority = collection_metadata.update_authority;
 
     pb.finish_with_message("Done");
 
@@ -115,6 +120,7 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
             Arc::clone(&config),
             candy_pubkey,
             Arc::clone(&candy_machine_state),
+            collection_update_authority,
             receiver_pubkey,
         )
         .await
@@ -147,7 +153,14 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
             // Start tasks
             tasks.push(tokio::spawn(async move {
                 let _permit = permit;
-                let res = mint(config, candy_pubkey, candy_machine_state, receiver_pubkey).await;
+                let res = mint(
+                    config,
+                    candy_pubkey,
+                    candy_machine_state,
+                    collection_update_authority,
+                    receiver_pubkey,
+                )
+                .await;
                 pb.inc(1);
                 res
             }));
@@ -188,6 +201,7 @@ pub async fn mint(
     config: Arc<SugarConfig>,
     candy_machine_id: Pubkey,
     candy_machine_state: Arc<CandyMachine>,
+    collection_update_authority: Pubkey,
     receiver: Pubkey,
 ) -> Result<Signature> {
     let client = setup_client(&config)?;
@@ -200,52 +214,32 @@ pub async fn mint(
 
     let nft_mint = Keypair::new();
     let metaplex_program_id = Pubkey::from_str(METAPLEX_PROGRAM_ID)?;
-
-    // Allocate memory for the account
-    let min_rent = program
-        .rpc()
-        .get_minimum_balance_for_rent_exemption(MINT_LAYOUT as usize)?;
-
-    // Create mint account
-    let create_mint_account_ix = system_instruction::create_account(
-        &payer,
-        &nft_mint.pubkey(),
-        min_rent,
-        MINT_LAYOUT,
-        &TOKEN_PROGRAM_ID,
-    );
-
-    // Initialize mint ix
-    let init_mint_ix = initialize_mint(
-        &TOKEN_PROGRAM_ID,
-        &nft_mint.pubkey(),
-        &payer,
-        Some(&payer),
-        0,
-    )?;
-
-    // Derive associated token account
-    let assoc = get_associated_token_address(&receiver, &nft_mint.pubkey());
-
-    // Create associated account instruction
-    let create_assoc_account_ix =
-        create_associated_token_account(&payer, &receiver, &nft_mint.pubkey());
-
-    // Mint to instruction
-    let mint_to_ix = mint_to(
-        &TOKEN_PROGRAM_ID,
-        &nft_mint.pubkey(),
-        &assoc,
-        &payer,
-        &[],
-        1,
-    )?;
+    // derive associated token account
+    let token = get_associated_token_address(&receiver, &nft_mint.pubkey());
 
     let collection_mint = candy_machine_state.collection_mint;
 
     let (authority_pda, _) = find_candy_machine_creator_pda(&candy_machine_id);
-    let collection_authority_record =
-        find_collection_authority_account(&collection_mint, &authority_pda).0;
+
+    let (token_record, collection_delegate_record) =
+        if matches!(candy_machine_state.version, AccountVersion::V1) {
+            (
+                None,
+                find_collection_authority_account(&collection_mint, &authority_pda).0,
+            )
+        } else {
+            (
+                Some(find_token_record_account(&nft_mint.pubkey(), &token).0),
+                find_metadata_delegate_record_account(
+                    &collection_mint,
+                    MetadataDelegateRole::Collection,
+                    &collection_update_authority,
+                    &authority_pda,
+                )
+                .0,
+            )
+        };
+
     let collection_metadata = find_metadata_pda(&collection_mint);
 
     let data = program.rpc().get_account_data(&collection_metadata)?;
@@ -256,10 +250,13 @@ pub async fn mint(
 
     let mint_ix = program
         .request()
-        .accounts(nft_accounts::Mint {
+        .accounts(nft_accounts::MintV2 {
             candy_machine: candy_machine_id,
             authority_pda,
             payer,
+            nft_owner: payer,
+            token: Some(token),
+            token_record,
             mint_authority: payer,
             nft_metadata: metadata_pda,
             nft_mint: nft_mint.pubkey(),
@@ -270,23 +267,34 @@ pub async fn mint(
             collection_master_edition: find_master_edition_pda(
                 &candy_machine_state.collection_mint,
             ),
-            collection_authority_record,
+            collection_delegate_record,
             collection_update_authority: metadata.update_authority,
             token_metadata_program: metaplex_program_id,
-            token_program: TOKEN_PROGRAM_ID,
+            spl_token_program: TOKEN_PROGRAM_ID,
+            spl_ata_program: Some(spl_associated_token_account::ID),
             system_program: system_program::id(),
+            sysvar_instructions: Some(sysvar::instructions::ID),
             recent_slothashes: sysvar::slot_hashes::ID,
+            authorization_rules_program: None,
+            authorization_rules: None,
         })
-        .args(nft_instruction::Mint {});
+        .args(nft_instruction::MintV2 {});
 
-    let mint_ix = mint_ix.instructions()?;
+    let mut mint_ix = mint_ix.instructions()?;
+
+    for account_meta in &mut mint_ix[0].accounts {
+        if account_meta.pubkey == nft_mint.pubkey() {
+            account_meta.is_signer = true;
+            account_meta.is_writable = true;
+        }
+    }
+
+    // need to increase the number of compute units
+    let compute_ix = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
 
     let builder = program
         .request()
-        .instruction(create_mint_account_ix)
-        .instruction(init_mint_ix)
-        .instruction(create_assoc_account_ix)
-        .instruction(mint_to_ix)
+        .instruction(compute_ix)
         .instruction(mint_ix[0].clone())
         .signer(&nft_mint);
 

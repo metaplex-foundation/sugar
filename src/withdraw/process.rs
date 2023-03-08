@@ -17,7 +17,7 @@ use mpl_candy_machine_core::{accounts as nft_accounts, instruction as nft_instru
 use solana_account_decoder::UiAccountEncoding;
 use solana_client::{
     rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
-    rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType},
+    rpc_filter::{Memcmp, RpcFilterType},
 };
 
 use crate::{
@@ -83,11 +83,10 @@ pub fn process_withdraw(args: WithdrawArgs) -> Result<()> {
         }
         None => {
             let config = RpcProgramAccountsConfig {
-                filters: Some(vec![RpcFilterType::Memcmp(Memcmp {
-                    offset: 8, // key
-                    bytes: MemcmpEncodedBytes::Base58(payer.to_string()),
-                    encoding: None,
-                })]),
+                filters: Some(vec![RpcFilterType::Memcmp(Memcmp::new_base58_encoded(
+                    8, // key
+                    payer.as_ref(),
+                ))]),
                 account_config: RpcAccountInfoConfig {
                     encoding: Some(UiAccountEncoding::Base64),
                     data_slice: None,

@@ -8,9 +8,12 @@ use mpl_candy_machine_core::{
     accounts as nft_accounts, instruction as nft_instruction, CandyMachineData, ConfigLineSettings,
     Creator as CandyCreator,
 };
-use mpl_token_metadata::pda::find_collection_authority_account;
 pub use mpl_token_metadata::state::{
     MAX_CREATOR_LIMIT, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH,
+};
+use mpl_token_metadata::{
+    instruction::MetadataDelegateRole, pda::find_metadata_delegate_record_account,
+    state::TokenStandard,
 };
 use solana_program::native_token::LAMPORTS_PER_SOL;
 
@@ -126,7 +129,7 @@ pub fn create_candy_machine_data(
 
 /// Send the `initialize_candy_machine` instruction to the candy machine program.
 pub fn initialize_candy_machine(
-    _config_data: &ConfigData,
+    config_data: &ConfigData,
 
     candy_account: &Keypair,
     candy_machine_data: CandyMachineData,
@@ -160,10 +163,15 @@ pub fn initialize_candy_machine(
     // required PDAs
 
     let (authority_pda, _) = find_candy_machine_creator_pda(&candy_account.pubkey());
-    let collection_authority_record =
-        find_collection_authority_account(&collection_mint, &authority_pda).0;
+
     let collection_metadata = find_metadata_pda(&collection_mint);
     let collection_master_edition = find_master_edition_pda(&collection_mint);
+    let (collection_delegate_record, _) = find_metadata_delegate_record_account(
+        &collection_mint,
+        MetadataDelegateRole::Collection,
+        &collection_update_authority,
+        &authority_pda,
+    );
 
     let tx = program
         .request()
@@ -175,7 +183,7 @@ pub fn initialize_candy_machine(
             &program.id(),
         ))
         .signer(candy_account)
-        .accounts(nft_accounts::Initialize {
+        .accounts(nft_accounts::InitializeV2 {
             candy_machine: candy_account.pubkey(),
             authority: payer,
             authority_pda,
@@ -183,13 +191,20 @@ pub fn initialize_candy_machine(
             collection_metadata,
             collection_mint,
             collection_master_edition,
-            collection_authority_record,
             collection_update_authority,
+            collection_delegate_record,
+            rule_set: config_data.rule_set,
             token_metadata_program: mpl_token_metadata::ID,
             system_program: system_program::id(),
+            sysvar_instructions: sysvar::instructions::ID,
+            authorization_rules_program: None,
+            authorization_rules: None,
         })
-        .args(nft_instruction::Initialize {
+        .args(nft_instruction::InitializeV2 {
             data: candy_machine_data,
+            token_standard: <crate::config::data::TokenStandard as std::convert::Into<
+                TokenStandard,
+            >>::into(config_data.token_standard) as u8,
         });
 
     let sig = tx.send()?;
