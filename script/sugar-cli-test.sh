@@ -684,6 +684,7 @@ cat >$CONFIG_FILE <<-EOM
         }
     ],
     "uploadMethod": "${STORAGE}",
+    "ruleSet": null,
     "awsConfig": {
         "bucket": "${AWS_BUCKET}",
         "profile": "${AWS_PROFILE}",
