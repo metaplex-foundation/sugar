@@ -2398,7 +2398,9 @@ dependencies = [
 
 [[package]]
 name = "mpl-candy-guard"
-version = "0.3.0"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ea5e369939876526e492a12e400e6070696deeb2f2d304d392b2309296fd2be"
 dependencies = [
  "anchor-lang",
  "arrayref",
@@ -2415,6 +2417,8 @@ dependencies = [
 [[package]]
 name = "mpl-candy-guard-derive"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18e4d3002ea881e94a238798faf87a006a687297a24bd4b3f810fbb63611173d"
 dependencies = [
  "quote 1.0.23",
  "syn 1.0.109",
@@ -2422,7 +2426,9 @@ dependencies = [
 
 [[package]]
 name = "mpl-candy-machine-core"
-version = "0.1.4"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d66b7ee280e2dc1d86e97c55c39e631e104dbd6c87f329da5f64c27b836771b"
 dependencies = [
  "anchor-lang",
  "arrayref",
