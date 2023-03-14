@@ -22,12 +22,19 @@ pub struct SetTokenStandardArgs {
     pub keypair: Option<String>,
     pub rpc_url: Option<String>,
     pub cache: String,
-    pub token_standard: TokenStandard,
+    pub token_standard: Option<TokenStandard>,
     pub candy_machine: Option<String>,
     pub rule_set: Option<String>,
 }
 
 pub fn process_set_token_stardard(args: SetTokenStandardArgs) -> Result<()> {
+    // validate that we got the required input
+    if args.token_standard.is_none() && args.rule_set.is_none() {
+        return Err(anyhow!(
+            "You need to specify a token standard and/or rule set."
+        ));
+    }
+
     println!("[1/2] {}Loading candy machine", LOOKING_GLASS_EMOJI);
 
     // the candy machine id specified takes precedence over the one from the cache
@@ -63,7 +70,17 @@ pub fn process_set_token_stardard(args: SetTokenStandardArgs) -> Result<()> {
 
     pb.finish_with_message("Done");
 
-    println!("\n[2/2] {}Setting token standard", WITHDRAW_EMOJI);
+    let message = if args.token_standard.is_some() {
+        if args.rule_set.is_some() {
+            "token standard and rule set"
+        } else {
+            "token standard"
+        }
+    } else {
+        "rule set"
+    };
+
+    println!("\n[2/2] {}Setting {}", WITHDRAW_EMOJI, message);
 
     let pb = spinner_with_style();
     pb.set_message("Connecting...");
@@ -88,6 +105,16 @@ pub fn process_set_token_stardard(args: SetTokenStandardArgs) -> Result<()> {
         &authority_pda,
     )
     .0;
+
+    // either uses the specified token standard or the existing one, for the case
+    // where only the rule set will be set
+    let token_standard = if let Some(token_standard) = args.token_standard {
+        <TokenStandard as std::convert::Into<mpl_token_metadata::state::TokenStandard>>::into(
+            token_standard,
+        ) as u8
+    } else {
+        candy_machine_state.token_standard
+    };
 
     let payer = sugar_config.keypair;
 
@@ -114,11 +141,7 @@ pub fn process_set_token_stardard(args: SetTokenStandardArgs) -> Result<()> {
             authorization_rules_program: None,
             authorization_rules: None,
         })
-        .args(mpl_candy_machine_core::instruction::SetTokenStandard {
-            token_standard: <crate::config::data::TokenStandard as std::convert::Into<
-                mpl_token_metadata::state::TokenStandard,
-            >>::into(args.token_standard) as u8,
-        });
+        .args(mpl_candy_machine_core::instruction::SetTokenStandard { token_standard });
 
     let sig = tx.send()?;
 

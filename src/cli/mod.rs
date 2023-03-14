@@ -382,9 +382,9 @@ pub enum ConfigSubcommands {
         #[clap(long, default_value = DEFAULT_CACHE)]
         cache: String,
 
-        /// Token Standard
+        /// Token Standard to set.
         #[clap(short, long)]
-        token_standard: TokenStandard,
+        token_standard: Option<TokenStandard>,
 
         /// Address of candy machine to update.
         #[clap(long)]
