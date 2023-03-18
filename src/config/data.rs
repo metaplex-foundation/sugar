@@ -187,9 +187,10 @@ impl HiddenSettings {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum UploadMethod {
+    #[default]
     Bundlr,
     #[serde(rename = "aws")]
     AWS,
@@ -202,12 +203,6 @@ pub enum UploadMethod {
 impl Display for UploadMethod {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
-    }
-}
-
-impl Default for UploadMethod {
-    fn default() -> UploadMethod {
-        UploadMethod::Bundlr
     }
 }
 
