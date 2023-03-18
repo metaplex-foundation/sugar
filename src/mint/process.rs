@@ -209,7 +209,9 @@ pub async fn mint(
     let payer = program.payer();
 
     if candy_machine_state.mint_authority != payer {
-        return Err(anyhow!("Payer is not the mint authority."));
+        return Err(anyhow!(
+            "Payer is not the Candy Machine mint authority, mint disallowed."
+        ));
     }
 
     let nft_mint = Keypair::new();
@@ -254,7 +256,7 @@ pub async fn mint(
             candy_machine: candy_machine_id,
             authority_pda,
             payer,
-            nft_owner: payer,
+            nft_owner: receiver,
             token: Some(token),
             token_record,
             mint_authority: payer,
@@ -273,7 +275,7 @@ pub async fn mint(
             spl_token_program: TOKEN_PROGRAM_ID,
             spl_ata_program: Some(spl_associated_token_account::ID),
             system_program: system_program::id(),
-            sysvar_instructions: Some(sysvar::instructions::ID),
+            sysvar_instructions: sysvar::instructions::ID,
             recent_slothashes: sysvar::slot_hashes::ID,
             authorization_rules_program: None,
             authorization_rules: None,
