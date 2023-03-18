@@ -55,7 +55,7 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
         }
     };
 
-    let cndy_state = get_candy_machine_state(&sugar_config, &candy_machine_id)?;
+    let (cndy_state, rule_set) = load_candy_machine(&sugar_config, &candy_machine_id)?;
     let cndy_data = cndy_state.data;
 
     pb.finish_and_clear();
@@ -80,7 +80,8 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
 
     if matches!(cndy_state.version, AccountVersion::V1) {
         print_with_style("", "account version", "V1");
-        print_with_style("", "token standard", "NonFungible");
+        print_with_style("", "token standard", "NonFungible (NFT)");
+        print_with_style("", "rule set", "none");
     } else {
         print_with_style("", "account version", "V2");
         print_with_style(
@@ -89,9 +90,13 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
             if cndy_state.token_standard == TokenStandard::NonFungible as u8 {
                 "NonFungible"
             } else {
-                "ProgrammableNonFungible"
+                "ProgrammableNonFungible (pNFT)"
             },
         );
+
+        if let Some(rule_set) = rule_set {
+            print_with_style("", "rule set", rule_set.to_string());
+        }
     }
     print_with_style("", "features", "none");
 

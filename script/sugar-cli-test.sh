@@ -28,6 +28,8 @@ METADATA_URL="https://arweave.net/uJSdJIsz_tYTcjUEWdeVSj0aR90K-hjDauATWZSi-tQ"
 COLLECTION_HASH="6500707cb13044b7d133abb5ad68e0af660b154499229af49419c86a251a2b4d"
 MEDIA_HASH="209a200ebea39be9e9e7882da2bc5e652fb690e612abecb094dc13e06db84e54"
 
+METAPLEX_RULE_SET="eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"
+
 # output colours
 RED() { echo $'\e[1;31m'$1$'\e[0m'; }
 GRN() { echo $'\e[1;32m'$1$'\e[0m'; }
@@ -684,7 +686,7 @@ cat >$CONFIG_FILE <<-EOM
         }
     ],
     "uploadMethod": "${STORAGE}",
-    "ruleSet": null,
+    "ruleSet": "${METAPLEX_RULE_SET}",
     "awsConfig": {
         "bucket": "${AWS_BUCKET}",
         "profile": "${AWS_PROFILE}",
