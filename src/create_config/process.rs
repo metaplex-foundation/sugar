@@ -231,7 +231,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     let mut total_share = 0;
 
-    (0..num_creators).into_iter().for_each(|i| {
+    (0..num_creators).for_each(|i| {
         let address = Pubkey::from_str(
             &Input::with_theme(&theme)
                 .with_prompt(format!("Enter creator wallet address #{}", i + 1))

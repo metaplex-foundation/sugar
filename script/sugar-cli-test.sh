@@ -28,6 +28,8 @@ METADATA_URL="https://arweave.net/uJSdJIsz_tYTcjUEWdeVSj0aR90K-hjDauATWZSi-tQ"
 COLLECTION_HASH="6500707cb13044b7d133abb5ad68e0af660b154499229af49419c86a251a2b4d"
 MEDIA_HASH="209a200ebea39be9e9e7882da2bc5e652fb690e612abecb094dc13e06db84e54"
 
+METAPLEX_RULE_SET="eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9"
+
 # output colours
 RED() { echo $'\e[1;31m'$1$'\e[0m'; }
 GRN() { echo $'\e[1;32m'$1$'\e[0m'; }
@@ -40,6 +42,7 @@ function default_settings() {
     MANUAL_CACHE="n"
     ITEMS=10
     MULTIPLE=1
+    TOKEN_STANDARD="nft"
 
     RESET="Y"
     EXT="png"
@@ -116,12 +119,13 @@ echo "4. manual cache"
 echo "5. hidden settings"
 echo "6. animation"
 echo "7. sugar launch"
+echo "8. programmable NFT"
 
 if [ -f "$RESUME_FILE" ]; then
-    echo "8. previous run ($(RED "resume"))"
-    echo -n "$(CYN "Select test template [1-8]") (default 3): "
+    echo "9. previous run ($(RED "resume"))"
+    echo -n "$(CYN "Select test template [1-9]") (default 3): "
 else
-    echo -n "$(CYN "Select test template [1-7]") (default 3): "
+    echo -n "$(CYN "Select test template [1-8]") (default 3): "
 fi
 
 read Template
@@ -156,6 +160,11 @@ case "$Template" in
         LAUNCH="Y"
     ;;
     8)
+        devnet_env
+        default_settings
+        TOKEN_STANDARD="pnft"
+    ;;
+    9)
         source $RESUME_FILE
         RESUME=1
         RESET="n"
@@ -393,6 +402,21 @@ else
         RED "[$(date "+%T")] Aborting: invalid asset type ${EXT}"
         exit 1
         ;;
+    esac
+fi
+
+# Token standard
+
+if [ -z ${TOKEN_STANDARD+x} ]; then
+    echo ""
+    CYN "Token Standard:"
+    echo "1. Non-Fungible (default)"
+    echo "2. Programmable Non-Fungible"
+    echo -n "$(CYN "Select the token standard [1-2]") (default 1): "
+    read Input
+    case "$Input" in
+        2) TOKEN_STANDARD="pnft" ;;
+        *) TOKEN_STANDARD="nft" ;;
     esac
 fi
 
@@ -649,6 +673,7 @@ fi
 
 cat >$CONFIG_FILE <<-EOM
 {
+    "tokenStandard": "${TOKEN_STANDARD}",
     "number": $ITEMS,
     "symbol": "TEST",
     "sellerFeeBasisPoints": 500,
@@ -661,6 +686,7 @@ cat >$CONFIG_FILE <<-EOM
         }
     ],
     "uploadMethod": "${STORAGE}",
+    "ruleSet": "${METAPLEX_RULE_SET}",
     "awsConfig": {
         "bucket": "${AWS_BUCKET}",
         "profile": "${AWS_PROFILE}",
@@ -687,6 +713,7 @@ cat >$RESUME_FILE <<-EOM
 MANUAL_CACHE="$MANUAL_CACHE"
 ITEMS=$ITEMS
 MULTIPLE=$MULTIPLE
+TOKEN_STANDARD="$TOKEN_STANDARD"
 
 RESET="$RESET"
 EXT="$EXT"

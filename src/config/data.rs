@@ -28,6 +28,10 @@ pub struct SolanaConfig {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigData {
+    /// Token standard.
+    #[serde(default)]
+    pub token_standard: TokenStandard,
+
     /// Number of assets available
     pub number: u64,
 
@@ -48,6 +52,11 @@ pub struct ConfigData {
 
     /// Upload method to use
     pub upload_method: UploadMethod,
+
+    // Token auth rules account (for pNFTs).
+    #[serde(deserialize_with = "to_option_pubkey")]
+    #[serde(serialize_with = "to_option_string")]
+    pub rule_set: Option<Pubkey>,
 
     // AWS specific configuration
     pub aws_config: Option<AwsConfig>,
@@ -133,6 +142,19 @@ where
     }
 }
 
+fn to_option_pubkey<'de, D>(deserializer: D) -> Result<Option<Pubkey>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = match Deserialize::deserialize(deserializer) {
+        Ok(s) => s,
+        Err(_) => return Ok(None),
+    };
+
+    let pubkey = Pubkey::from_str(&s).map_err(serde::de::Error::custom)?;
+    Ok(Some(pubkey))
+}
+
 pub fn parse_string_as_date(go_live_date: &str) -> Result<String> {
     let date = dateparser::parse_with(
         go_live_date,
@@ -187,9 +209,10 @@ impl HiddenSettings {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum UploadMethod {
+    #[default]
     Bundlr,
     #[serde(rename = "aws")]
     AWS,
@@ -202,12 +225,6 @@ pub enum UploadMethod {
 impl Display for UploadMethod {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
-    }
-}
-
-impl Default for UploadMethod {
-    fn default() -> UploadMethod {
-        UploadMethod::Bundlr
     }
 }
 
@@ -260,6 +277,45 @@ impl ToString for Cluster {
             Cluster::Mainnet => "mainnet".to_string(),
             Cluster::Localnet => "localnet".to_string(),
             Cluster::Unknown => "unknown".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum TokenStandard {
+    #[serde(rename = "nft")]
+    #[default]
+    NonFungible,
+    #[serde(rename = "pnft")]
+    ProgrammableNonFungible,
+}
+
+impl Display for TokenStandard {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl From<TokenStandard> for mpl_token_metadata::state::TokenStandard {
+    fn from(token_standard: TokenStandard) -> Self {
+        match token_standard {
+            TokenStandard::NonFungible => mpl_token_metadata::state::TokenStandard::NonFungible,
+            TokenStandard::ProgrammableNonFungible => {
+                mpl_token_metadata::state::TokenStandard::ProgrammableNonFungible
+            }
+        }
+    }
+}
+
+impl FromStr for TokenStandard {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "nft" => Ok(TokenStandard::NonFungible),
+            "pnft" => Ok(TokenStandard::ProgrammableNonFungible),
+            _ => Err(ConfigError::InvalidTokenStandard(s.to_string()).into()),
         }
     }
 }

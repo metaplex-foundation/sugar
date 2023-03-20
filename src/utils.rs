@@ -19,7 +19,7 @@ use solana_account_decoder::UiAccountEncoding;
 use solana_client::{
     rpc_client::RpcClient,
     rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
-    rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType},
+    rpc_filter::{Memcmp, RpcFilterType},
 };
 use spl_token::state::{Account as SplAccount, Mint};
 
@@ -175,7 +175,12 @@ pub fn get_cm_creator_mint_accounts(
     let accounts = get_cm_creator_accounts(client, creator, position)?
         .into_iter()
         .map(|(_, account)| account.data[33..65].to_vec())
-        .map(|data| Pubkey::new(&data))
+        .map(|data| {
+            Pubkey::from(
+                <std::vec::Vec<u8> as std::convert::TryInto<[u8; 32]>>::try_into(data)
+                    .expect("slice with incorrect length"),
+            )
+        })
         .collect::<Vec<Pubkey>>();
 
     Ok(accounts)
@@ -192,11 +197,11 @@ fn get_cm_creator_accounts(
     }
 
     let config = RpcProgramAccountsConfig {
-        filters: Some(vec![RpcFilterType::Memcmp(Memcmp {
-            offset: 1 + // key
+        filters: Some(vec![RpcFilterType::Memcmp(Memcmp::new_base58_encoded(
+            1 +  // key
             32 + // update auth
             32 + // mint
-            4 + // name string length
+            4 +  // name string length
             MAX_NAME_LENGTH + // name
             4 + // uri string length
             MAX_URI_LENGTH + // uri*
@@ -211,9 +216,8 @@ fn get_cm_creator_accounts(
                 1 + // verified
                 1 // share
             ),
-            bytes: MemcmpEncodedBytes::Base58(creator.to_string()),
-            encoding: None,
-        })]),
+            creator.as_ref(),
+        ))]),
         account_config: RpcAccountInfoConfig {
             encoding: Some(UiAccountEncoding::Base64),
             data_slice: None,

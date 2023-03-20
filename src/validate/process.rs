@@ -76,11 +76,7 @@ pub fn process_validate(args: ValidateArgs) -> Result<()> {
 
     // Unwrapping here because we know the pattern is valid and GlobErrors should
     // be rare or impossible to produce.
-    let paths: Vec<PathBuf> = glob(pattern)
-        .unwrap()
-        .into_iter()
-        .map(Result::unwrap)
-        .collect();
+    let paths: Vec<PathBuf> = glob(pattern).unwrap().map(Result::unwrap).collect();
 
     // Validating continuous assets in directory
     validate_continuous_assets(&paths)?;

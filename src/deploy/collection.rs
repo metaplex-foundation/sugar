@@ -63,7 +63,7 @@ pub fn create_collection(
 
     // Create associated account instruction
     let create_assoc_account_ix =
-        create_associated_token_account(&payer, &payer, &collection_mint.pubkey());
+        create_associated_token_account(&payer, &payer, &collection_mint.pubkey(), &spl_token::ID);
 
     // Mint to instruction
     let mint_to_ix = mint_to(
