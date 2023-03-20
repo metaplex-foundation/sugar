@@ -141,6 +141,14 @@ pub async fn process_airdrop(args: AirdropArgs) -> Result<()> {
                         });
                     }
                     Err(err) => {
+                        // Assume timeouts succeed to avoid sending double to a recipient.
+                        if err.to_string().contains("Transaction was not confirmed in") {
+                            signatures.push(TransactionResult {
+                                signature: "RPC timeout: unknown if transaction succeeded"
+                                    .to_string(),
+                                status: true,
+                            });
+                        }
                         signatures.push(TransactionResult {
                             signature: err.to_string(),
                             status: false,
