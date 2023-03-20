@@ -209,9 +209,10 @@ impl HiddenSettings {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum UploadMethod {
+    #[default]
     Bundlr,
     #[serde(rename = "aws")]
     AWS,
@@ -224,12 +225,6 @@ pub enum UploadMethod {
 impl Display for UploadMethod {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
-    }
-}
-
-impl Default for UploadMethod {
-    fn default() -> UploadMethod {
-        UploadMethod::Bundlr
     }
 }
 
@@ -286,10 +281,11 @@ impl ToString for Cluster {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TokenStandard {
     #[serde(rename = "nft")]
+    #[default]
     NonFungible,
     #[serde(rename = "pnft")]
     ProgrammableNonFungible,
@@ -301,13 +297,6 @@ impl Display for TokenStandard {
     }
 }
 
-impl Default for TokenStandard {
-    fn default() -> TokenStandard {
-        TokenStandard::NonFungible
-    }
-}
-
-//impl Into<mpl_token_metadata::state::TokenStandard> for TokenStandard {
 impl From<TokenStandard> for mpl_token_metadata::state::TokenStandard {
     fn from(token_standard: TokenStandard) -> Self {
         match token_standard {
