@@ -64,6 +64,10 @@ pub enum Commands {
         /// Path to the cache file, defaults to "cache.json"
         #[clap(long, default_value = DEFAULT_CACHE)]
         cache: String,
+
+        /// The optional collection address where the candymachine will mint the tokens to
+        #[clap(long)]
+        collection_mint: Option<String>,
     },
 
     /// Manage freeze guard actions
