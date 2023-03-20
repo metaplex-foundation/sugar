@@ -53,7 +53,6 @@ sha2 = "0.10.2"
 shellexpand = "2.1.0"
 solana-account-decoder = "~1.14.14"
 solana-client = "~1.14.14"
-solana-transaction-crawler = { path = "../solana-transaction-crawler", version = "0.0.7" }
 solana-logger = "~1.14.14"
 solana-program = "~1.14.14"
 solana-transaction-status = "~1.14.14"

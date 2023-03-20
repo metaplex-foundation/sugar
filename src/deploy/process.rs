@@ -135,7 +135,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         let collection_str = args
             .collection_mint
             .clone()
-            .unwrap_or(cache.program.collection_mint.clone());
+            .unwrap_or_else(|| cache.program.collection_mint.clone());
 
         let collection_mint = if collection_minted {
             println!("\nCollection mint already deployed.");

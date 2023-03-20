@@ -4422,21 +4422,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "solana-transaction-crawler"
-version = "0.0.7"
-dependencies = [
- "rayon",
- "retry",
- "serde",
- "solana-client",
- "solana-program",
- "solana-sdk",
- "solana-transaction-status",
- "thiserror",
- "tokio",
-]
-
-[[package]]
 name = "solana-transaction-status"
 version = "1.14.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4697,7 +4682,6 @@ dependencies = [
  "solana-client",
  "solana-logger",
  "solana-program",
- "solana-transaction-crawler",
  "solana-transaction-status",
  "spl-associated-token-account",
  "spl-token",
