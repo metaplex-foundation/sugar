@@ -37,24 +37,9 @@ jobs:
           default: true
           override: true
 
-      - name: Install rustfmt, clippy and cargo-cache
+      - name: Install rustfmt, and clippy
         run: |
           rustup component add rustfmt clippy
-          cargo install cargo-cache
-
-      - name: Cache Dependencies
-        if: runner.os == 'Linux' || runner.os == 'macOS'
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
 
       - name: Build
         id: build
@@ -99,9 +84,6 @@ jobs:
         with:
           command: clippy
           args: -- -D warnings
-
-      - name: Cleanup Dependencies
-        run: cargo cache clean-unref
 
       - name: Publish Artifacts
         uses: actions/upload-artifact@v3
