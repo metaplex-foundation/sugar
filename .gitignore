@@ -2,5 +2,6 @@
 sugar.log
 /assets
 *.json
+!autodoc.config.json
 test_item
 /.idea
