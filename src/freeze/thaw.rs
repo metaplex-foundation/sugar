@@ -25,6 +25,7 @@ pub struct ThawArgs {
     pub label: Option<String>,
     pub use_cache: bool,
     pub timeout: Option<u64>,
+    pub token: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -122,19 +123,39 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
     pb.set_message("Connecting...");
 
     // destination address specified takes precedence over the one from the cache
-    let destination_address = match args.destination {
-        Some(ref destination_address) => Pubkey::from_str(destination_address).map_err(|_| {
-            anyhow!(
-                "Failed to parse destination address: {}",
-                &destination_address
+    let (destination_address, freeze_guard) = match args.destination {
+        Some(ref destination_address) => {
+            let address = Pubkey::from_str(destination_address).map_err(|_| {
+                anyhow!(
+                    "Failed to parse destination address: {}",
+                    &destination_address
+                )
+            })?;
+            (
+                address,
+                if args.token {
+                    GuardType::FreezeTokenPayment
+                } else {
+                    GuardType::FreezeSolPayment
+                },
             )
-        })?,
-        None => get_destination(
-            &program,
-            &candy_guard,
-            get_config_data(&args.config)?,
-            &args.label,
-        )?,
+        }
+        None => {
+            let (destination_address, freeze_guard) = get_destination(
+                &program,
+                &candy_guard,
+                get_config_data(&args.config)?,
+                &args.label,
+            )?;
+            (
+                destination_address,
+                if freeze_guard.is_some() {
+                    GuardType::FreezeTokenPayment
+                } else {
+                    GuardType::FreezeSolPayment
+                },
+            )
+        }
     };
 
     // sanity check: loads the PDA
@@ -270,6 +291,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
             &destination_address,
             &nft,
             &args.label,
+            freeze_guard,
         )?;
 
         pb.finish_with_message(format!(
@@ -503,6 +525,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
 
         let config = config.clone();
         let label = args.label.to_owned();
+        let guard = freeze_guard.clone();
 
         thaw_tasks.push(tokio::spawn(async move {
             let _permit = permit;
@@ -514,6 +537,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
                 &destination_address,
                 &nft,
                 &label,
+                guard,
             )
             .map_err(|e| {
                 failed_thaws.lock().unwrap().push(FailedThaw {
@@ -568,6 +592,7 @@ fn thaw_nft(
     destination: &Pubkey,
     nft: &ThawNft,
     label: &Option<String>,
+    freeze_guard: GuardType,
 ) -> Result<Signature> {
     let client = setup_client(&config)?;
     let program = client.program(mpl_candy_guard::ID);
@@ -677,7 +702,7 @@ fn thaw_nft(
         .args(Route {
             args: RouteArgs {
                 data: vec![FreezeInstruction::Thaw as u8],
-                guard: GuardType::FreezeSolPayment,
+                guard: freeze_guard,
             },
             label: label.to_owned(),
         });
