@@ -608,7 +608,7 @@ pub enum FreezeCommand {
         #[clap(long)]
         candy_machine: Option<String>,
 
-        /// Address of the destination (treaury) account.
+        /// Address of the destination account on the freeze guard.
         #[clap(long)]
         destination: Option<String>,
 
@@ -624,7 +624,7 @@ pub enum FreezeCommand {
         #[clap(short, long)]
         timeout: Option<u64>,
 
-        /// Indicates whether this is a freeze token payment or not
+        /// Indicates whether this is a freeze token payment guard or not.
         #[clap(long)]
         token: bool,
     },
@@ -662,7 +662,7 @@ pub enum FreezeCommand {
         #[clap(long)]
         label: Option<String>,
 
-        /// Indicates whether this is a freeze token payment or not
+        /// Indicates whether this is a freeze token payment guard or not.
         #[clap(long)]
         token: bool,
     },
