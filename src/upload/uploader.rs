@@ -284,10 +284,10 @@ pub async fn initialize(
             Box::new(NftStorageMethod::new(config_data).await?) as Box<dyn Uploader>
         }
         UploadMethod::SHDW => {
-            Box::new(SHDWMethod::new(sugar_config, config_data).await?) as Box<dyn Uploader>
+            Box::new(shdw::SHDWMethod::new(sugar_config, config_data).await?) as Box<dyn Uploader>
         }
         UploadMethod::Pinata => {
-            Box::new(PinataMethod::new(config_data).await?) as Box<dyn Uploader>
+            Box::new(pinata::PinataMethod::new(config_data).await?) as Box<dyn Uploader>
         }
     })
 }

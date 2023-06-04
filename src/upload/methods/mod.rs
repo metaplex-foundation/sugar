@@ -7,5 +7,3 @@ pub mod shdw;
 pub use aws::*;
 pub use bundlr::*;
 pub use nft_storage::*;
-pub use pinata::*;
-pub use shdw::*;
