@@ -12,15 +12,13 @@
   <img src="animation.gif">
 </p>
 
-Sugar is an alternative to the current Metaplex Candy Machine CLI. It has been written from the ground up and includes several improvements:
+Sugar is an alternative to the current [Metaplex Candy Machine](https://docs.metaplex.com/programs/candy-machine/overview) CLI. It has been written from the ground up and includes several improvements:
 
 - better performance for upload of media/metadata files and deploy of the candy machine &mdash; these operations take advantage of multithreaded systems to significantly speed up the computational time needed;
 - simplified build and installation procedures taking advantage of `cargo` package management, including a binary distributable package ready to use;
 - robust error handling and validation of inputs, including improvements to config and cache files, leading to more informative error messages.
 
 See [the docs](https://docs.metaplex.com/tools/sugar/introduction) for full installation and usage instructions.
-
-> **Note:** This is a beta release of Sugar. Use at your own risk.
 
 ## Installation
 
