@@ -53,7 +53,7 @@ pub fn get_destination(
     candy_guard: &Pubkey,
     config_data: ConfigData,
     label: &Option<String>,
-) -> Result<Pubkey> {
+) -> Result<(Pubkey, Option<Pubkey>)> {
     // first tries to get the on-chain information
 
     if let Ok(account_data) = program.rpc().get_account_data(candy_guard) {
@@ -68,7 +68,10 @@ pub fn get_destination(
                     for group in groups {
                         if group.label == clone {
                             if let Some(guard) = &group.guards.freeze_sol_payment {
-                                return Ok(guard.destination);
+                                return Ok((guard.destination, None));
+                            }
+                            if let Some(guard) = candy_guard_data.default.freeze_token_payment {
+                                return Ok((guard.destination_ata, Some(guard.mint)));
                             }
                         }
                     }
@@ -76,7 +79,10 @@ pub fn get_destination(
             }
             None => {
                 if let Some(guard) = candy_guard_data.default.freeze_sol_payment {
-                    return Ok(guard.destination);
+                    return Ok((guard.destination, None));
+                }
+                if let Some(guard) = candy_guard_data.default.freeze_token_payment {
+                    return Ok((guard.destination_ata, Some(guard.mint)));
                 }
             }
         }
@@ -92,11 +98,15 @@ pub fn get_destination(
                 if let Some(groups) = &guards.groups {
                     for group in groups {
                         if group.label == clone {
-                            if let Some(guard) = &group.guards.freeze_sol_payment {
-                                return Ok(guard.destination);
+                            return if let Some(guard) = &group.guards.freeze_sol_payment {
+                                Ok((guard.destination, None))
+                            } else if let Some(guard) = &group.guards.freeze_token_payment {
+                                Ok((guard.destination_ata, Some(guard.mint)))
                             } else {
-                                return Err(anyhow!("Missing freeze sol payment guard for group with label '{label}'"));
-                            }
+                                Err(anyhow!(
+                                    "Missing freeze payment guard for group with label '{label}'"
+                                ))
+                            };
                         }
                     }
                     // reaching this point means that we did not find the group
@@ -107,9 +117,11 @@ pub fn get_destination(
             }
             None => {
                 if let Some(guard) = guards.default.freeze_sol_payment {
-                    Ok(guard.destination)
+                    Ok((guard.destination, None))
+                } else if let Some(guard) = guards.default.freeze_token_payment {
+                    Ok((guard.destination_ata, Some(guard.mint)))
                 } else {
-                    Err(anyhow!("Missing freeze sol payment guard"))
+                    Err(anyhow!("Missing freeze payment guard configuration"))
                 }
             }
         }

@@ -14,6 +14,7 @@ pub struct UnlockFundsArgs {
     pub candy_machine: Option<String>,
     pub destination: Option<String>,
     pub label: Option<String>,
+    pub token: bool,
 }
 
 pub fn process_unlock_funds(args: UnlockFundsArgs) -> Result<()> {
@@ -55,19 +56,39 @@ pub fn process_unlock_funds(args: UnlockFundsArgs) -> Result<()> {
     pb.set_message("Connecting...");
 
     // destination address specified takes precedence over the one from the cache
-    let destination_address = match args.destination {
-        Some(ref destination_address) => Pubkey::from_str(destination_address).map_err(|_| {
-            anyhow!(
-                "Failed to parse destination address: {}",
-                &destination_address
+    let (destination_address, freeze_guard) = match args.destination {
+        Some(ref destination_address) => {
+            let address = Pubkey::from_str(destination_address).map_err(|_| {
+                anyhow!(
+                    "Failed to parse destination address: {}",
+                    &destination_address
+                )
+            })?;
+            (
+                address,
+                if args.token {
+                    GuardType::FreezeTokenPayment
+                } else {
+                    GuardType::FreezeSolPayment
+                },
             )
-        })?,
-        None => get_destination(
-            &program,
-            &candy_guard,
-            get_config_data(&args.config)?,
-            &args.label,
-        )?,
+        }
+        None => {
+            let (destination_address, freeze_guard) = get_destination(
+                &program,
+                &candy_guard,
+                get_config_data(&args.config)?,
+                &args.label,
+            )?;
+            (
+                destination_address,
+                if freeze_guard.is_some() {
+                    GuardType::FreezeTokenPayment
+                } else {
+                    GuardType::FreezeSolPayment
+                },
+            )
+        }
     };
 
     // sanity check: loads the PDA
@@ -98,6 +119,7 @@ pub fn process_unlock_funds(args: UnlockFundsArgs) -> Result<()> {
         &candy_machine,
         &destination_address,
         &args.label,
+        freeze_guard,
     )?;
 
     pb.finish_with_message(format!(
@@ -115,6 +137,7 @@ pub fn unlock_funds(
     candy_machine_id: &Pubkey,
     destination: &Pubkey,
     label: &Option<String>,
+    freeze_guard: GuardType,
 ) -> Result<Signature> {
     let mut remaining_accounts = Vec::with_capacity(4);
     let (freeze_pda, _) = find_freeze_pda(candy_guard_id, candy_machine_id, destination);
@@ -128,16 +151,51 @@ pub fn unlock_funds(
         is_signer: true,
         is_writable: false,
     });
-    remaining_accounts.push(AccountMeta {
-        pubkey: *destination,
-        is_signer: false,
-        is_writable: true,
-    });
-    remaining_accounts.push(AccountMeta {
-        pubkey: system_program::id(),
-        is_signer: false,
-        is_writable: false,
-    });
+
+    match freeze_guard {
+        GuardType::FreezeSolPayment => {
+            remaining_accounts.push(AccountMeta {
+                pubkey: *destination,
+                is_signer: false,
+                is_writable: true,
+            });
+            remaining_accounts.push(AccountMeta {
+                pubkey: system_program::id(),
+                is_signer: false,
+                is_writable: false,
+            });
+        }
+        GuardType::FreezeTokenPayment => {
+            // retrieves the mint from the destination account
+            let account_data = program
+                .rpc()
+                .get_account_data(destination)
+                .map_err(|_| anyhow!("Could not load destination account"))?;
+            let destination_account = spl_token::state::Account::unpack(&account_data)?;
+
+            remaining_accounts.push(AccountMeta {
+                pubkey: get_associated_token_address(&freeze_pda, &destination_account.mint),
+                is_signer: false,
+                is_writable: true,
+            });
+            remaining_accounts.push(AccountMeta {
+                pubkey: destination.to_owned(),
+                is_signer: false,
+                is_writable: true,
+            });
+            remaining_accounts.push(AccountMeta {
+                pubkey: spl_token::ID,
+                is_signer: false,
+                is_writable: false,
+            });
+            remaining_accounts.push(AccountMeta {
+                pubkey: system_program::id(),
+                is_signer: false,
+                is_writable: false,
+            });
+        }
+        _ => return Err(anyhow!("Invalid freeze guard type: {freeze_guard:?}")),
+    };
 
     let builder = program
         .request()
@@ -150,7 +208,7 @@ pub fn unlock_funds(
         .args(Route {
             args: RouteArgs {
                 data: vec![FreezeInstruction::UnlockFunds as u8],
-                guard: GuardType::FreezeSolPayment,
+                guard: freeze_guard,
             },
             label: label.to_owned(),
         });

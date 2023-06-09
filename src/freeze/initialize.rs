@@ -12,8 +12,8 @@ pub struct InitializeArgs {
     pub config: String,
     pub candy_guard: Option<String>,
     pub candy_machine: Option<String>,
-    pub destination: Option<String>,
     pub label: Option<String>,
+    pub period: u64,
 }
 
 pub fn process_initialize(args: InitializeArgs) -> Result<()> {
@@ -55,31 +55,12 @@ pub fn process_initialize(args: InitializeArgs) -> Result<()> {
     pb.set_message("Connecting...");
 
     // destination address specified takes precedence over the one from the cache
-    let destination_address = match args.destination {
-        Some(ref destination_address) => Pubkey::from_str(destination_address).map_err(|_| {
-            anyhow!(
-                "Failed to parse destination address: {}",
-                &destination_address
-            )
-        })?,
-        None => get_destination(
-            &program,
-            &candy_guard,
-            get_config_data(&args.config)?,
-            &args.label,
-        )?,
-    };
-
-    // sanity check: loads the PDA
-    let (freeze_escrow, _) = find_freeze_pda(&candy_guard, &candy_machine, &destination_address);
-    let account_data = program
-        .rpc()
-        .get_account_data(&freeze_escrow)
-        .map_err(|_| anyhow!("Could not load freeze escrow"))?;
-
-    if !account_data.is_empty() {
-        return Err(anyhow!("Freeze escrow already initialized"));
-    }
+    let (destination_address, mint) = get_destination(
+        &program,
+        &candy_guard,
+        get_config_data(&args.config)?,
+        &args.label,
+    )?;
 
     pb.finish_with_message("Done");
 
@@ -98,6 +79,8 @@ pub fn process_initialize(args: InitializeArgs) -> Result<()> {
         &candy_machine,
         &destination_address,
         &args.label,
+        args.period,
+        mint,
     )?;
 
     pb.finish_with_message(format!("{} {}", style("Signature:").bold(), signature));
@@ -111,6 +94,8 @@ pub fn initialize(
     candy_machine_id: &Pubkey,
     destination: &Pubkey,
     label: &Option<String>,
+    period: u64,
+    mint: Option<Pubkey>,
 ) -> Result<Signature> {
     let mut remaining_accounts = Vec::with_capacity(4);
     let (freeze_pda, _) = find_freeze_pda(candy_guard_id, candy_machine_id, destination);
@@ -130,6 +115,41 @@ pub fn initialize(
         is_writable: false,
     });
 
+    let freeze_guard = if let Some(mint) = mint {
+        remaining_accounts.push(AccountMeta {
+            pubkey: get_associated_token_address(&freeze_pda, &mint),
+            is_signer: false,
+            is_writable: true,
+        });
+        remaining_accounts.push(AccountMeta {
+            pubkey: mint,
+            is_signer: false,
+            is_writable: false,
+        });
+        remaining_accounts.push(AccountMeta {
+            pubkey: spl_token::ID,
+            is_signer: false,
+            is_writable: false,
+        });
+        remaining_accounts.push(AccountMeta {
+            pubkey: spl_associated_token_account::ID,
+            is_signer: false,
+            is_writable: false,
+        });
+        remaining_accounts.push(AccountMeta {
+            pubkey: destination.to_owned(),
+            is_signer: false,
+            is_writable: false,
+        });
+
+        GuardType::FreezeTokenPayment
+    } else {
+        GuardType::FreezeSolPayment
+    };
+
+    let mut data = vec![FreezeInstruction::Initialize as u8];
+    data.extend_from_slice(&period.to_le_bytes());
+
     let builder = program
         .request()
         .accounts(RouteAccount {
@@ -140,8 +160,8 @@ pub fn initialize(
         .accounts(remaining_accounts)
         .args(Route {
             args: RouteArgs {
-                data: vec![FreezeInstruction::Initialize as u8],
-                guard: GuardType::FreezeSolPayment,
+                data,
+                guard: freeze_guard,
             },
             label: label.to_owned(),
         });

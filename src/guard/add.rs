@@ -138,7 +138,6 @@ pub fn process_guard_add(args: GuardAddArgs) -> Result<()> {
 
         let mut serialized_data = vec![0; data.size()];
         data.save(&mut serialized_data)?;
-        println!("\n{}\n", serialized_data.len());
 
         // synchronizes the guards config with the on-chain account
         let tx = program

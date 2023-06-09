@@ -239,8 +239,8 @@ async fn run() -> Result<()> {
                 config,
                 candy_guard,
                 candy_machine,
-                destination,
                 label,
+                period,
             } => process_initialize(InitializeArgs {
                 keypair,
                 rpc_url,
@@ -248,8 +248,8 @@ async fn run() -> Result<()> {
                 config,
                 candy_guard,
                 candy_machine,
-                destination,
                 label,
+                period,
             })?,
             FreezeCommand::Thaw {
                 keypair,
@@ -264,6 +264,7 @@ async fn run() -> Result<()> {
                 label,
                 use_cache,
                 timeout,
+                token,
             } => {
                 process_thaw(ThawArgs {
                     keypair,
@@ -278,6 +279,7 @@ async fn run() -> Result<()> {
                     label,
                     use_cache,
                     timeout,
+                    token,
                 })
                 .await?
             }
@@ -290,6 +292,7 @@ async fn run() -> Result<()> {
                 candy_machine,
                 destination,
                 label,
+                token,
             } => process_unlock_funds(UnlockFundsArgs {
                 keypair,
                 rpc_url,
@@ -299,6 +302,7 @@ async fn run() -> Result<()> {
                 candy_machine,
                 destination,
                 label,
+                token,
             })?,
         },
         Commands::Guard { command } => match command {

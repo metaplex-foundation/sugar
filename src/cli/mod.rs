@@ -567,13 +567,13 @@ pub enum FreezeCommand {
         #[clap(long)]
         candy_machine: Option<String>,
 
-        /// Address of the destination (treasury) account.
-        #[clap(long)]
-        destination: Option<String>,
-
         /// Candy guard group label.
         #[clap(long)]
         label: Option<String>,
+
+        /// Freeze period in seconds (maximum 30 days).
+        #[clap(long)]
+        period: u64,
     },
     /// Thaw a NFT or all NFTs in a candy guard.
     Thaw {
@@ -608,7 +608,7 @@ pub enum FreezeCommand {
         #[clap(long)]
         candy_machine: Option<String>,
 
-        /// Address of the destination (treaury) account.
+        /// Address of the destination account on the freeze guard.
         #[clap(long)]
         destination: Option<String>,
 
@@ -623,6 +623,10 @@ pub enum FreezeCommand {
         /// RPC timeout to retrieve the mint list (in seconds).
         #[clap(short, long)]
         timeout: Option<u64>,
+
+        /// Indicates whether this is a freeze token payment guard or not.
+        #[clap(long)]
+        token: bool,
     },
     /// Unlock treasury funds after freeze is turned off or expires.
     UnlockFunds {
@@ -657,5 +661,9 @@ pub enum FreezeCommand {
         /// Candy guard group label.
         #[clap(long)]
         label: Option<String>,
+
+        /// Indicates whether this is a freeze token payment guard or not.
+        #[clap(long)]
+        token: bool,
     },
 }

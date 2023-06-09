@@ -4693,6 +4693,7 @@ dependencies = [
  "lazy_static",
  "mpl-candy-guard",
  "mpl-candy-machine-core",
+ "mpl-token-auth-rules",
  "mpl-token-metadata",
  "num_cpus",
  "phf",

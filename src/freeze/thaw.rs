@@ -1,11 +1,16 @@
-use std::time::Duration;
+use std::{fmt::Display, time::Duration};
 
 use mpl_candy_guard::{
     accounts::Route as RouteAccount, guards::FreezeInstruction, instruction::Route,
     instructions::RouteArgs, state::GuardType,
 };
+use mpl_token_metadata::{
+    pda::find_token_record_account,
+    state::{Metadata, ProgrammableConfig, TokenMetadataAccount, TokenRecord},
+};
 
 use super::*;
+use crate::config::TokenStandard;
 
 pub struct ThawArgs {
     pub keypair: Option<String>,
@@ -20,6 +25,7 @@ pub struct ThawArgs {
     pub label: Option<String>,
     pub use_cache: bool,
     pub timeout: Option<u64>,
+    pub token: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -36,6 +42,10 @@ struct ThawNft {
     owner: Pubkey,
     #[serde(serialize_with = "serialize_pubkey")]
     token_account: Pubkey,
+    #[serde(default)]
+    token_standard: TokenStandard,
+    #[serde(serialize_with = "serialize_option_pubkey")]
+    rule_set: Option<Pubkey>,
 }
 
 fn serialize_pubkey<S>(p: &Pubkey, serializer: S) -> Result<S::Ok, S::Error>
@@ -43,6 +53,17 @@ where
     S: Serializer,
 {
     p.to_string().serialize(serializer)
+}
+
+pub fn serialize_option_pubkey<T, S>(value: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    T: Display,
+    S: Serializer,
+{
+    match value {
+        Some(v) => serializer.collect_str(&v),
+        None => serializer.serialize_none(),
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -102,19 +123,39 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
     pb.set_message("Connecting...");
 
     // destination address specified takes precedence over the one from the cache
-    let destination_address = match args.destination {
-        Some(ref destination_address) => Pubkey::from_str(destination_address).map_err(|_| {
-            anyhow!(
-                "Failed to parse destination address: {}",
-                &destination_address
+    let (destination_address, freeze_guard) = match args.destination {
+        Some(ref destination_address) => {
+            let address = Pubkey::from_str(destination_address).map_err(|_| {
+                anyhow!(
+                    "Failed to parse destination address: {}",
+                    &destination_address
+                )
+            })?;
+            (
+                address,
+                if args.token {
+                    GuardType::FreezeTokenPayment
+                } else {
+                    GuardType::FreezeSolPayment
+                },
             )
-        })?,
-        None => get_destination(
-            &program,
-            &candy_guard,
-            get_config_data(&args.config)?,
-            &args.label,
-        )?,
+        }
+        None => {
+            let (destination_address, freeze_guard) = get_destination(
+                &program,
+                &candy_guard,
+                get_config_data(&args.config)?,
+                &args.label,
+            )?;
+            (
+                destination_address,
+                if freeze_guard.is_some() {
+                    GuardType::FreezeTokenPayment
+                } else {
+                    GuardType::FreezeSolPayment
+                },
+            )
+        }
     };
 
     // sanity check: loads the PDA
@@ -185,16 +226,59 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
         let account_data = SplAccount::unpack(&account.data).unwrap();
         let owner = account_data.owner;
 
-        // only thaw frozen accounts.
-        if !account_data.is_frozen() {
+        // Only thaw frozen accounts.
+        let (locked, token_standard, rule_set) = if account_data.is_frozen() {
+            // We need to determine whether we have a NFT or pNFT.
+            let token_record_pubkey = find_token_record_account(&nft_mint_pubkey, &token_account).0;
+            if let Some(token_record) = rpc_client
+                .get_account_with_commitment(&token_record_pubkey, CommitmentConfig::confirmed())
+                .unwrap()
+                .value
+            {
+                let token_record = TokenRecord::safe_deserialize(&token_record.data).unwrap();
+
+                if token_record.is_locked() {
+                    let metadata_pubkey = find_metadata_pda(&nft_mint_pubkey);
+                    let metadata_account = rpc_client
+                        .get_account_with_commitment(
+                            &metadata_pubkey,
+                            CommitmentConfig::confirmed(),
+                        )
+                        .unwrap()
+                        .value
+                        .unwrap();
+                    let metadata = Metadata::safe_deserialize(&metadata_account.data).unwrap();
+
+                    let rule_set = if let Some(ProgrammableConfig::V1 { rule_set }) =
+                        metadata.programmable_config
+                    {
+                        rule_set
+                    } else {
+                        None
+                    };
+
+                    (true, TokenStandard::ProgrammableNonFungible, rule_set)
+                } else {
+                    (false, TokenStandard::ProgrammableNonFungible, None)
+                }
+            } else {
+                (true, TokenStandard::NonFungible, None)
+            }
+        } else {
+            (false, TokenStandard::NonFungible, None)
+        };
+
+        if !locked {
             println!("\n NFT is already thawed.");
             return Ok(());
         }
 
         let nft = ThawNft {
             mint: nft_mint_pubkey,
-            owner,
             token_account,
+            owner,
+            token_standard,
+            rule_set,
         };
 
         let pb = spinner_with_style();
@@ -207,6 +291,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
             &destination_address,
             &nft,
             &args.label,
+            freeze_guard,
         )?;
 
         pb.finish_with_message(format!(
@@ -219,10 +304,10 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
 
     // Thaw all frozen NFTs.
     println!(
-        "\n{} {}Getting minted NFTs for candy guard {}",
+        "\n{} {}Getting minted NFTs for candy machine {}",
         style(format!("[2/{}]", total_steps)).bold().dim(),
         LOOKING_GLASS_EMOJI,
-        candy_guard_id
+        candy_machine_id
     );
 
     let pb = spinner_with_style();
@@ -276,7 +361,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
     if mint_pubkeys.is_empty() {
         pb.finish_with_message(format!("{}", style("No NFTs found.").green().bold()));
         return Err(anyhow!(format!(
-            "No NFTs found for candy machine id {candy_guard_id}.",
+            "No NFTs found for candy machine id {candy_machine_id}.",
         )));
     } else {
         pb.finish_with_message(format!("Found {:?} accounts", mint_pubkeys.len() as u64));
@@ -348,11 +433,55 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
 
             // Only thaw frozen accounts.
             if account_data.is_frozen() {
-                thaw_nfts.lock().unwrap().push(ThawNft {
-                    mint,
-                    token_account,
-                    owner,
-                });
+                // We need to determine whether we have a NFT or pNFT.
+                let token_record_pubkey = find_token_record_account(&mint, &token_account).0;
+                let (locked, token_standard, rule_set) = if let Some(token_record) = client
+                    .get_account_with_commitment(
+                        &token_record_pubkey,
+                        CommitmentConfig::confirmed(),
+                    )
+                    .unwrap()
+                    .value
+                {
+                    let token_record = TokenRecord::safe_deserialize(&token_record.data).unwrap();
+
+                    if token_record.is_locked() {
+                        let metadata_pubkey = find_metadata_pda(&mint);
+                        let metadata_account = client
+                            .get_account_with_commitment(
+                                &metadata_pubkey,
+                                CommitmentConfig::confirmed(),
+                            )
+                            .unwrap()
+                            .value
+                            .unwrap();
+                        let metadata = Metadata::safe_deserialize(&metadata_account.data).unwrap();
+
+                        let rule_set = if let Some(ProgrammableConfig::V1 { rule_set }) =
+                            metadata.programmable_config
+                        {
+                            rule_set
+                        } else {
+                            None
+                        };
+
+                        (true, TokenStandard::ProgrammableNonFungible, rule_set)
+                    } else {
+                        (false, TokenStandard::ProgrammableNonFungible, None)
+                    }
+                } else {
+                    (true, TokenStandard::NonFungible, None)
+                };
+
+                if locked {
+                    thaw_nfts.lock().unwrap().push(ThawNft {
+                        mint,
+                        token_account,
+                        owner,
+                        token_standard,
+                        rule_set,
+                    });
+                }
 
                 pb.inc(1);
             }
@@ -396,6 +525,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
 
         let config = config.clone();
         let label = args.label.to_owned();
+        let guard = freeze_guard.clone();
 
         thaw_tasks.push(tokio::spawn(async move {
             let _permit = permit;
@@ -407,6 +537,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
                 &destination_address,
                 &nft,
                 &label,
+                guard,
             )
             .map_err(|e| {
                 failed_thaws.lock().unwrap().push(FailedThaw {
@@ -461,6 +592,7 @@ fn thaw_nft(
     destination: &Pubkey,
     nft: &ThawNft,
     label: &Option<String>,
+    freeze_guard: GuardType,
 ) -> Result<Signature> {
     let client = setup_client(&config)?;
     let program = client.program(mpl_candy_guard::ID);
@@ -483,7 +615,7 @@ fn thaw_nft(
         is_writable: false,
     });
     remaining_accounts.push(AccountMeta {
-        pubkey: get_associated_token_address(&nft.owner, &nft.mint),
+        pubkey: nft.token_account,
         is_signer: false,
         is_writable: true,
     });
@@ -503,6 +635,62 @@ fn thaw_nft(
         is_writable: false,
     });
 
+    // pnft specific
+
+    if matches!(nft.token_standard, TokenStandard::ProgrammableNonFungible) {
+        let freeze_token_account = get_associated_token_address(&freeze_pda, &nft.mint);
+
+        remaining_accounts.push(AccountMeta {
+            pubkey: find_metadata_pda(&nft.mint),
+            is_signer: false,
+            is_writable: true,
+        });
+        remaining_accounts.push(AccountMeta {
+            pubkey: freeze_token_account,
+            is_signer: false,
+            is_writable: true,
+        });
+        remaining_accounts.push(AccountMeta {
+            pubkey: system_program::ID,
+            is_signer: false,
+            is_writable: false,
+        });
+        remaining_accounts.push(AccountMeta {
+            pubkey: sysvar::instructions::ID,
+            is_signer: false,
+            is_writable: false,
+        });
+        remaining_accounts.push(AccountMeta {
+            pubkey: spl_associated_token_account::ID,
+            is_signer: false,
+            is_writable: false,
+        });
+        remaining_accounts.push(AccountMeta {
+            pubkey: find_token_record_account(&nft.mint, &nft.token_account).0,
+            is_signer: false,
+            is_writable: true,
+        });
+        remaining_accounts.push(AccountMeta {
+            pubkey: find_token_record_account(&nft.mint, &freeze_token_account).0,
+            is_signer: false,
+            is_writable: true,
+        });
+        remaining_accounts.push(AccountMeta {
+            pubkey: mpl_token_auth_rules::ID,
+            is_signer: false,
+            is_writable: false,
+        });
+        remaining_accounts.push(AccountMeta {
+            pubkey: if let Some(rule_set) = nft.rule_set {
+                rule_set
+            } else {
+                mpl_token_metadata::ID
+            },
+            is_signer: false,
+            is_writable: false,
+        });
+    }
+
     let builder = program
         .request()
         .accounts(RouteAccount {
@@ -514,7 +702,7 @@ fn thaw_nft(
         .args(Route {
             args: RouteArgs {
                 data: vec![FreezeInstruction::Thaw as u8],
-                guard: GuardType::FreezeSolPayment,
+                guard: freeze_guard,
             },
             label: label.to_owned(),
         });
