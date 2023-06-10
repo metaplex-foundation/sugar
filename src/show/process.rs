@@ -3,8 +3,15 @@ use std::str::FromStr;
 use anchor_client::solana_sdk::pubkey::Pubkey;
 use anyhow::Result;
 use console::style;
-use mpl_candy_machine_core::{constants::NULL_STRING, AccountVersion};
+use mpl_candy_machine_core::{
+    constants::{HIDDEN_SECTION, NULL_STRING},
+    AccountVersion,
+};
 use mpl_token_metadata::state::TokenStandard;
+use tabled::{
+    builder::Builder,
+    settings::{object::Segment, Alignment, Modify, Style},
+};
 
 use crate::{cache::load_cache, candy_machine::*, common::*, utils::*};
 
@@ -17,7 +24,7 @@ pub struct ShowArgs {
 }
 
 // number of indices per line
-const PER_LINE: usize = 11;
+const PER_LINE: usize = 10;
 
 pub fn process_show(args: ShowArgs) -> Result<()> {
     println!(
@@ -194,14 +201,14 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
             LOOKING_GLASS_EMOJI
         );
 
-        let start = CONFIG_ARRAY_START
-            + STRING_LEN_SIZE
-            + (cndy_data.items_available as usize * cndy_data.get_config_line_size())
-            + cndy_data
+        let start = HIDDEN_SECTION
+            + 4
+            + (cndy_data.items_available as usize) * cndy_data.get_config_line_size()
+            + (cndy_data
                 .items_available
                 .checked_div(8)
-                .expect("Numerical overflow error") as usize
-            + 1;
+                .expect("Numerical overflow error")
+                + 1) as usize;
 
         let pb = spinner_with_style();
         pb.set_message("Connecting...");
@@ -231,33 +238,27 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
             // logs all indices
             info!("unminted list: {:?}", indices);
 
-            println!(
-                "\n{}{}",
-                PAPER_EMOJI,
-                style(format!("Unminted list ({} total):", indices.len())).dim()
-            );
-            let mut current = 0;
+            println!("\n{}{}\n", PAPER_EMOJI, style("Unminted list:").dim());
 
-            for i in indices {
-                if current == 0 {
-                    println!("{}", style(" :").dim());
-                    print!("{}", style(" :.. ").dim());
-                }
-                current += 1;
+            let mut remaining = indices.as_slice();
+            let mut builder = Builder::default();
 
-                print!(
-                    "{:<5}{}",
-                    i,
-                    if current == PER_LINE {
-                        current = 0;
-                        "\n"
-                    } else {
-                        " "
-                    }
-                );
+            while !remaining.is_empty() {
+                let (head, tail) = remaining.split_at(std::cmp::min(PER_LINE, remaining.len()));
+                builder.push_record(head.iter().map(|i| i.to_string()));
+                remaining = tail;
             }
-            // just adds a new line break
-            println!();
+
+            let mut table = builder.build();
+            table
+                .with(Style::blank())
+                .with(Modify::new(Segment::all()).with(Alignment::right()));
+            println!("{}", table);
+
+            println!(
+                "\n{}",
+                style(format!("{} total unminted.", indices.len())).dim()
+            );
         }
     }
 
