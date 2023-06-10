@@ -636,7 +636,7 @@ if [ $RESUME -eq 0 ]; then
     fi
 
     if [ "$MANUAL_CACHE" == "Y" ]; then
-        echo -n "{\"program\":{\"candyMachine\":\"\", \"candyMachineCreator\":\"\", \"collectionMint\":\"\"}, \"items\":{" >> $CACHE_FILE
+        echo -n "{\"program\":{\"candyMachine\":\"\", \"candyGuard\":\"\", \"candyMachineCreator\":\"\", \"collectionMint\":\"\"}, \"items\":{" >> $CACHE_FILE
 
         NAME="Collection"
         METADATA_HASH=`sha256sum "$ASSETS_DIR/collection.json" | cut -d ' ' -f 1`
