@@ -25,10 +25,20 @@ where
     serializer.collect_str(value)
 }
 
-fn to_pubkey<'de, D>(deserializer: D) -> Result<Pubkey, D::Error>
+pub fn to_pubkey<'de, D>(deserializer: D) -> Result<Pubkey, D::Error>
 where
     D: Deserializer<'de>,
 {
     let s: String = Deserialize::deserialize(deserializer)?;
     Pubkey::from_str(&s).map_err(serde::de::Error::custom)
+}
+
+pub fn to_pubkey_vec<'de, D>(deserializer: D) -> Result<Vec<Pubkey>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: Vec<String> = Deserialize::deserialize(deserializer)?;
+    s.iter()
+        .map(|s| Pubkey::from_str(s).map_err(serde::de::Error::custom))
+        .collect()
 }

@@ -3,7 +3,7 @@ use anyhow::{anyhow, Result};
 use dateparser::DateTimeUtc;
 use serde::{Deserialize, Serialize};
 
-use super::{data::price_as_lamports, to_pubkey, to_string};
+use super::{data::price_as_lamports, to_pubkey, to_pubkey_vec, to_string};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct CandyGuardData {
@@ -87,12 +87,12 @@ pub struct GuardSet {
     pub freeze_sol_payment: Option<FreezeSolPayment>,
     /// Freeze token payment guard (set the price for the mint in spl-token amount with a freeze period).
     pub freeze_token_payment: Option<FreezeTokenPayment>,
-    // Program gate guard (restricts the programs that can be in a mint transaction).
-    //pub program_gate: Option<ProgramGate>,
-    // Allocation guard (specify the maximum number of mints in a group).
-    //pub allocation: Option<Allocation>,
-    // Token2022 payment guard (set the price for the mint in spl-token-2022 amount).
-    //pub token2022_payment: Option<Token2022Payment>,
+    /// Program gate guard (restricts the programs that can be in a mint transaction).
+    pub program_gate: Option<ProgramGate>,
+    /// Allocation guard (specify the maximum number of mints in a group).
+    pub allocation: Option<Allocation>,
+    /// Token2022 payment guard (set the price for the mint in spl-token-2022 amount).
+    pub token2022_payment: Option<Token2022Payment>,
 }
 
 impl GuardSet {
@@ -205,7 +205,6 @@ impl GuardSet {
         } else {
             None
         };
-        /*
         // program gate
         let program_gate = if let Some(program_gate) = &self.program_gate {
             Some(program_gate.to_guard_format()?)
@@ -224,7 +223,6 @@ impl GuardSet {
         } else {
             None
         };
-        */
 
         Ok(mpl_candy_guard::guards::GuardSet {
             bot_tax,
@@ -245,11 +243,9 @@ impl GuardSet {
             token_burn,
             freeze_sol_payment,
             freeze_token_payment,
-            program_gate: None,
-            allocation: None,
-            //program_gate,
-            //allocation,
-            //token2022_payment,
+            program_gate,
+            allocation,
+            token2022_payment,
         })
     }
 }
@@ -603,6 +599,7 @@ impl FreezeTokenPayment {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ProgramGate {
+    #[serde(deserialize_with = "to_pubkey_vec")]
     pub additional: Vec<Pubkey>,
 }
 
@@ -615,7 +612,7 @@ impl ProgramGate {
 }
 
 // Allocation
-/*
+
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Allocation {
     pub id: u8,
@@ -657,4 +654,3 @@ impl Token2022Payment {
         })
     }
 }
-*/
