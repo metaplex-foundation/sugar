@@ -87,6 +87,12 @@ pub struct GuardSet {
     pub freeze_sol_payment: Option<FreezeSolPayment>,
     /// Freeze token payment guard (set the price for the mint in spl-token amount with a freeze period).
     pub freeze_token_payment: Option<FreezeTokenPayment>,
+    // Program gate guard (restricts the programs that can be in a mint transaction).
+    //pub program_gate: Option<ProgramGate>,
+    // Allocation guard (specify the maximum number of mints in a group).
+    //pub allocation: Option<Allocation>,
+    // Token2022 payment guard (set the price for the mint in spl-token-2022 amount).
+    //pub token2022_payment: Option<Token2022Payment>,
 }
 
 impl GuardSet {
@@ -199,6 +205,26 @@ impl GuardSet {
         } else {
             None
         };
+        /*
+        // program gate
+        let program_gate = if let Some(program_gate) = &self.program_gate {
+            Some(program_gate.to_guard_format()?)
+        } else {
+            None
+        };
+        // allocation
+        let allocation = if let Some(allocation) = &self.allocation {
+            Some(allocation.to_guard_format()?)
+        } else {
+            None
+        };
+        // tokwn2022 payment
+        let token2022_payment = if let Some(token2022_payment) = &self.token2022_payment {
+            Some(token2022_payment.to_guard_format()?)
+        } else {
+            None
+        };
+        */
 
         Ok(mpl_candy_guard::guards::GuardSet {
             bot_tax,
@@ -221,6 +247,9 @@ impl GuardSet {
             freeze_token_payment,
             program_gate: None,
             allocation: None,
+            //program_gate,
+            //allocation,
+            //token2022_payment,
         })
     }
 }
@@ -568,3 +597,64 @@ impl FreezeTokenPayment {
         })
     }
 }
+
+// ProgramGate
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ProgramGate {
+    pub additional: Vec<Pubkey>,
+}
+
+impl ProgramGate {
+    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::ProgramGate> {
+        Ok(mpl_candy_guard::guards::ProgramGate {
+            additional: self.additional.clone(),
+        })
+    }
+}
+
+// Allocation
+/*
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct Allocation {
+    pub id: u8,
+
+    pub limit: u32,
+}
+
+impl Allocation {
+    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::Allocation> {
+        Ok(mpl_candy_guard::guards::Allocation {
+            id: self.id,
+            limit: self.limit,
+        })
+    }
+}
+
+// Token2022 Payment guard
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Token2022Payment {
+    pub amount: u64,
+
+    #[serde(deserialize_with = "to_pubkey")]
+    #[serde(serialize_with = "to_string")]
+    pub mint: Pubkey,
+
+    #[serde(deserialize_with = "to_pubkey")]
+    #[serde(serialize_with = "to_string")]
+    pub destination_ata: Pubkey,
+}
+
+impl Token2022Payment {
+    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::Token2022Payment> {
+        Ok(mpl_candy_guard::guards::Token2022Payment {
+            amount: self.amount,
+            mint: self.mint,
+            destination_ata: self.destination_ata,
+        })
+    }
+}
+*/
