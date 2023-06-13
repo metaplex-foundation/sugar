@@ -2,8 +2,9 @@ use anchor_lang::prelude::Pubkey;
 use anyhow::{anyhow, Result};
 use dateparser::DateTimeUtc;
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DisplayFromStr};
 
-use super::{data::price_as_lamports, to_pubkey, to_pubkey_vec, to_string};
+use super::{data::price_as_lamports, to_pubkey, to_string};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct CandyGuardData {
@@ -596,10 +597,11 @@ impl FreezeTokenPayment {
 
 // ProgramGate
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ProgramGate {
-    #[serde(deserialize_with = "to_pubkey_vec")]
+    #[serde_as(as = "Vec<DisplayFromStr>")]
     pub additional: Vec<Pubkey>,
 }
 
