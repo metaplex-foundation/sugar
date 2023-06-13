@@ -13,7 +13,9 @@ use tracing::error;
 
 use crate::{config::data::SugarConfig, constants::DEFAULT_KEYPATH, parse::*};
 
-pub fn setup_client(sugar_config: &SugarConfig) -> Result<Client> {
+pub type SugarClient = Client<Rc<Keypair>>;
+
+pub fn setup_client(sugar_config: &SugarConfig) -> Result<SugarClient> {
     let rpc_url = sugar_config.rpc_url.clone();
     let ws_url = rpc_url.replace("http", "ws");
     let cluster = Cluster::Custom(rpc_url, ws_url);

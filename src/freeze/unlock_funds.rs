@@ -131,8 +131,8 @@ pub fn process_unlock_funds(args: UnlockFundsArgs) -> Result<()> {
     Ok(())
 }
 
-pub fn unlock_funds(
-    program: &Program,
+pub fn unlock_funds<C: Deref<Target = impl Signer> + Clone>(
+    program: &Program<C>,
     candy_guard_id: &Pubkey,
     candy_machine_id: &Pubkey,
     destination: &Pubkey,

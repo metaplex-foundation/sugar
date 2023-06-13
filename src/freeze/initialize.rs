@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use mpl_candy_guard::{
     accounts::Route as RouteAccount, guards::FreezeInstruction, instruction::Route,
     instructions::RouteArgs, state::GuardType,
@@ -88,8 +90,8 @@ pub fn process_initialize(args: InitializeArgs) -> Result<()> {
     Ok(())
 }
 
-pub fn initialize(
-    program: &Program,
+pub fn initialize<C: Deref<Target = impl Signer> + Clone>(
+    program: &Program<C>,
     candy_guard_id: &Pubkey,
     candy_machine_id: &Pubkey,
     destination: &Pubkey,

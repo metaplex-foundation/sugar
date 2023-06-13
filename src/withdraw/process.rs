@@ -1,4 +1,4 @@
-use std::{rc::Rc, str::FromStr};
+use std::{ops::Deref, rc::Rc, str::FromStr};
 
 pub use anchor_client::{
     solana_sdk::{
@@ -204,7 +204,10 @@ pub fn process_withdraw(args: WithdrawArgs) -> Result<()> {
     Ok(())
 }
 
-fn setup_withdraw(keypair: Option<String>, rpc_url: Option<String>) -> Result<(Program, Pubkey)> {
+fn setup_withdraw(
+    keypair: Option<String>,
+    rpc_url: Option<String>,
+) -> Result<(Program<Rc<Keypair>>, Pubkey)> {
     let sugar_config = sugar_setup(keypair, rpc_url)?;
     let client = setup_client(&sugar_config)?;
     let program = client.program(CANDY_MACHINE_ID);
@@ -213,7 +216,11 @@ fn setup_withdraw(keypair: Option<String>, rpc_url: Option<String>) -> Result<(P
     Ok((program, payer))
 }
 
-fn do_withdraw(program: Rc<Program>, candy_machine: Pubkey, payer: Pubkey) -> Result<()> {
+fn do_withdraw<C: Deref<Target = impl Signer> + Clone>(
+    program: Rc<Program<C>>,
+    candy_machine: Pubkey,
+    payer: Pubkey,
+) -> Result<()> {
     program
         .request()
         .accounts(nft_accounts::Withdraw {
