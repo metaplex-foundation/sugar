@@ -1,4 +1,4 @@
-use anchor_client::{solana_sdk::pubkey::Pubkey, Client};
+use anchor_client::solana_sdk::pubkey::Pubkey;
 use anyhow::Result;
 use mpl_token_metadata::{
     instruction::{create_master_edition_v3, create_metadata_accounts_v3},
@@ -17,10 +17,11 @@ use crate::{
     common::*,
     config::ConfigData,
     pdas::{find_master_edition_pda, find_metadata_pda},
+    setup::SugarClient,
 };
 
 pub fn create_collection(
-    client: &Client,
+    client: &SugarClient,
     _candy_machine: Pubkey,
     cache: &mut Cache,
     config_data: &ConfigData,

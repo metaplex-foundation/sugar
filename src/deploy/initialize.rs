@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use anchor_client::solana_sdk::{
     pubkey::Pubkey,
     signature::{Keypair, Signature, Signer},
@@ -22,11 +24,12 @@ use crate::{
     config::data::*,
     deploy::errors::*,
     pdas::{find_candy_machine_creator_pda, find_master_edition_pda, find_metadata_pda},
+    setup::SugarClient,
 };
 
 /// Create the candy machine data struct.
 pub fn create_candy_machine_data(
-    _client: &Client,
+    _client: &SugarClient,
     config: &ConfigData,
     cache: &Cache,
 ) -> Result<CandyMachineData> {
@@ -128,14 +131,14 @@ pub fn create_candy_machine_data(
 }
 
 /// Send the `initialize_candy_machine` instruction to the candy machine program.
-pub fn initialize_candy_machine(
+pub fn initialize_candy_machine<C: Deref<Target = impl Signer> + Clone>(
     config_data: &ConfigData,
 
     candy_account: &Keypair,
     candy_machine_data: CandyMachineData,
     collection_mint: Pubkey,
     collection_update_authority: Pubkey,
-    program: Program,
+    program: Program<C>,
 ) -> Result<Signature> {
     let payer = program.payer();
     let candy_account_size = candy_machine_data.get_space_for_candy()?;

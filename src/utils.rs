@@ -1,4 +1,4 @@
-use std::{str::FromStr, thread::sleep, time::Duration};
+use std::{ops::Deref, str::FromStr, thread::sleep, time::Duration};
 
 pub use anchor_client::solana_sdk::hash::Hash;
 use anchor_client::{
@@ -47,7 +47,10 @@ pub fn get_cluster(rpc_client: RpcClient) -> Result<Cluster> {
 }
 
 /// Check that the mint token is a valid address.
-pub fn check_spl_token(program: &Program, input: &str) -> Result<Mint> {
+pub fn check_spl_token<C: Deref<Target = impl Signer> + Clone>(
+    program: &Program<C>,
+    input: &str,
+) -> Result<Mint> {
     let pubkey = Pubkey::from_str(input)?;
     let token_data = program.rpc().get_account_data(&pubkey)?;
     if token_data.len() != 82 {
@@ -66,7 +69,10 @@ pub fn check_spl_token(program: &Program, input: &str) -> Result<Mint> {
 }
 
 /// Check that the mint token account is a valid account.
-pub fn check_spl_token_account(program: &Program, input: &str) -> Result<()> {
+pub fn check_spl_token_account<C: Deref<Target = impl Signer> + Clone>(
+    program: &Program<C>,
+    input: &str,
+) -> Result<()> {
     let pubkey = Pubkey::from_str(input)?;
     let ata_data = program.rpc().get_account_data(&pubkey)?;
     let ata_account = SplAccount::unpack_unchecked(&ata_data)?;

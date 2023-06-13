@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    ops::Deref,
+    sync::{Arc, Mutex},
+};
 
 use anchor_client::solana_sdk::pubkey::Pubkey;
 use anyhow::Result;
@@ -48,8 +51,8 @@ pub fn find_freeze_pda(
     Pubkey::find_program_address(freeze_seeds, &mpl_candy_guard::ID)
 }
 
-pub fn get_destination(
-    program: &Program,
+pub fn get_destination<C: Deref<Target = impl Signer> + Clone>(
+    program: &Program<C>,
     candy_guard: &Pubkey,
     config_data: ConfigData,
     label: &Option<String>,

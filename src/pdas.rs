@@ -1,4 +1,9 @@
-use anchor_client::{solana_sdk::pubkey::Pubkey, Program};
+use std::ops::Deref;
+
+use anchor_client::{
+    solana_sdk::{pubkey::Pubkey, signer::Signer},
+    Program,
+};
 use anyhow::{anyhow, Result};
 use mpl_token_metadata::{
     pda::{find_master_edition_account, find_metadata_account},
@@ -21,7 +26,10 @@ pub fn find_metadata_pda(mint: &Pubkey) -> Pubkey {
     pda
 }
 
-pub fn get_metadata_pda(mint: &Pubkey, program: &Program) -> Result<PdaInfo<Metadata>> {
+pub fn get_metadata_pda<C: Deref<Target = impl Signer> + Clone>(
+    mint: &Pubkey,
+    program: &Program<C>,
+) -> Result<PdaInfo<Metadata>> {
     let metadata_pubkey = find_metadata_pda(mint);
     let metadata_account = program.rpc().get_account(&metadata_pubkey).map_err(|_| {
         anyhow!(
@@ -44,9 +52,9 @@ pub fn find_master_edition_pda(mint: &Pubkey) -> Pubkey {
     pda
 }
 
-pub fn get_master_edition_pda(
+pub fn get_master_edition_pda<C: Deref<Target = impl Signer> + Clone>(
     mint: &Pubkey,
-    program: &Program,
+    program: &Program<C>,
 ) -> Result<PdaInfo<MasterEditionV2>> {
     let master_edition_pubkey = find_master_edition_pda(mint);
     let master_edition_account =
