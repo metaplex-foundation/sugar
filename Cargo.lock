@@ -2325,9 +2325,9 @@ dependencies = [
 
 [[package]]
 name = "mpl-candy-guard"
-version = "1.0.3"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1a3270e288bd7c9b55e8a4c44ff1ef45a3b6d23b83278ba3dc95ceaa9471952"
+checksum = "b216d92b0f9c776087e694a2469200ae26db7eda1426a66f9e7aad2d80d4a926"
 dependencies = [
  "anchor-lang",
  "arrayref",
@@ -2339,6 +2339,7 @@ dependencies = [
  "solana-program",
  "spl-associated-token-account",
  "spl-token",
+ "spl-token-2022",
 ]
 
 [[package]]
