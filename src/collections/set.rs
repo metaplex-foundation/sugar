@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{ops::Deref, str::FromStr};
 
 use anchor_client::solana_sdk::{pubkey::Pubkey, system_program};
 use anyhow::Result;
@@ -155,8 +155,8 @@ pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
     Ok(())
 }
 
-pub fn set_collection(
-    program: &Program,
+pub fn set_collection<C: Deref<Target = impl Signer> + Clone>(
+    program: &Program<C>,
     candy_pubkey: &Pubkey,
     candy_machine_state: &CandyMachine,
     new_collection_mint_pubkey: &Pubkey,
