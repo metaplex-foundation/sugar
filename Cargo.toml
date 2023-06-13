@@ -65,6 +65,7 @@ tracing = { version = "0.1.35", features = ["log"] }
 tracing-bunyan-formatter = "0.3.3"
 tracing-subscriber = { version = "0.3.14", features = ["registry", "env-filter"] }
 url = "2.2.2"
+tabled = "0.12.1"
 
 [dev-dependencies.cargo-husky]
 version = "1"
