@@ -64,7 +64,7 @@ jobs:
             cargo clean
           fi
 
-          cargo build --all --release --locked
+          cargo build --all --release
           cp "target/release/sugar${binary_extension}" "${binary_path}"
           strip "${binary_path}"
 
