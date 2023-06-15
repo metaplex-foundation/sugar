@@ -399,5 +399,58 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
         print_with_style(&padding, "freeze token payment", "none".to_string());
     }
 
+    // program gate
+    if let Some(program_gate) = &guard_set.program_gate {
+        print_with_style(&padding, "program gate", EMPTY_STR.to_string());
+        program_gate
+            .additional
+            .iter()
+            .enumerate()
+            .for_each(|(i, p)| {
+                print_with_style(
+                    &format!("{}:   ", padding),
+                    &(i + 1).to_string(),
+                    p.to_string(),
+                );
+            });
+    } else {
+        print_with_style(&padding, "program gate", "none".to_string());
+    }
+
+    // allocation
+    if let Some(allocation) = &guard_set.allocation {
+        print_with_style(&padding, "allocation", EMPTY_STR.to_string());
+        print_with_style(&format!("{}:   ", padding), "id", allocation.id.to_string());
+        print_with_style(
+            &format!("{}:   ", padding),
+            "limit",
+            allocation.limit.to_string(),
+        );
+    } else {
+        print_with_style(&padding, "allocation", "none".to_string());
+    }
+
+    // token2022 payment
+    if let Some(token2022_payment) = &guard_set.token2022_payment {
+        print_with_style(&padding, "token2022 payment", EMPTY_STR.to_string());
+        print_with_style(
+            &format!("{}    ", padding),
+            "amount",
+            token2022_payment.amount.to_string(),
+        );
+        print_with_style(
+            &format!("{}    ", padding),
+            "token mint",
+            token2022_payment.mint.to_string(),
+        );
+        print_with_style(
+            &format!("{}    ", padding),
+            "destination",
+            token2022_payment.destination_ata.to_string(),
+        );
+    } else {
+        print_with_style(&padding, "token2022 payment", "none".to_string());
+    }
+
     Ok(())
 }

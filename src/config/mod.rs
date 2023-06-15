@@ -25,7 +25,7 @@ where
     serializer.collect_str(value)
 }
 
-fn to_pubkey<'de, D>(deserializer: D) -> Result<Pubkey, D::Error>
+pub fn to_pubkey<'de, D>(deserializer: D) -> Result<Pubkey, D::Error>
 where
     D: Deserializer<'de>,
 {
