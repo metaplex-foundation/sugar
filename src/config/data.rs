@@ -77,6 +77,8 @@ pub struct ConfigData {
 
     /// Guards configuration
     pub guards: Option<CandyGuardData>,
+
+    pub max_edition_supply: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
