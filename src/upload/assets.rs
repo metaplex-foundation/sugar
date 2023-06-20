@@ -224,6 +224,9 @@ pub fn get_asset_pairs(assets_dir: &str) -> Result<HashMap<isize, AssetPair>> {
         let metadata: Metadata = serde_json::from_reader(m).map_err(|e| {
             anyhow!("Failed to read metadata file '{metadata_filepath}' with error: {e}")
         })?;
+        if metadata.properties.creators.is_some() {
+            println!("The creators field is deprecated in the JSON metadata, it should be set in the config file instead.")
+        }
         let name = metadata.name.clone();
 
         let img_filepath = Path::new(assets_dir)
@@ -330,6 +333,10 @@ pub fn get_updated_metadata(
             })?;
         serde_json::from_reader(&m)?
     };
+
+    if metadata.properties.creators.is_some() {
+        println!("The creators field is deprecated in the JSON metadata, it should be set in the config file instead.")
+    }
 
     for file in &mut metadata.properties.files {
         if file.uri.eq(&metadata.image) {
