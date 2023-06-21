@@ -146,6 +146,7 @@ case "$Template" in
         devnet_env
         max_settings
         HIDDEN="Y"
+        unset CLOSE
     ;;
     6)
         devnet_env
@@ -646,9 +647,16 @@ if [ $RESUME -eq 0 ]; then
             if [ "$i" -gt "0" ]; then
                 echo -n "," >> $CACHE_FILE
             fi
-            NAME=$(($i + 1))
+            INDEX=$(($i + 1))
+
+            if [ "$HIDDEN" == "Y" ]; then
+                NAME="TEST Hidden Collection #$INDEX"
+            else
+                NAME="[$TIMESTAMP] Test #$NAME"
+            fi
+
             METADATA_HASH=`sha256sum "$ASSETS_DIR/$i.json" | cut -d ' ' -f 1`
-            echo -n "\"$i\":{\"name\":\"[$TIMESTAMP] Test #$NAME\",\"image_hash\":\"$MEDIA_HASH\",\"image_link\":\"$PNG\",\"metadata_hash\":\"$METADATA_HASH\",\"metadata_link\":\"$METADATA_URL\",\"onChain\":false}" >> $CACHE_FILE
+            echo -n "\"$i\":{\"name\":\"$NAME\",\"image_hash\":\"$MEDIA_HASH\",\"image_link\":\"$PNG\",\"metadata_hash\":\"$METADATA_HASH\",\"metadata_link\":\"$METADATA_URL\",\"onChain\":false}" >> $CACHE_FILE
         done
 
         echo -n "}}" >> $CACHE_FILE
@@ -660,7 +668,7 @@ fi
 CONFIG_FILE="config.json"
 
 if [ "$HIDDEN" = "Y" ]; then
-    HIDDEN_SETTINGS="{\"name\":\"TEST Hidden Collection \",\"uri\":\"$METADATA_URL\",\"hash\":\"44kiGWWsSgdqPMvmqYgTS78Mx2BKCWzd\"}"
+    HIDDEN_SETTINGS="{\"name\":\"TEST Hidden Collection #\$ID+1\$\",\"uri\":\"$METADATA_URL\",\"hash\":\"44kiGWWsSgdqPMvmqYgTS78Mx2BKCWzd\"}"
 else
     HIDDEN_SETTINGS="null"
 fi
