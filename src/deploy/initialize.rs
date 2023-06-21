@@ -120,7 +120,7 @@ pub fn create_candy_machine_data(
         items_available: config.number,
         symbol: config.symbol.clone(),
         seller_fee_basis_points: config.seller_fee_basis_points,
-        max_supply: 0,
+        max_supply: config.max_edition_supply.unwrap_or(0),
         is_mutable: config.is_mutable,
         creators,
         config_line_settings,
