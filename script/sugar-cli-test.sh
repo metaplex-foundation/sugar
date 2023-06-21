@@ -650,7 +650,7 @@ if [ $RESUME -eq 0 ]; then
             INDEX=$(($i + 1))
 
             if [ "$HIDDEN" == "Y" ]; then
-                NAME="TEST Hidden Collection #$INDEX"
+                NAME="Reveal Item #$INDEX"
             else
                 NAME="[$TIMESTAMP] Test #$NAME"
             fi
@@ -668,7 +668,7 @@ fi
 CONFIG_FILE="config.json"
 
 if [ "$HIDDEN" = "Y" ]; then
-    HIDDEN_SETTINGS="{\"name\":\"TEST Hidden Collection #\$ID+1\$\",\"uri\":\"$METADATA_URL\",\"hash\":\"44kiGWWsSgdqPMvmqYgTS78Mx2BKCWzd\"}"
+    HIDDEN_SETTINGS="{\"name\":\"Hidden Item #\$ID+1\$\",\"uri\":\"$METADATA_URL\",\"hash\":\"44kiGWWsSgdqPMvmqYgTS78Mx2BKCWzd\"}"
 else
     HIDDEN_SETTINGS="null"
 fi
