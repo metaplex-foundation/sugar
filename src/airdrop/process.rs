@@ -134,7 +134,7 @@ pub async fn process_airdrop(args: AirdropArgs) -> Result<()> {
                 let signatures = results.get_mut(&address).unwrap();
 
                 match &res {
-                    Ok(signature) => {
+                    Ok((signature, _)) => {
                         signatures.push(TransactionResult {
                             signature: signature.to_string(),
                             status: true,

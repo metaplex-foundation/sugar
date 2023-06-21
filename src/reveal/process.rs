@@ -69,11 +69,9 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
     let config = get_config_data(&args.config)?;
 
     // If it's not a Hidden Settings mint, return an error.
-    let _hidden_settings = if let Some(hidden_settings) = config.hidden_settings {
-        hidden_settings
-    } else {
+    if config.hidden_settings.is_none() {
         return Err(anyhow!("Candy machine is not a Hidden Settings mint."));
-    };
+    }
 
     let cache = load_cache(&args.cache, false)?;
     let sugar_config = sugar_setup(args.keypair, args.rpc_url.clone())?;
@@ -179,29 +177,12 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
         .map(|d| Metadata::deserialize(&mut d.as_slice()).unwrap())
         .collect();
 
-    let pattern = regex::Regex::new(r"#([0-9]+)").expect("Failed to create regex pattern.");
-
-    // Convert cache to make keys match NFT numbers.
-    let mut nft_lookup = HashMap::<String, CacheItem>::new();
-    for (k, v) in cache.items.iter() {
-        // Skip collection index.
-        if k == "-1" {
-            continue;
-        }
-
-        // Get NFT number.
-        let capture = pattern
-            .captures(&v.name)
-            .map(|c| c[0].to_string())
-            .ok_or_else(|| anyhow!("No captures found for {}", v.name))?;
-        let num = capture
-            .split('#')
-            .nth(1)
-            .ok_or_else(|| anyhow!("No NFT number found for name: {}", v.name))?
-            .to_string();
-
-        nft_lookup.insert(num, v.clone());
-    }
+    // Convert cache into a HashMap with the name as the key for easy lookup.
+    let nft_lookup = cache
+        .items
+        .iter()
+        .map(|(_, item)| (item.name.clone(), item))
+        .collect::<HashMap<String, &CacheItem>>();
 
     spinner.finish_with_message("Done");
 
@@ -217,19 +198,11 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
     spinner.set_message("Setting up transactions...");
     for m in metadata {
         let name = m.data.name.trim_matches(char::from(0)).to_string();
-        let capture = pattern
-            .captures(&name)
-            .map(|c| c[0].to_string())
-            .ok_or_else(|| anyhow!("No captures found for {name}"))?;
-        let num = capture
-            .split('#')
-            .nth(1)
-            .ok_or_else(|| anyhow!("No NFT number found for name: {name}"))?;
 
         let metadata_pubkey = find_metadata_pda(&m.mint);
         let new_uri = nft_lookup
-            .get(num)
-            .ok_or_else(|| anyhow!("No URI found for number: {num}"))?
+            .get(name.as_str())
+            .ok_or_else(|| anyhow!("No URI found for number: {name}"))?
             .metadata_link
             .clone();
         update_values.push(MetadataUpdateValues {
