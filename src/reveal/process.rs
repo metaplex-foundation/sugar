@@ -123,8 +123,7 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
                 }),
             );
             let (creator, _) = find_candy_machine_creator_pda(&candy_machine_id);
-            let creator = bs58::encode(creator).into_string();
-            get_cm_creator_metadata_accounts(&client, &creator, 0)?
+            get_cm_creator_metadata_accounts(&client, &creator.to_string(), 0)?
         }
         _ => {
             return Err(anyhow!(
@@ -180,13 +179,29 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
         .map(|d| Metadata::deserialize(&mut d.as_slice()).unwrap())
         .collect();
 
+    let pattern = regex::Regex::new(r"#([0-9]+)").expect("Failed to create regex pattern.");
+
     // Convert cache to make keys match NFT numbers.
-    let nft_lookup: HashMap<String, &CacheItem> = cache
-        .items
-        .iter()
-        .filter(|(k, _)| *k != "-1") // skip collection index
-        .map(|(k, item)| (increment_key(k), item))
-        .collect();
+    let mut nft_lookup = HashMap::<String, CacheItem>::new();
+    for (k, v) in cache.items.iter() {
+        // Skip collection index.
+        if k == "-1" {
+            continue;
+        }
+
+        // Get NFT number.
+        let capture = pattern
+            .captures(&v.name)
+            .map(|c| c[0].to_string())
+            .ok_or_else(|| anyhow!("No captures found for {}", v.name))?;
+        let num = capture
+            .split('#')
+            .nth(1)
+            .ok_or_else(|| anyhow!("No NFT number found for name: {}", v.name))?
+            .to_string();
+
+        nft_lookup.insert(num, v.clone());
+    }
 
     spinner.finish_with_message("Done");
 
@@ -197,8 +212,6 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
         style("[4/4]").bold().dim(),
         UPLOAD_EMOJI
     );
-
-    let pattern = regex::Regex::new(r"#([0-9]+)").expect("Failed to create regex pattern.");
 
     let spinner = spinner_with_style();
     spinner.set_message("Setting up transactions...");
@@ -338,11 +351,4 @@ async fn update_metadata_value(
     }
 
     Ok(())
-}
-
-fn increment_key(key: &str) -> String {
-    (key.parse::<u32>()
-        .expect("Key parsing out of bounds for u32.")
-        + 1)
-    .to_string()
 }

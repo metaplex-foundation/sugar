@@ -15,7 +15,7 @@ use console::{style, Style};
 use dialoguer::theme::ColorfulTheme;
 pub use indicatif::{ProgressBar, ProgressStyle};
 use mpl_token_metadata::ID as TOKEN_METADATA_PROGRAM_ID;
-use solana_account_decoder::UiAccountEncoding;
+use solana_account_decoder::{UiAccountEncoding, UiDataSliceConfig};
 use solana_client::{
     rpc_client::RpcClient,
     rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
@@ -201,10 +201,10 @@ fn get_cm_creator_accounts(
         error!("CM Creator position cannot be greator than 4");
         std::process::exit(1);
     }
+    let creator = Pubkey::from_str(creator)?;
 
-    let config = RpcProgramAccountsConfig {
-        filters: Some(vec![RpcFilterType::Memcmp(Memcmp::new_base58_encoded(
-            1 +  // key
+    let creator_filter = RpcFilterType::Memcmp(Memcmp::new_base58_encoded(
+        1 +  // key
             32 + // update auth
             32 + // mint
             4 +  // name string length
@@ -222,11 +222,20 @@ fn get_cm_creator_accounts(
                 1 + // verified
                 1 // share
             ),
-            creator.as_ref(),
-        ))]),
+        creator.as_ref(),
+    ));
+
+    // We only need the pubkeys, not the actual account data.
+    let data_slice = Some(UiDataSliceConfig {
+        offset: 0,
+        length: 0,
+    });
+
+    let config = RpcProgramAccountsConfig {
+        filters: Some(vec![creator_filter]),
         account_config: RpcAccountInfoConfig {
             encoding: Some(UiAccountEncoding::Base64),
-            data_slice: None,
+            data_slice,
             commitment: Some(CommitmentConfig {
                 commitment: CommitmentLevel::Confirmed,
             }),
