@@ -202,7 +202,7 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
         let metadata_pubkey = find_metadata_pda(&m.mint);
         let new_uri = nft_lookup
             .get(name.as_str())
-            .ok_or_else(|| anyhow!("No URI found for number: {name}"))?
+            .ok_or_else(|| anyhow!("No URI found for name: {name}"))?
             .metadata_link
             .clone();
         update_values.push(MetadataUpdateValues {
