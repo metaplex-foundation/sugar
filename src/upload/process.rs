@@ -84,6 +84,10 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
             serde_json::from_reader(&m)?
         };
 
+        if m.properties.creators.is_some() {
+            println!("The creators field is deprecated in the JSON metadata, it should be set in the config file instead.")
+        }
+
         // retrieve the existing image uri from the metadata
         let existing_image = if is_complete_uri(&m.image) {
             m.image.clone()
