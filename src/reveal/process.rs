@@ -39,6 +39,8 @@ pub struct MetadataUpdateValues {
     pub metadata_pubkey: Pubkey,
     pub metadata: Metadata,
     pub new_uri: String,
+    pub new_name: String,
+    pub index: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -69,9 +71,11 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
     let config = get_config_data(&args.config)?;
 
     // If it's not a Hidden Settings mint, return an error.
-    if config.hidden_settings.is_none() {
+    let hidden_settings = if let Some(settings) = config.hidden_settings {
+        settings
+    } else {
         return Err(anyhow!("Candy machine is not a Hidden Settings mint."));
-    }
+    };
 
     let cache = load_cache(&args.cache, false)?;
     let sugar_config = sugar_setup(args.keypair, args.rpc_url.clone())?;
@@ -177,12 +181,28 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
         .map(|d| Metadata::deserialize(&mut d.as_slice()).unwrap())
         .collect();
 
-    // Convert cache into a HashMap with the name as the key for easy lookup.
-    let nft_lookup = cache
+    let patterns: Vec<&str> = hidden_settings.name.split('$').collect();
+    let index_pattern = patterns
+        .get(1)
+        .expect("No name pattern set in hidden settings.");
+
+    // Parse the pattern in the hidden settings name to see if NFT numbers are zero or one indexed.
+    let index = match *index_pattern {
+        "ID" => 0,
+        "ID+1" => 1,
+        _ => panic!("Invalid name pattern set in hidden settings."),
+    };
+
+    // Convert cache to make keys match NFT numbers.
+    let nft_lookup: HashMap<String, &CacheItem> = cache
         .items
         .iter()
-        .map(|(_, item)| (item.name.clone(), item))
-        .collect::<HashMap<String, &CacheItem>>();
+        .filter(|(k, _)| *k != "-1") // skip collection index
+        .filter(|(_, i)| !i.on_chain) // skip already revealed items
+        .map(|(k, item)| (increment_key(k, index), item)) // Use the index pattern to increment the key.
+        .collect();
+
+    serde_json::to_writer_pretty(File::create("temp.json")?, &nft_lookup)?;
 
     spinner.finish_with_message("Done");
 
@@ -194,21 +214,56 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
         UPLOAD_EMOJI
     );
 
+    let name_prefix_pattern = patterns.first().unwrap_or(&"");
+    let name_suffix_pattern = patterns.get(2).unwrap_or(&"");
+
+    let pattern = regex::Regex::new(&format!(
+        "{}([0-9]+){}",
+        name_prefix_pattern, name_suffix_pattern
+    ))
+    .expect("Failed to create regex pattern.");
+
     let spinner = spinner_with_style();
     spinner.set_message("Setting up transactions...");
     for m in metadata {
         let name = m.data.name.trim_matches(char::from(0)).to_string();
+        let num = match pattern.captures(&name).map(|c| c[1].to_string()) {
+            Some(num) => num,
+            None => {
+                println!(
+                    "{}",
+                    &format!(
+                        "{}{}{}",
+                        style("Failed to parse name: ").yellow().bold(),
+                        name,
+                        style("\nIt may have already been updated").yellow().bold(),
+                    )
+                );
+                println!();
+                continue;
+            }
+        };
 
         let metadata_pubkey = find_metadata_pda(&m.mint);
         let new_uri = nft_lookup
-            .get(name.as_str())
-            .ok_or_else(|| anyhow!("No URI found for name: {name}"))?
+            .get(&num)
+            .filter(|i| !i.on_chain)
+            .ok_or_else(|| anyhow!("No URI found for number: {num}"))?
             .metadata_link
             .clone();
+        let new_name = nft_lookup
+            .get(&num)
+            .filter(|i| !i.on_chain)
+            .ok_or_else(|| anyhow!("No name found for number: {num}"))?
+            .name
+            .clone();
+
         update_values.push(MetadataUpdateValues {
             metadata_pubkey,
             metadata: m,
             new_uri,
+            new_name,
+            index: num,
         });
     }
     spinner.finish_and_clear();
@@ -221,12 +276,17 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
     let pb = progress_bar_with_style(metadata_pubkeys.len() as u64);
     pb.set_message("Updating NFTs... ");
 
+    let cache = Arc::new(Mutex::new(cache));
+
     for item in update_values {
         let permit = Arc::clone(&sem).acquire_owned().await.unwrap();
         let client = client.clone();
         let keypair = keypair.clone();
         let reveal_results = reveal_results.clone();
         let pb = pb.clone();
+
+        let cache = cache.clone();
+        let index = item.index.clone();
 
         tx_tasks.push(tokio::spawn(async move {
             // Move permit into the closure so it is dropped when the task is dropped.
@@ -238,7 +298,12 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
             };
 
             match update_metadata_value(client, keypair, item).await {
-                Ok(_) => reveal_results.lock().unwrap().push(tx),
+                Ok(_) => {
+                    let mut cache_mutex = cache.lock().unwrap();
+                    let v = cache_mutex.items.get_mut(&index).unwrap();
+                    v.on_chain = true;
+                    reveal_results.lock().unwrap().push(tx);
+                }
                 Err(e) => {
                     tx.result = RevealResult::Failure(e.to_string());
                     reveal_results.lock().unwrap().push(tx);
@@ -291,6 +356,7 @@ async fn update_metadata_value(
     let mut data = value.metadata.data;
     if data.uri.trim_matches(char::from(0)) != value.new_uri.trim_matches(char::from(0)) {
         data.uri = value.new_uri;
+        data.name = value.new_name;
 
         let data_v2 = DataV2 {
             name: data.name,
@@ -324,4 +390,11 @@ async fn update_metadata_value(
     }
 
     Ok(())
+}
+
+fn increment_key(key: &str, index: u32) -> String {
+    (key.parse::<u32>()
+        .expect("Key parsing out of bounds for u32.")
+        + index)
+        .to_string()
 }
