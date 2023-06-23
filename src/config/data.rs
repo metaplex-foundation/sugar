@@ -190,9 +190,9 @@ where
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HiddenSettings {
-    name: String,
-    uri: String,
-    hash: String,
+    pub name: String,
+    pub uri: String,
+    pub hash: String,
 }
 
 impl HiddenSettings {

@@ -125,8 +125,9 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
         )
         .await
         {
-            Ok(signature) => {
-                println!("Signature: {}", signature);
+            Ok((signature, mint)) => {
+                println!("Mint: {mint}");
+                println!("Signature: {signature}");
                 format!("{}", style("Mint success").bold())
             }
             Err(err) => {
@@ -203,7 +204,7 @@ pub async fn mint(
     candy_machine_state: Arc<CandyMachine>,
     collection_update_authority: Pubkey,
     receiver: Pubkey,
-) -> Result<Signature> {
+) -> Result<(Signature, Pubkey)> {
     let client = setup_client(&config)?;
     let program = client.program(CANDY_MACHINE_ID);
     let payer = program.payer();
@@ -319,5 +320,5 @@ pub async fn mint(
 
     info!("Minted! TxId: {}", sig);
 
-    Ok(sig)
+    Ok((sig, nft_mint.pubkey()))
 }
