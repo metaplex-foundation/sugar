@@ -652,7 +652,7 @@ if [ $RESUME -eq 0 ]; then
             if [ "$HIDDEN" == "Y" ]; then
                 NAME="Reveal Item #$INDEX"
             else
-                NAME="[$TIMESTAMP] Test #$NAME"
+                NAME="[$TIMESTAMP] Test #$INDEX"
             fi
 
             METADATA_HASH=`sha256sum "$ASSETS_DIR/$i.json" | cut -d ' ' -f 1`
