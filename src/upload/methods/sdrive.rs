@@ -10,7 +10,6 @@ use crate::{
     upload::{
         assets::{AssetPair, DataType},
         uploader::{AssetInfo, ParallelUploader, Prepare},
-        UploadError,
     },
 };
 
