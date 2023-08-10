@@ -10,6 +10,7 @@ use crate::{
     upload::{
         assets::{AssetPair, DataType},
         uploader::{AssetInfo, ParallelUploader, Prepare},
+        UploadError,
     },
 };
 
@@ -73,17 +74,22 @@ impl SdriveMethod {
                         if upload_response.status == "success" {
                             return Ok((asset_info.asset_id.clone(), upload_response.permalink));
                         }
+                    } else {
+                        return Err(anyhow!(UploadError::SendDataFailed(format!(
+                            "Error uploading file ({}): {}",
+                            resp.status(),
+                            resp.text().await?,
+                        ))));
                     }
                 }
                 Err(_) => {
+                    retries += 1;
                     if retries >= MAX_RETRY {
-                        break;
+                        return Err(anyhow::anyhow!("Failed to upload to SDrive."));
                     }
                 }
             }
-            retries += 1;
         }
-        Err(anyhow::anyhow!("Failed to upload to SDrive."))
     }
 }
 
