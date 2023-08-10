@@ -61,6 +61,9 @@ pub struct ConfigData {
     // AWS specific configuration
     pub aws_config: Option<AwsConfig>,
 
+    // SDRIVE specific configuration
+    pub sdrive_apikey: Option<String>,
+
     // NFT.Storage specific configuration
     #[serde(serialize_with = "to_option_string")]
     pub nft_storage_auth_token: Option<String>,
@@ -222,6 +225,8 @@ pub enum UploadMethod {
     #[serde(rename = "shdw")]
     SHDW,
     Pinata,
+    #[serde(rename = "sdrive")]
+    Sdrive,
 }
 
 impl Display for UploadMethod {

@@ -289,5 +289,8 @@ pub async fn initialize(
         UploadMethod::Pinata => {
             Box::new(pinata::PinataMethod::new(config_data).await?) as Box<dyn Uploader>
         }
+        UploadMethod::Sdrive => {
+            Box::new(sdrive::SdriveMethod::new(config_data).await?) as Box<dyn Uploader>
+        }
     })
 }
