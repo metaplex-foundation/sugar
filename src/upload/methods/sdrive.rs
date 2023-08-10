@@ -10,6 +10,7 @@ use crate::{
     upload::{
         assets::{AssetPair, DataType},
         uploader::{AssetInfo, ParallelUploader, Prepare},
+        UploadError,
     },
 };
 
@@ -75,11 +76,11 @@ impl SdriveMethod {
                         }
                     }
                 }
-                Err(_) => {} // Handle any error during sending
-            }
-
-            if retries >= MAX_RETRY {
-                break;
+                Err(_) => {
+                    if retries >= MAX_RETRY {
+                        break;
+                    }
+                }
             }
             retries += 1;
         }
