@@ -63,6 +63,7 @@ function default_settings() {
     PINATA_API_GATEWAY="null"
     PINATA_CONTENT_GATEWAY="null"
     PINATA_PARALLEL=1
+    SDRIVE_API_KEY="null"
 }
 
 function max_settings() {
@@ -88,11 +89,12 @@ function max_settings() {
     PINATA_API_GATEWAY="null"
     PINATA_CONTENT_GATEWAY="null"
     PINATA_PARALLEL=1
+    SDRIVE_API_KEY="null"
 }
 
 function mainnet_env() {
     ENV_URL="mainnet-beta"
-    RPC="https://ssc-dao.genesysgo.net"
+    RPC="https://api.mainnet-beta.solana.com"
 }
 
 function devnet_env() {
@@ -218,7 +220,8 @@ if [ -z ${STORAGE+x} ]; then
     echo "3. nft_storage"
     echo "4. shdw"
     echo "5. pinata"
-    echo  -n "$(CYN "Select the storage type [1-5]") (default 1): "
+    echo "6. sdrive"
+    echo  -n "$(CYN "Select the storage type [1-6]") (default 1): "
     read Input
     case "$Input" in
         1) STORAGE="bundlr" ;;
@@ -226,6 +229,7 @@ if [ -z ${STORAGE+x} ]; then
         3) STORAGE="nft_storage" ;;
         4) STORAGE="shdw" ;;
         5) STORAGE="pinata" ;;
+        6) STORAGE="sdrive" ;;
     esac
 fi
 
@@ -280,6 +284,7 @@ if [ -z ${AWS_DOMAIN+x} ]; then
     fi
 fi
 
+# nft.storage
 if [ -z ${NFT_STORAGE_TOKEN+x} ]; then
     NFT_STORAGE_TOKEN="null"
 
@@ -342,6 +347,16 @@ if [ -z ${PINATA_PARALLEL+x} ]; then
         if [ ! -z "$Parallel" ]; then
             PINATA_PARALLEL=$(($Parallel + 0))
         fi
+    fi
+fi
+
+# sdrive
+if [ -z ${SDRIVE_API_KEY+x} ]; then
+    SDRIVE_API_KEY="null"
+
+    if [ "$STORAGE" = "sdrive" ]; then
+        echo -n $(CYN "Sdrive API key: ")
+        read SDRIVE_API_KEY
     fi
 fi
 
@@ -709,6 +724,7 @@ cat >$CONFIG_FILE <<-EOM
         "contentGateway": "${PINATA_CONTENT_GATEWAY}",
         "parallelLimit": ${PINATA_PARALLEL}
     },
+    "sdriveApiKey": "${SDRIVE_API_KEY}",
     "hiddenSettings": $HIDDEN_SETTINGS
 }
 EOM
@@ -741,6 +757,7 @@ PINATA_JWT="$PINATA_JWT"
 PINATA_API_GATEWAY="$PINATA_API_GATEWAY"
 PINATA_CONTENT_GATEWAY="$PINATA_CONTENT_GATEWAY"
 PINATA_PARALLEL=$PINATA_PARALLEL
+SDRIVE_API_KEY="$SDRIVE_API_KEY"
 
 ENV_URL="$ENV_URL"
 RPC="$RPC"

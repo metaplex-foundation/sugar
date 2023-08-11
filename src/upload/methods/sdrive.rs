@@ -16,7 +16,7 @@ use crate::{
 
 // Maximum number of times to retry each individual upload.
 const MAX_RETRY: usize = 3;
-// Base URL for the SDrive API.
+// Base URL for the Sdrive API.
 const BASE_URL: &str = "https://sdrive.app/api/v3";
 
 #[derive(Deserialize)]
@@ -31,12 +31,12 @@ pub struct SdriveMethod {
 
 impl SdriveMethod {
     pub async fn new(config_data: &ConfigData) -> Result<Self> {
-        if let Some(config) = &config_data.sdrive_apikey {
+        if let Some(config) = &config_data.sdrive_api_key {
             Ok(Self {
                 config: Arc::new(config.clone()),
             })
         } else {
-            Err(anyhow!("Missing SDrive values in config file."))
+            Err(anyhow!("Missing Sdrive values in config file."))
         }
     }
 
@@ -85,7 +85,7 @@ impl SdriveMethod {
                 Err(_) => {
                     retries += 1;
                     if retries >= MAX_RETRY {
-                        return Err(anyhow::anyhow!("Failed to upload to SDrive."));
+                        return Err(anyhow::anyhow!("Failed to upload to Sdrive."));
                     }
                 }
             }
