@@ -309,7 +309,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     };
 
     // upload method
-    let upload_options = vec!["Bundlr", "AWS", "NFT Storage", "SHDW", "Pinata"];
+    let upload_options = vec!["Bundlr", "AWS", "NFT Storage", "SHDW", "Pinata", "SDrive"];
     config_data.upload_method = match Select::with_theme(&theme)
         .with_prompt("What upload method do you want to use?")
         .items(&upload_options)
@@ -322,6 +322,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         2 => UploadMethod::NftStorage,
         3 => UploadMethod::SHDW,
         4 => UploadMethod::Pinata,
+        5 => UploadMethod::Sdrive,
         _ => UploadMethod::Bundlr,
     };
 
@@ -365,6 +366,15 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         config_data.nft_storage_auth_token = Some(
             Input::with_theme(&theme)
                 .with_prompt("What is the NFT Storage authentication token?")
+                .interact()
+                .unwrap(),
+        );
+    }
+
+    if config_data.upload_method == UploadMethod::Sdrive {
+        config_data.sdrive_apikey = Some(
+            Input::with_theme(&theme)
+                .with_prompt("What is your Sdrive API Key?")
                 .interact()
                 .unwrap(),
         );
