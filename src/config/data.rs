@@ -62,7 +62,8 @@ pub struct ConfigData {
     pub aws_config: Option<AwsConfig>,
 
     // SDRIVE specific configuration
-    pub sdrive_apikey: Option<String>,
+    #[serde(serialize_with = "to_option_string")]
+    pub sdrive_api_key: Option<String>,
 
     // NFT.Storage specific configuration
     #[serde(serialize_with = "to_option_string")]

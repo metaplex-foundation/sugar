@@ -372,9 +372,9 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     }
 
     if config_data.upload_method == UploadMethod::Sdrive {
-        config_data.sdrive_apikey = Some(
+        config_data.sdrive_api_key = Some(
             Input::with_theme(&theme)
-                .with_prompt("What is your Sdrive API Key?")
+                .with_prompt("What is your Sdrive API key?")
                 .interact()
                 .unwrap(),
         );
