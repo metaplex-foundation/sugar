@@ -84,7 +84,7 @@ pub fn process_withdraw(args: WithdrawArgs) -> Result<()> {
         None => {
             let config = RpcProgramAccountsConfig {
                 filters: Some(vec![RpcFilterType::Memcmp(Memcmp::new_base58_encoded(
-                    8, // key
+                    16, // key
                     payer.as_ref(),
                 ))]),
                 account_config: RpcAccountInfoConfig {
