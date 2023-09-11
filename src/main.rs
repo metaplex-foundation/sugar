@@ -503,11 +503,13 @@ async fn run() -> Result<()> {
             keypair,
             rpc_url,
             list,
+            authority,
         } => process_withdraw(WithdrawArgs {
             candy_machine,
             keypair,
             rpc_url,
             list,
+            authority,
         })?,
         Commands::Sign {
             keypair,
