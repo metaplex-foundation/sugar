@@ -220,7 +220,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         .validate_with(number_validator)
         .validate_with({
             |input: &String| match input.parse::<u8>().unwrap() {
-                1 | 2 | 3 | 4 => Ok(()),
+                1..=4 => Ok(()),
                 _ => Err("Number of creator wallets must be between 1 and 4, inclusive."),
             }
         })

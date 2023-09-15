@@ -33,6 +33,7 @@ pub struct WithdrawArgs {
     pub keypair: Option<String>,
     pub rpc_url: Option<String>,
     pub list: bool,
+    pub authority: Option<String>,
 }
 
 #[derive(Debug)]
@@ -53,20 +54,24 @@ pub fn process_withdraw(args: WithdrawArgs) -> Result<()> {
     let pb = spinner_with_style();
     pb.set_message("Connecting...");
 
-    let (program, payer) = setup_withdraw(args.keypair, args.rpc_url)?;
+    let (program, payer, authority) = setup_withdraw(args.keypair, args.rpc_url, args.authority)?;
 
     pb.finish_with_message("Connected");
+
+    // if --authority is specified and it does not match the keypair,
+    // then we cannot withdraw
+    let list = args.list || (payer != authority);
 
     println!(
         "\n{} {}{} funds",
         style("[2/2]").bold().dim(),
         WITHDRAW_EMOJI,
-        if args.list { "Listing" } else { "Retrieving" }
+        if list { "Listing" } else { "Retrieving" }
     );
 
     // the --list flag takes precedence; even if a candy machine id is passed
     // as an argument, we will list the candy machines (no draining happens)
-    let candy_machine = if args.list { None } else { args.candy_machine };
+    let candy_machine = if list { None } else { args.candy_machine };
 
     // (2) Retrieving data for listing/draining
 
@@ -84,8 +89,8 @@ pub fn process_withdraw(args: WithdrawArgs) -> Result<()> {
         None => {
             let config = RpcProgramAccountsConfig {
                 filters: Some(vec![RpcFilterType::Memcmp(Memcmp::new_base58_encoded(
-                    8, // key
-                    payer.as_ref(),
+                    16, // key
+                    authority.as_ref(),
                 ))]),
                 account_config: RpcAccountInfoConfig {
                     encoding: Some(UiAccountEncoding::Base64),
@@ -122,7 +127,7 @@ pub fn process_withdraw(args: WithdrawArgs) -> Result<()> {
             );
 
             if !accounts.is_empty() {
-                if args.list {
+                if list {
                     println!("\n{:48} Balance", "Candy Machine ID");
                     println!("{:-<61}", "-");
 
@@ -207,13 +212,19 @@ pub fn process_withdraw(args: WithdrawArgs) -> Result<()> {
 fn setup_withdraw(
     keypair: Option<String>,
     rpc_url: Option<String>,
-) -> Result<(Program<Rc<Keypair>>, Pubkey)> {
+    authority_opt: Option<String>,
+) -> Result<(Program<Rc<Keypair>>, Pubkey, Pubkey)> {
     let sugar_config = sugar_setup(keypair, rpc_url)?;
     let client = setup_client(&sugar_config)?;
     let program = client.program(CANDY_MACHINE_ID);
     let payer = program.payer();
+    let authority = if let Some(authority_str) = authority_opt {
+        Pubkey::from_str(&authority_str)?
+    } else {
+        payer
+    };
 
-    Ok((program, payer))
+    Ok((program, payer, authority))
 }
 
 fn do_withdraw<C: Deref<Target = impl Signer> + Clone>(

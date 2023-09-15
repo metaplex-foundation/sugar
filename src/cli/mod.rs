@@ -315,6 +315,12 @@ pub enum Commands {
         /// List available candy machines, no withdraw performed
         #[clap(long)]
         list: bool,
+
+        /// Address of authority to find candy machines for.
+        /// If authority != keypair.pubkey then force --list.
+        /// Defaults to keypair.pubkey.
+        #[clap(long)]
+        authority: Option<String>,
     },
 }
 
