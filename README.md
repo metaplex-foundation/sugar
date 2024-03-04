@@ -12,13 +12,13 @@
   <img src="animation.gif">
 </p>
 
-Sugar is an alternative to the current [Metaplex Candy Machine](https://docs.metaplex.com/programs/candy-machine/overview) CLI. It has been written from the ground up and includes several improvements:
+Sugar is an alternative to the current [Metaplex Candy Machine](https://developers.metaplex.com/candy-machine) CLI. It has been written from the ground up and includes several improvements:
 
 - better performance for upload of media/metadata files and deploy of the candy machine &mdash; these operations take advantage of multithreaded systems to significantly speed up the computational time needed;
 - simplified build and installation procedures taking advantage of `cargo` package management, including a binary distributable package ready to use;
 - robust error handling and validation of inputs, including improvements to config and cache files, leading to more informative error messages.
 
-See [the docs](https://docs.metaplex.com/tools/sugar/introduction) for full installation and usage instructions.
+See [the docs](https://developers.metaplex.com/candy-machine/sugar) for full installation and usage instructions.
 
 ## Installation
 
@@ -32,7 +32,7 @@ bash <(curl -sSf https://raw.githubusercontent.com/metaplex-foundation/sugar/mai
 
 For Windows:
 
-Download [this installer binary](https://github.com/metaplex-foundation/winstaller/releases/latest/download/winstaller.exe) and execute it. Since it is not a verified Windows binary you may have to choose "Run Anyway" from "More Info" on the pop-up Windows dialog. 
+Download [this installer binary](https://github.com/metaplex-foundation/winstaller/releases/latest/download/winstaller.exe) and execute it. Since it is not a verified Windows binary you may have to choose "Run Anyway" from "More Info" on the pop-up Windows dialog.
 
 > **Dependencies:**
 > When installing on Ubuntu or WSL (Windows Subsystem Linux), you may need to install some additional dependencies:
@@ -68,9 +68,9 @@ Set up your Solana CLI config with an RPC url and a keypair:
 solana config set --url <rpc url> --keypair <path to keypair file>
 ```
 
-Sugar will then use these settings by default if you don't specify them as CLI options, allowing commands to be much simpler. If you need help setting up Solana CLI and creating a `devnet` wallet, check the [Candy Machine v2 documentation](http://docs.metaplex.com/candy-machine-v2/getting-started#solana-wallet).
+Sugar will then use these settings by default if you don't specify them as CLI options, allowing commands to be much simpler.
 
-Create a folder named `assets` to store your json and media file pairs with the naming convention 0.json, 0.<ext>, 1.json, 1.<ext>, etc., where the extension is `.png`, `.jpg`, etc. This is the same format described in the [Candy Machine v2 documentation](http://docs.metaplex.com/candy-machine-v2/preparing-assets).
+Create a folder named `assets` to store your json and media file pairs with the naming convention 0.json, 0.<ext>, 1.json, 1.<ext>, etc., where the extension is `.png`, `.jpg`, etc. This is the same format described in the [Candy Machine v2 documentation](https://developers.metaplex.com/candy-machine/sugar/getting-started#preparing-your-files).
 
 You can then use the `launch` command to start an interactive process to create your config file and deploy a Candy Machine to Solana:
 
