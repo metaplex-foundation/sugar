@@ -5,7 +5,7 @@ edition = "2021"
 description = "Command line tool for creating and managing Metaplex Candy Machines."
 license = "Apache-2.0"
 repository = "https://github.com/metaplex-foundation/sugar"
-documentation = "https://docs.metaplex.com/sugar/introduction"
+documentation = "https://developers.metaplex.com/candy-machine/sugar"
 
 [[bin]]
 name = "sugar"
