@@ -161,11 +161,11 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
         } else {
             style(config_line_settings.prefix_name.as_str())
         };
-        print_with_style("    ", "prefix_name", &prefix_name.to_string());
+        print_with_style("    ", "prefix_name", prefix_name.to_string());
         print_with_style(
             "    ",
             "name_length",
-            &config_line_settings.name_length.to_string(),
+            config_line_settings.name_length.to_string(),
         );
 
         let prefix_uri = if config_line_settings.prefix_uri.is_empty() {
@@ -173,11 +173,11 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
         } else {
             style(config_line_settings.prefix_uri.as_str())
         };
-        print_with_style("    ", "prefix_uri", &prefix_uri.to_string());
+        print_with_style("    ", "prefix_uri", prefix_uri.to_string());
         print_with_style(
             "    ",
             "uri_length",
-            &config_line_settings.uri_length.to_string(),
+            config_line_settings.uri_length.to_string(),
         );
         print_with_style(
             "    ",
