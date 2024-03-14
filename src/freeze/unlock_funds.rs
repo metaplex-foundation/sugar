@@ -1,3 +1,4 @@
+use anchor_client::solana_sdk::compute_budget::ComputeBudgetInstruction;
 use mpl_candy_guard::{
     accounts::Route as RouteAccount, guards::FreezeInstruction, instruction::Route,
     instructions::RouteArgs, state::GuardType,
@@ -197,8 +198,13 @@ pub fn unlock_funds<C: Deref<Target = impl Signer> + Clone>(
         _ => return Err(anyhow!("Invalid freeze guard type: {freeze_guard:?}")),
     };
 
+    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+
     let builder = program
         .request()
+        .instruction(compute_units)
+        .instruction(priority_fee)
         .accounts(RouteAccount {
             candy_guard: *candy_guard_id,
             candy_machine: *candy_machine_id,

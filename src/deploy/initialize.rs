@@ -1,6 +1,7 @@
 use std::ops::Deref;
 
 use anchor_client::solana_sdk::{
+    compute_budget::ComputeBudgetInstruction,
     pubkey::Pubkey,
     signature::{Keypair, Signature, Signer},
     system_instruction, system_program,
@@ -176,8 +177,13 @@ pub fn initialize_candy_machine<C: Deref<Target = impl Signer> + Clone>(
         &authority_pda,
     );
 
+    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+
     let tx = program
         .request()
+        .instruction(compute_units)
+        .instruction(priority_fee)
         .instruction(system_instruction::create_account(
             &payer,
             &candy_account.pubkey(),

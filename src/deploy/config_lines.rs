@@ -6,7 +6,9 @@ use std::{
     },
 };
 
-use anchor_client::solana_sdk::{pubkey::Pubkey, signature::Keypair};
+use anchor_client::solana_sdk::{
+    compute_budget::ComputeBudgetInstruction, pubkey::Pubkey, signature::Keypair,
+};
 use anyhow::Result;
 use console::style;
 use futures::future::select_all;
@@ -220,6 +222,7 @@ pub async fn add_config_lines(config: Arc<SugarConfig>, tx_info: TxInfo) -> Resu
 
     // this will be used to update the cache
     let mut indices: Vec<u32> = Vec::new();
+
     // configLine does not implement clone, so we have to do this
     let mut config_lines: Vec<ConfigLine> = Vec::new();
     // start index
@@ -230,8 +233,13 @@ pub async fn add_config_lines(config: Arc<SugarConfig>, tx_info: TxInfo) -> Resu
         config_lines.push(line);
     }
 
+    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(500);
+
     let _sig = program
         .request()
+        .instruction(compute_units)
+        .instruction(priority_fee)
         .accounts(nft_accounts::AddConfigLines {
             candy_machine: tx_info.candy_pubkey,
             authority: program.payer(),

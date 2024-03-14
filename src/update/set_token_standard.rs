@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use anchor_client::solana_sdk::pubkey::Pubkey;
+use anchor_client::solana_sdk::{compute_budget::ComputeBudgetInstruction, pubkey::Pubkey};
 use anyhow::Result;
 use console::style;
 use mpl_candy_machine_core::{accounts::SetTokenStandard, AccountVersion};
@@ -118,8 +118,13 @@ pub fn process_set_token_stardard(args: SetTokenStandardArgs) -> Result<()> {
 
     let payer = sugar_config.keypair;
 
+    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+
     let tx = program
         .request()
+        .instruction(compute_units)
+        .instruction(priority_fee)
         .accounts(SetTokenStandard {
             candy_machine: candy_machine_id,
             authority_pda,

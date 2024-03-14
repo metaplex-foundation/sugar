@@ -3,6 +3,7 @@ use std::{ops::Deref, rc::Rc, str::FromStr};
 pub use anchor_client::{
     solana_sdk::{
         commitment_config::{CommitmentConfig, CommitmentLevel},
+        compute_budget::ComputeBudgetInstruction,
         native_token::LAMPORTS_PER_SOL,
         pubkey::Pubkey,
         signature::{Keypair, Signature, Signer},
@@ -232,8 +233,12 @@ fn do_withdraw<C: Deref<Target = impl Signer> + Clone>(
     candy_machine: Pubkey,
     payer: Pubkey,
 ) -> Result<()> {
+    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
     program
         .request()
+        .instruction(compute_units)
+        .instruction(priority_fee)
         .accounts(nft_accounts::Withdraw {
             candy_machine,
             authority: payer,

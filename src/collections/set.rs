@@ -1,6 +1,8 @@
 use std::{ops::Deref, str::FromStr};
 
-use anchor_client::solana_sdk::{pubkey::Pubkey, system_program};
+use anchor_client::solana_sdk::{
+    compute_budget::ComputeBudgetInstruction, pubkey::Pubkey, system_program,
+};
 use anyhow::Result;
 use console::style;
 use mpl_candy_machine_core::{
@@ -214,8 +216,13 @@ pub fn set_collection<C: Deref<Target = impl Signer> + Clone>(
     let collection_update_authority = collection_metadata.update_authority;
     let collection_metadata = find_metadata_pda(&collection_mint);
 
+    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+
     let builder = program
         .request()
+        .instruction(compute_units)
+        .instruction(priority_fee)
         .accounts(nft_accounts::SetCollectionV2 {
             candy_machine: *candy_pubkey,
             authority: payer,

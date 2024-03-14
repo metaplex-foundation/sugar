@@ -1,4 +1,4 @@
-use anchor_client::solana_sdk::pubkey::Pubkey;
+use anchor_client::solana_sdk::{compute_budget::ComputeBudgetInstruction, pubkey::Pubkey};
 use anyhow::Result;
 use mpl_token_metadata::{
     instruction::{create_master_edition_v3, create_metadata_accounts_v3},
@@ -114,9 +114,13 @@ pub fn create_collection(
         payer,
         Some(0),
     );
+    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
 
     let builder = program
         .request()
+        .instruction(compute_units)
+        .instruction(priority_fee)
         .instruction(create_mint_account_ix)
         .instruction(init_mint_ix)
         .instruction(create_assoc_account_ix)
