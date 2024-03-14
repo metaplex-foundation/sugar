@@ -234,7 +234,7 @@ pub async fn add_config_lines(config: Arc<SugarConfig>, tx_info: TxInfo) -> Resu
     }
 
     let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
-    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(500);
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
 
     let _sig = program
         .request()
