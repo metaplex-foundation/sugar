@@ -234,12 +234,10 @@ pub async fn add_config_lines(config: Arc<SugarConfig>, tx_info: TxInfo) -> Resu
     }
 
     let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
-    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
 
     let _sig = program
         .request()
         .instruction(compute_units)
-        .instruction(priority_fee)
         .accounts(nft_accounts::AddConfigLines {
             candy_machine: tx_info.candy_pubkey,
             authority: program.payer(),
