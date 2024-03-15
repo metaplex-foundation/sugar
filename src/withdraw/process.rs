@@ -236,11 +236,9 @@ fn do_withdraw<C: Deref<Target = impl Signer> + Clone>(
     payer: Pubkey,
     priority_fee: u64,
 ) -> Result<()> {
-    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
     let priority_fee_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
     program
         .request()
-        .instruction(compute_units)
         .instruction(priority_fee_ix)
         .accounts(nft_accounts::Withdraw {
             candy_machine,

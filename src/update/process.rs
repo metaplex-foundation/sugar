@@ -75,12 +75,10 @@ pub fn process_update(args: UpdateArgs) -> Result<()> {
     );
 
     let program = client.program(CANDY_MACHINE_ID);
-    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
     let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
     let builder = program
         .request()
-        .instruction(compute_units)
         .instruction(priority_fee)
         .accounts(nft_accounts::Update {
             candy_machine: candy_pubkey,
@@ -107,12 +105,10 @@ pub fn process_update(args: UpdateArgs) -> Result<()> {
 
         let new_authority_pubkey = Pubkey::from_str(&new_authority)?;
 
-        let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
         let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
         let builder = program
             .request()
-            .instruction(compute_units)
             .instruction(priority_fee)
             .accounts(nft_accounts::SetAuthority {
                 candy_machine: candy_pubkey,

@@ -158,12 +158,10 @@ pub fn initialize<C: Deref<Target = impl Signer> + Clone>(
     let mut data = vec![FreezeInstruction::Initialize as u8];
     data.extend_from_slice(&period.to_le_bytes());
 
-    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
     let priority_fee_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
 
     let builder = program
         .request()
-        .instruction(compute_units)
         .instruction(priority_fee_ix)
         .accounts(RouteAccount {
             candy_guard: *candy_guard_id,

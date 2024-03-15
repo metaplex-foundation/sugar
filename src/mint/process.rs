@@ -255,12 +255,10 @@ pub async fn mint(
     let metadata_pda = find_metadata_pda(&nft_mint.pubkey());
     let master_edition_pda = find_master_edition_pda(&nft_mint.pubkey());
 
-    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
     let priority_fee_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
 
     let mint_ix = program
         .request()
-        .instruction(compute_units)
         .instruction(priority_fee_ix)
         .accounts(nft_accounts::MintV2 {
             candy_machine: candy_machine_id,
@@ -302,12 +300,10 @@ pub async fn mint(
     }
 
     // need to increase the number of compute units
-    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
     let priority_fee_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
 
     let builder = program
         .request()
-        .instruction(compute_units)
         .instruction(priority_fee_ix)
         .instruction(mint_ix[0].clone())
         .signer(&nft_mint);

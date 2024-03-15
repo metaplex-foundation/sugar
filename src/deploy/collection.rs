@@ -116,12 +116,10 @@ pub fn create_collection(
         payer,
         Some(0),
     );
-    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
     let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
     let builder = program
         .request()
-        .instruction(compute_units)
         .instruction(priority_fee)
         .instruction(create_mint_account_ix)
         .instruction(init_mint_ix)

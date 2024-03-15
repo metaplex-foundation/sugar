@@ -698,12 +698,10 @@ fn thaw_nft(
         });
     }
 
-    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
     let priority_fee_ix = ComputeBudgetInstruction::set_compute_unit_price(*priority_fee);
 
     let builder = program
         .request()
-        .instruction(compute_units)
         .instruction(priority_fee_ix)
         .accounts(RouteAccount {
             candy_guard: *candy_guard_id,

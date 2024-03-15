@@ -93,12 +93,10 @@ pub fn process_guard_add(args: GuardAddArgs) -> Result<()> {
         let mut serialized_data = vec![0; data.size()];
         data.save(&mut serialized_data)?;
 
-        let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
         let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
         let tx = program
             .request()
-            .instruction(compute_units)
             .instruction(priority_fee)
             .accounts(InitializeAccount {
                 candy_guard,
@@ -145,13 +143,11 @@ pub fn process_guard_add(args: GuardAddArgs) -> Result<()> {
         let mut serialized_data = vec![0; data.size()];
         data.save(&mut serialized_data)?;
 
-        let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
         let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
         // synchronizes the guards config with the on-chain account
         let tx = program
             .request()
-            .instruction(compute_units)
             .instruction(priority_fee)
             .accounts(UpdateAccount {
                 candy_guard: candy_guard_id,
@@ -179,12 +175,10 @@ pub fn process_guard_add(args: GuardAddArgs) -> Result<()> {
     let pb = spinner_with_style();
     pb.set_message("Connecting...");
 
-    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
     let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
     let tx = program
         .request()
-        .instruction(compute_units)
         .instruction(priority_fee)
         .accounts(WrapAccount {
             candy_guard,

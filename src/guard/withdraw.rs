@@ -58,12 +58,10 @@ pub fn process_guard_withdraw(args: GuardWithdrawArgs) -> Result<()> {
     let pb = spinner_with_style();
     pb.set_message("Connecting...");
 
-    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
     let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
     let tx = program
         .request()
-        .instruction(compute_units)
         .instruction(priority_fee)
         .accounts(WithdrawAccount {
             candy_guard: candy_guard_id,

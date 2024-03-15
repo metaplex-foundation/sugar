@@ -238,12 +238,10 @@ pub async fn add_config_lines(
         config_lines.push(line);
     }
 
-    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
     let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
 
     let _sig = program
         .request()
-        .instruction(compute_units)
         .instruction(priority_fee)
         .accounts(nft_accounts::AddConfigLines {
             candy_machine: tx_info.candy_pubkey,

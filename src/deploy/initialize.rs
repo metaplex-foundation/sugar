@@ -177,12 +177,10 @@ pub fn initialize_candy_machine<C: Deref<Target = impl Signer> + Clone>(
         &authority_pda,
     );
 
-    let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
     let priority_fee_ix = ComputeBudgetInstruction::set_compute_unit_price(*priority_fee);
 
     let tx = program
         .request()
-        .instruction(compute_units)
         .instruction(priority_fee_ix)
         .instruction(system_instruction::create_account(
             &payer,
