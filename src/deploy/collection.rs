@@ -1,4 +1,4 @@
-use anchor_client::solana_sdk::pubkey::Pubkey;
+use anchor_client::solana_sdk::{compute_budget::ComputeBudgetInstruction, pubkey::Pubkey};
 use anyhow::Result;
 use mpl_token_metadata::{
     instruction::{create_master_edition_v3, create_metadata_accounts_v3},
@@ -16,6 +16,7 @@ use crate::{
     candy_machine::CANDY_MACHINE_ID,
     common::*,
     config::ConfigData,
+    deploy::DeployArgs,
     pdas::{find_master_edition_pda, find_metadata_pda},
     setup::SugarClient,
 };
@@ -25,6 +26,7 @@ pub fn create_collection(
     _candy_machine: Pubkey,
     cache: &mut Cache,
     config_data: &ConfigData,
+    args: &DeployArgs,
 ) -> Result<(Signature, Pubkey)> {
     let program = client.program(CANDY_MACHINE_ID);
     let payer = program.payer();
@@ -114,9 +116,11 @@ pub fn create_collection(
         payer,
         Some(0),
     );
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
     let builder = program
         .request()
+        .instruction(priority_fee)
         .instruction(create_mint_account_ix)
         .instruction(init_mint_ix)
         .instruction(create_assoc_account_ix)

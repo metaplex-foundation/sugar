@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use anchor_client::solana_sdk::pubkey::Pubkey;
+use anchor_client::solana_sdk::{compute_budget::ComputeBudgetInstruction, pubkey::Pubkey};
 use anyhow::Result;
 use console::style;
 use mpl_candy_guard::{accounts::Update as UpdateAccount, instruction::Update};
@@ -13,6 +13,7 @@ pub struct GuardUpdateArgs {
     pub cache: String,
     pub config: String,
     pub candy_guard: Option<String>,
+    pub priority_fee: u64,
 }
 
 pub fn process_guard_update(args: GuardUpdateArgs) -> Result<()> {
@@ -76,8 +77,11 @@ pub fn process_guard_update(args: GuardUpdateArgs) -> Result<()> {
     let pb = spinner_with_style();
     pb.set_message("Connecting...");
 
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
+
     let tx = program
         .request()
+        .instruction(priority_fee)
         .accounts(UpdateAccount {
             candy_guard: candy_guard_id,
             authority: payer.pubkey(),

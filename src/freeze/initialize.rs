@@ -1,5 +1,8 @@
+#![allow(clippy::too_many_arguments)]
+
 use std::ops::Deref;
 
+use anchor_client::solana_sdk::compute_budget::ComputeBudgetInstruction;
 use mpl_candy_guard::{
     accounts::Route as RouteAccount, guards::FreezeInstruction, instruction::Route,
     instructions::RouteArgs, state::GuardType,
@@ -16,6 +19,7 @@ pub struct InitializeArgs {
     pub candy_machine: Option<String>,
     pub label: Option<String>,
     pub period: u64,
+    pub priority_fee: u64,
 }
 
 pub fn process_initialize(args: InitializeArgs) -> Result<()> {
@@ -83,6 +87,7 @@ pub fn process_initialize(args: InitializeArgs) -> Result<()> {
         &args.label,
         args.period,
         mint,
+        args.priority_fee,
     )?;
 
     pb.finish_with_message(format!("{} {}", style("Signature:").bold(), signature));
@@ -98,6 +103,7 @@ pub fn initialize<C: Deref<Target = impl Signer> + Clone>(
     label: &Option<String>,
     period: u64,
     mint: Option<Pubkey>,
+    priority_fee: u64,
 ) -> Result<Signature> {
     let mut remaining_accounts = Vec::with_capacity(4);
     let (freeze_pda, _) = find_freeze_pda(candy_guard_id, candy_machine_id, destination);
@@ -152,8 +158,11 @@ pub fn initialize<C: Deref<Target = impl Signer> + Clone>(
     let mut data = vec![FreezeInstruction::Initialize as u8];
     data.extend_from_slice(&period.to_le_bytes());
 
+    let priority_fee_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
+
     let builder = program
         .request()
+        .instruction(priority_fee_ix)
         .accounts(RouteAccount {
             candy_guard: *candy_guard_id,
             candy_machine: *candy_machine_id,

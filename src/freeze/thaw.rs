@@ -1,5 +1,8 @@
+#![allow(clippy::too_many_arguments)]
+
 use std::{fmt::Display, time::Duration};
 
+use anchor_client::solana_sdk::compute_budget::ComputeBudgetInstruction;
 use mpl_candy_guard::{
     accounts::Route as RouteAccount, guards::FreezeInstruction, instruction::Route,
     instructions::RouteArgs, state::GuardType,
@@ -26,6 +29,7 @@ pub struct ThawArgs {
     pub use_cache: bool,
     pub timeout: Option<u64>,
     pub token: bool,
+    pub priority_fee: u64,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -292,6 +296,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
             &nft,
             &args.label,
             freeze_guard,
+            &args.priority_fee,
         )?;
 
         pb.finish_with_message(format!(
@@ -538,6 +543,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
                 &nft,
                 &label,
                 guard,
+                &args.priority_fee,
             )
             .map_err(|e| {
                 failed_thaws.lock().unwrap().push(FailedThaw {
@@ -593,6 +599,7 @@ fn thaw_nft(
     nft: &ThawNft,
     label: &Option<String>,
     freeze_guard: GuardType,
+    priority_fee: &u64,
 ) -> Result<Signature> {
     let client = setup_client(&config)?;
     let program = client.program(mpl_candy_guard::ID);
@@ -691,8 +698,11 @@ fn thaw_nft(
         });
     }
 
+    let priority_fee_ix = ComputeBudgetInstruction::set_compute_unit_price(*priority_fee);
+
     let builder = program
         .request()
+        .instruction(priority_fee_ix)
         .accounts(RouteAccount {
             candy_guard: *candy_guard_id,
             candy_machine: *candy_machine_id,

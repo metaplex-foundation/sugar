@@ -6,7 +6,9 @@ use std::{
     },
 };
 
-use anchor_client::solana_sdk::{pubkey::Pubkey, signature::Keypair};
+use anchor_client::solana_sdk::{
+    compute_budget::ComputeBudgetInstruction, pubkey::Pubkey, signature::Keypair,
+};
 use anyhow::Result;
 use console::style;
 use futures::future::select_all;
@@ -23,7 +25,7 @@ use crate::{
 };
 
 /// The maximum config line bytes per transaction.
-const MAX_TRANSACTION_BYTES: usize = 1000;
+const MAX_TRANSACTION_BYTES: usize = 966;
 
 /// The maximum number of config lines per transaction.
 const MAX_TRANSACTION_LINES: usize = 17;
@@ -106,6 +108,7 @@ pub async fn upload_config_lines(
     cache: &mut Cache,
     config_lines: Vec<Vec<(u32, ConfigLine)>>,
     interrupted: Arc<AtomicBool>,
+    priority_fee: u64,
 ) -> Result<Vec<DeployError>> {
     println!(
         "Sending config line(s) in {} transaction(s): (Ctrl+C to abort)",
@@ -134,9 +137,9 @@ pub async fn upload_config_lines(
 
     for tx in transactions.drain(0..cmp::min(transactions.len(), PARALLEL_LIMIT)) {
         let config = sugar_config.clone();
-        handles.push(tokio::spawn(
-            async move { add_config_lines(config, tx).await },
-        ));
+        handles.push(tokio::spawn(async move {
+            add_config_lines(config, tx, priority_fee).await
+        }));
     }
 
     let mut errors = Vec::new();
@@ -184,9 +187,9 @@ pub async fn upload_config_lines(
 
                 for tx in transactions.drain(0..cmp::min(transactions.len(), PARALLEL_LIMIT / 2)) {
                     let config = sugar_config.clone();
-                    handles.push(tokio::spawn(
-                        async move { add_config_lines(config, tx).await },
-                    ));
+                    handles.push(tokio::spawn(async move {
+                        add_config_lines(config, tx, priority_fee).await
+                    }));
                 }
             }
         }
@@ -214,12 +217,17 @@ pub async fn upload_config_lines(
 }
 
 /// Send the `add_config_lines` instruction to the candy machine program.
-pub async fn add_config_lines(config: Arc<SugarConfig>, tx_info: TxInfo) -> Result<Vec<u32>> {
+pub async fn add_config_lines(
+    config: Arc<SugarConfig>,
+    tx_info: TxInfo,
+    priority_fee: u64,
+) -> Result<Vec<u32>> {
     let client = setup_client(&config)?;
     let program = client.program(CANDY_MACHINE_ID);
 
     // this will be used to update the cache
     let mut indices: Vec<u32> = Vec::new();
+
     // configLine does not implement clone, so we have to do this
     let mut config_lines: Vec<ConfigLine> = Vec::new();
     // start index
@@ -230,8 +238,11 @@ pub async fn add_config_lines(config: Arc<SugarConfig>, tx_info: TxInfo) -> Resu
         config_lines.push(line);
     }
 
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
+
     let _sig = program
         .request()
+        .instruction(priority_fee)
         .accounts(nft_accounts::AddConfigLines {
             candy_machine: tx_info.candy_pubkey,
             authority: program.payer(),

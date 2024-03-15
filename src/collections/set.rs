@@ -1,6 +1,8 @@
 use std::{ops::Deref, str::FromStr};
 
-use anchor_client::solana_sdk::{pubkey::Pubkey, system_program};
+use anchor_client::solana_sdk::{
+    compute_budget::ComputeBudgetInstruction, pubkey::Pubkey, system_program,
+};
 use anyhow::Result;
 use console::style;
 use mpl_candy_machine_core::{
@@ -31,6 +33,7 @@ pub struct SetCollectionArgs {
     pub cache: String,
     pub config: String,
     pub candy_machine: Option<String>,
+    pub priority_fee: u64,
 }
 
 pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
@@ -109,6 +112,7 @@ pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
         &collection_mint_pubkey,
         &collection_metadata_info,
         &collection_edition_info,
+        &args,
     )?;
 
     pb.finish_with_message(format!(
@@ -146,6 +150,7 @@ pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
                 new_authority: None,
                 config: args.config,
                 candy_machine: Some(candy_machine_id),
+                priority_fee: args.priority_fee,
             };
 
             process_update(update_args)?;
@@ -162,6 +167,7 @@ pub fn set_collection<C: Deref<Target = impl Signer> + Clone>(
     new_collection_mint_pubkey: &Pubkey,
     new_collection_metadata_info: &PdaInfo<Metadata>,
     new_collection_edition_info: &PdaInfo<MasterEditionV2>,
+    args: &SetCollectionArgs,
 ) -> Result<Signature> {
     let payer = program.payer();
 
@@ -214,8 +220,11 @@ pub fn set_collection<C: Deref<Target = impl Signer> + Clone>(
     let collection_update_authority = collection_metadata.update_authority;
     let collection_metadata = find_metadata_pda(&collection_mint);
 
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
+
     let builder = program
         .request()
+        .instruction(priority_fee)
         .accounts(nft_accounts::SetCollectionV2 {
             candy_machine: *candy_pubkey,
             authority: payer,

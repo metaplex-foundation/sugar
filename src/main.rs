@@ -162,6 +162,7 @@ async fn run() -> Result<()> {
                 config,
                 candy_machine,
                 collection_mint,
+                priority_fee,
             } => process_set_collection(SetCollectionArgs {
                 collection_mint,
                 keypair,
@@ -169,6 +170,7 @@ async fn run() -> Result<()> {
                 cache,
                 config,
                 candy_machine,
+                priority_fee,
             })?,
         },
         Commands::Config { command } => match command {
@@ -190,6 +192,7 @@ async fn run() -> Result<()> {
                 cache,
                 new_authority,
                 candy_machine,
+                priority_fee,
             } => process_update(UpdateArgs {
                 config,
                 keypair,
@@ -197,6 +200,7 @@ async fn run() -> Result<()> {
                 cache,
                 new_authority,
                 candy_machine,
+                priority_fee,
             })?,
             ConfigSubcommands::Set {
                 keypair,
@@ -205,6 +209,7 @@ async fn run() -> Result<()> {
                 token_standard,
                 candy_machine,
                 rule_set,
+                priority_fee,
             } => process_set_token_stardard(SetTokenStandardArgs {
                 keypair,
                 rpc_url,
@@ -212,6 +217,7 @@ async fn run() -> Result<()> {
                 token_standard,
                 candy_machine,
                 rule_set,
+                priority_fee,
             })?,
         },
         Commands::Deploy {
@@ -220,6 +226,7 @@ async fn run() -> Result<()> {
             rpc_url,
             cache,
             collection_mint,
+            priority_fee,
         } => {
             process_deploy(DeployArgs {
                 config,
@@ -228,6 +235,7 @@ async fn run() -> Result<()> {
                 cache,
                 interrupted: interrupted.clone(),
                 collection_mint,
+                priority_fee,
             })
             .await?
         }
@@ -241,6 +249,7 @@ async fn run() -> Result<()> {
                 candy_machine,
                 label,
                 period,
+                priority_fee,
             } => process_initialize(InitializeArgs {
                 keypair,
                 rpc_url,
@@ -250,6 +259,7 @@ async fn run() -> Result<()> {
                 candy_machine,
                 label,
                 period,
+                priority_fee,
             })?,
             FreezeCommand::Thaw {
                 keypair,
@@ -265,6 +275,7 @@ async fn run() -> Result<()> {
                 use_cache,
                 timeout,
                 token,
+                priority_fee,
             } => {
                 process_thaw(ThawArgs {
                     keypair,
@@ -280,6 +291,7 @@ async fn run() -> Result<()> {
                     use_cache,
                     timeout,
                     token,
+                    priority_fee,
                 })
                 .await?
             }
@@ -293,6 +305,7 @@ async fn run() -> Result<()> {
                 destination,
                 label,
                 token,
+                priority_fee,
             } => process_unlock_funds(UnlockFundsArgs {
                 keypair,
                 rpc_url,
@@ -303,6 +316,7 @@ async fn run() -> Result<()> {
                 destination,
                 label,
                 token,
+                priority_fee,
             })?,
         },
         Commands::Guard { command } => match command {
@@ -313,6 +327,7 @@ async fn run() -> Result<()> {
                 config,
                 candy_machine,
                 candy_guard,
+                priority_fee,
             } => process_guard_add(GuardAddArgs {
                 keypair,
                 rpc_url,
@@ -320,6 +335,7 @@ async fn run() -> Result<()> {
                 config,
                 candy_machine,
                 candy_guard,
+                priority_fee,
             })?,
             GuardCommand::Remove {
                 keypair,
@@ -327,12 +343,14 @@ async fn run() -> Result<()> {
                 cache,
                 candy_machine,
                 candy_guard,
+                priority_fee,
             } => process_guard_remove(GuardRemoveArgs {
                 keypair,
                 rpc_url,
                 cache,
                 candy_machine,
                 candy_guard,
+                priority_fee,
             })?,
             GuardCommand::Show {
                 keypair,
@@ -351,23 +369,27 @@ async fn run() -> Result<()> {
                 cache,
                 config,
                 candy_guard,
+                priority_fee,
             } => process_guard_update(GuardUpdateArgs {
                 keypair,
                 rpc_url,
                 cache,
                 config,
                 candy_guard,
+                priority_fee,
             })?,
             GuardCommand::Withdraw {
                 keypair,
                 rpc_url,
                 cache,
                 candy_guard,
+                priority_fee,
             } => process_guard_withdraw(GuardWithdrawArgs {
                 keypair,
                 rpc_url,
                 cache,
                 candy_guard,
+                priority_fee,
             })?,
         },
         Commands::Hash {
@@ -387,6 +409,7 @@ async fn run() -> Result<()> {
             cache,
             strict,
             skip_collection_prompt,
+            priority_fee,
         } => {
             process_launch(LaunchArgs {
                 assets_dir,
@@ -397,6 +420,7 @@ async fn run() -> Result<()> {
                 strict,
                 skip_collection_prompt,
                 interrupted: interrupted.clone(),
+                priority_fee,
             })
             .await?
         }
@@ -407,6 +431,7 @@ async fn run() -> Result<()> {
             number,
             receiver,
             candy_machine,
+            priority_fee,
         } => {
             process_mint(MintArgs {
                 keypair,
@@ -415,6 +440,7 @@ async fn run() -> Result<()> {
                 number,
                 receiver,
                 candy_machine,
+                priority_fee,
             })
             .await?
         }
@@ -424,6 +450,7 @@ async fn run() -> Result<()> {
             cache,
             candy_machine,
             airdrop_list,
+            priority_fee,
         } => {
             process_airdrop(AirdropArgs {
                 keypair,
@@ -431,6 +458,7 @@ async fn run() -> Result<()> {
                 cache,
                 candy_machine,
                 airdrop_list,
+                priority_fee,
             })
             .await?
         }
@@ -469,6 +497,7 @@ async fn run() -> Result<()> {
             keypair,
             rpc_url,
             cache,
+            priority_fee,
         } => {
             process_upload(UploadArgs {
                 assets_dir,
@@ -477,6 +506,7 @@ async fn run() -> Result<()> {
                 rpc_url,
                 cache,
                 interrupted: interrupted.clone(),
+                priority_fee,
             })
             .await?
         }
@@ -504,12 +534,14 @@ async fn run() -> Result<()> {
             rpc_url,
             list,
             authority,
+            priority_fee,
         } => process_withdraw(WithdrawArgs {
             candy_machine,
             keypair,
             rpc_url,
             list,
             authority,
+            priority_fee,
         })?,
         Commands::Sign {
             keypair,

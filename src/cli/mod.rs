@@ -4,7 +4,7 @@ use crate::{
     config::TokenStandard,
     constants::{
         DEFAULT_AIRDROP_LIST, DEFAULT_AIRDROP_LIST_HELP, DEFAULT_ASSETS, DEFAULT_CACHE,
-        DEFAULT_CONFIG,
+        DEFAULT_CONFIG, DEFAULT_PRIORITY_FEE,
     },
 };
 
@@ -61,6 +61,10 @@ pub enum Commands {
         #[clap(short, long)]
         rpc_url: Option<String>,
 
+        /// Priority fee value
+        #[clap(short, long, default_value_t = DEFAULT_PRIORITY_FEE)]
+        priority_fee: u64,
+
         /// Path to the cache file, defaults to "cache.json"
         #[clap(long, default_value = DEFAULT_CACHE)]
         cache: String,
@@ -115,6 +119,10 @@ pub enum Commands {
         #[clap(short, long)]
         rpc_url: Option<String>,
 
+        /// Priority fee value
+        #[clap(short, long, default_value_t = DEFAULT_PRIORITY_FEE)]
+        priority_fee: u64,
+
         /// Path to the cache file
         #[clap(long, default_value = DEFAULT_CACHE)]
         cache: String,
@@ -142,6 +150,10 @@ pub enum Commands {
         #[clap(long, default_value = DEFAULT_CACHE)]
         cache: String,
 
+        /// Priority fee value
+        #[clap(short, long, default_value_t = DEFAULT_PRIORITY_FEE)]
+        priority_fee: u64,
+
         /// Amount of NFTs to be minted in bulk
         #[clap(short, long)]
         number: Option<u64>,
@@ -167,6 +179,10 @@ pub enum Commands {
         /// Path to the cache file, defaults to "cache.json"
         #[clap(long, default_value = DEFAULT_CACHE)]
         cache: String,
+
+        /// Priority fee value
+        #[clap(short, long, default_value_t = DEFAULT_PRIORITY_FEE)]
+        priority_fee: u64,
 
         /// Address of candy machine to mint from.
         #[clap(long)]
@@ -259,6 +275,10 @@ pub enum Commands {
         #[clap(short, long)]
         keypair: Option<String>,
 
+        /// Priority fee value
+        #[clap(short, long, default_value_t = DEFAULT_PRIORITY_FEE)]
+        priority_fee: u64,
+
         /// RPC Url
         #[clap(short, long)]
         rpc_url: Option<String>,
@@ -311,6 +331,10 @@ pub enum Commands {
         /// RPC Url
         #[clap(short, long)]
         rpc_url: Option<String>,
+
+        /// Priority fee value
+        #[clap(short, long, default_value_t = DEFAULT_PRIORITY_FEE)]
+        priority_fee: u64,
 
         /// List available candy machines, no withdraw performed
         #[clap(long)]
@@ -366,6 +390,10 @@ pub enum ConfigSubcommands {
         #[clap(short, long)]
         rpc_url: Option<String>,
 
+        /// Priority fee value
+        #[clap(short, long, default_value_t = DEFAULT_PRIORITY_FEE)]
+        priority_fee: u64,
+
         /// Path to the cache file, defaults to "cache.json"
         #[clap(long, default_value = DEFAULT_CACHE)]
         cache: String,
@@ -391,6 +419,10 @@ pub enum ConfigSubcommands {
         /// Path to the cache file, defaults to "cache.json"
         #[clap(long, default_value = DEFAULT_CACHE)]
         cache: String,
+
+        /// Priority fee value
+        #[clap(short, long, default_value_t = DEFAULT_PRIORITY_FEE)]
+        priority_fee: u64,
 
         /// Token Standard to set.
         #[clap(short, long)]
@@ -421,6 +453,10 @@ pub enum CollectionSubcommands {
         /// Path to the cache file, defaults to "cache.json"
         #[clap(long, default_value = DEFAULT_CACHE)]
         cache: String,
+
+        /// Priority fee value
+        #[clap(short, long, default_value_t = DEFAULT_PRIORITY_FEE)]
+        priority_fee: u64,
 
         /// Path to the config file
         #[clap(short, long, default_value = DEFAULT_CONFIG)]
@@ -455,6 +491,10 @@ pub enum GuardCommand {
         #[clap(short, long, default_value = DEFAULT_CONFIG)]
         config: String,
 
+        /// Priority fee value
+        #[clap(short, long, default_value_t = DEFAULT_PRIORITY_FEE)]
+        priority_fee: u64,
+
         /// Address of the candy machine.
         #[clap(long)]
         candy_machine: Option<String>,
@@ -476,6 +516,10 @@ pub enum GuardCommand {
         /// Path to the cache file, defaults to "cache.json"
         #[clap(long, default_value = DEFAULT_CACHE)]
         cache: String,
+
+        /// Priority fee value
+        #[clap(short, long, default_value_t = DEFAULT_PRIORITY_FEE)]
+        priority_fee: u64,
 
         /// Address of the candy machine.
         #[clap(long)]
@@ -517,6 +561,10 @@ pub enum GuardCommand {
         #[clap(long, default_value = DEFAULT_CACHE)]
         cache: String,
 
+        /// Priority fee value
+        #[clap(short, long, default_value_t = DEFAULT_PRIORITY_FEE)]
+        priority_fee: u64,
+
         /// Path to the config file
         #[clap(short, long, default_value = DEFAULT_CONFIG)]
         config: String,
@@ -534,6 +582,10 @@ pub enum GuardCommand {
         /// RPC Url
         #[clap(short, long)]
         rpc_url: Option<String>,
+
+        /// Priority fee value
+        #[clap(short, long, default_value_t = DEFAULT_PRIORITY_FEE)]
+        priority_fee: u64,
 
         /// Path to the cache file, defaults to "cache.json"
         #[clap(long, default_value = DEFAULT_CACHE)]
@@ -573,6 +625,10 @@ pub enum FreezeCommand {
         #[clap(long)]
         candy_machine: Option<String>,
 
+        /// Priority fee value
+        #[clap(short, long, default_value_t = DEFAULT_PRIORITY_FEE)]
+        priority_fee: u64,
+
         /// Candy guard group label.
         #[clap(long)]
         label: Option<String>,
@@ -609,6 +665,10 @@ pub enum FreezeCommand {
         /// Address of candy guard to update [defaults to cache value].
         #[clap(long)]
         candy_guard: Option<String>,
+
+        /// Priority fee value
+        #[clap(short, long, default_value_t = DEFAULT_PRIORITY_FEE)]
+        priority_fee: u64,
 
         /// Address of candy machine to update [defaults to cache value].
         #[clap(long)]
@@ -651,6 +711,10 @@ pub enum FreezeCommand {
         /// Path to the config file
         #[clap(short, long, default_value = DEFAULT_CONFIG)]
         config: String,
+
+        /// Priority fee value
+        #[clap(short, long, default_value_t = DEFAULT_PRIORITY_FEE)]
+        priority_fee: u64,
 
         /// Address of candy guard to update [defaults to cache value].
         #[clap(long)]

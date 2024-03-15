@@ -40,6 +40,7 @@ pub struct DeployArgs {
     pub rpc_url: Option<String>,
     pub interrupted: Arc<AtomicBool>,
     pub collection_mint: Option<String>,
+    pub priority_fee: u64,
 }
 
 pub async fn process_deploy(args: DeployArgs) -> Result<()> {
@@ -145,7 +146,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
             pb.set_message("Creating NFT...");
 
             let (_, collection_mint) =
-                create_collection(&client, candy_pubkey, &mut cache, &config_data)?;
+                create_collection(&client, candy_pubkey, &mut cache, &config_data, &args)?;
 
             pb.finish_and_clear();
             println!(
@@ -183,6 +184,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
             collection_mint,
             metadata.update_authority,
             program,
+            &args.priority_fee,
         )?;
         info!("Candy machine initialized with sig: {}", sig);
         info!(
@@ -273,6 +275,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
                 &mut cache,
                 config_lines,
                 args.interrupted,
+                args.priority_fee,
             )
             .await?;
 
@@ -316,6 +319,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
             new_authority: None,
             config: args.config,
             candy_machine: Some(candy_pubkey.to_string()),
+            priority_fee: args.priority_fee,
         };
 
         process_update(update_args)?;
