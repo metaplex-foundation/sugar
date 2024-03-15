@@ -16,6 +16,7 @@ use crate::{
     candy_machine::CANDY_MACHINE_ID,
     common::*,
     config::ConfigData,
+    deploy::DeployArgs,
     pdas::{find_master_edition_pda, find_metadata_pda},
     setup::SugarClient,
 };
@@ -25,6 +26,7 @@ pub fn create_collection(
     _candy_machine: Pubkey,
     cache: &mut Cache,
     config_data: &ConfigData,
+    args: &DeployArgs,
 ) -> Result<(Signature, Pubkey)> {
     let program = client.program(CANDY_MACHINE_ID);
     let payer = program.payer();
@@ -115,7 +117,7 @@ pub fn create_collection(
         Some(0),
     );
     let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
-    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
     let builder = program
         .request()

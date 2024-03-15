@@ -22,6 +22,7 @@ pub struct UpdateArgs {
     pub new_authority: Option<String>,
     pub config: String,
     pub candy_machine: Option<String>,
+    pub priority_fee: u64,
 }
 
 pub fn process_update(args: UpdateArgs) -> Result<()> {
@@ -75,7 +76,7 @@ pub fn process_update(args: UpdateArgs) -> Result<()> {
 
     let program = client.program(CANDY_MACHINE_ID);
     let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
-    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
     let builder = program
         .request()
@@ -107,7 +108,7 @@ pub fn process_update(args: UpdateArgs) -> Result<()> {
         let new_authority_pubkey = Pubkey::from_str(&new_authority)?;
 
         let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
-        let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+        let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
         let builder = program
             .request()

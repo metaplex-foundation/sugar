@@ -134,12 +134,12 @@ pub fn create_candy_machine_data(
 /// Send the `initialize_candy_machine` instruction to the candy machine program.
 pub fn initialize_candy_machine<C: Deref<Target = impl Signer> + Clone>(
     config_data: &ConfigData,
-
     candy_account: &Keypair,
     candy_machine_data: CandyMachineData,
     collection_mint: Pubkey,
     collection_update_authority: Pubkey,
     program: Program<C>,
+    priority_fee: &u64,
 ) -> Result<Signature> {
     let payer = program.payer();
     let candy_account_size = candy_machine_data.get_space_for_candy()?;
@@ -178,12 +178,12 @@ pub fn initialize_candy_machine<C: Deref<Target = impl Signer> + Clone>(
     );
 
     let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
-    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+    let priority_fee_ix = ComputeBudgetInstruction::set_compute_unit_price(*priority_fee);
 
     let tx = program
         .request()
         .instruction(compute_units)
-        .instruction(priority_fee)
+        .instruction(priority_fee_ix)
         .instruction(system_instruction::create_account(
             &payer,
             &candy_account.pubkey(),

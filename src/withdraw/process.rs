@@ -35,6 +35,7 @@ pub struct WithdrawArgs {
     pub rpc_url: Option<String>,
     pub list: bool,
     pub authority: Option<String>,
+    pub priority_fee: u64,
 }
 
 #[derive(Debug)]
@@ -83,7 +84,7 @@ pub fn process_withdraw(args: WithdrawArgs) -> Result<()> {
             let pb = spinner_with_style();
             pb.set_message("Draining candy machine...");
 
-            do_withdraw(Rc::new(program), candy_machine, payer)?;
+            do_withdraw(Rc::new(program), candy_machine, payer, args.priority_fee)?;
 
             pb.finish_with_message("Done");
         }
@@ -169,15 +170,16 @@ pub fn process_withdraw(args: WithdrawArgs) -> Result<()> {
 
                     accounts.iter().for_each(|account| {
                         let (candy_machine, _account) = account;
-                        do_withdraw(program.clone(), *candy_machine, payer).unwrap_or_else(|e| {
-                            not_drained += 1;
-                            error!("Error: {}", e);
-                            let error_message = parse_sugar_errors(&e.to_string());
-                            error_messages.push(WithdrawError {
-                                candy_machine: candy_machine.to_string(),
-                                error_message,
+                        do_withdraw(program.clone(), *candy_machine, payer, args.priority_fee)
+                            .unwrap_or_else(|e| {
+                                not_drained += 1;
+                                error!("Error: {}", e);
+                                let error_message = parse_sugar_errors(&e.to_string());
+                                error_messages.push(WithdrawError {
+                                    candy_machine: candy_machine.to_string(),
+                                    error_message,
+                                });
                             });
-                        });
                         pb.inc(1);
                     });
 
@@ -232,13 +234,14 @@ fn do_withdraw<C: Deref<Target = impl Signer> + Clone>(
     program: Rc<Program<C>>,
     candy_machine: Pubkey,
     payer: Pubkey,
+    priority_fee: u64,
 ) -> Result<()> {
     let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
-    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+    let priority_fee_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
     program
         .request()
         .instruction(compute_units)
-        .instruction(priority_fee)
+        .instruction(priority_fee_ix)
         .accounts(nft_accounts::Withdraw {
             candy_machine,
             authority: payer,

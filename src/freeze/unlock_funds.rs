@@ -16,6 +16,7 @@ pub struct UnlockFundsArgs {
     pub destination: Option<String>,
     pub label: Option<String>,
     pub token: bool,
+    pub priority_fee: u64,
 }
 
 pub fn process_unlock_funds(args: UnlockFundsArgs) -> Result<()> {
@@ -121,6 +122,7 @@ pub fn process_unlock_funds(args: UnlockFundsArgs) -> Result<()> {
         &destination_address,
         &args.label,
         freeze_guard,
+        &args.priority_fee,
     )?;
 
     pb.finish_with_message(format!(
@@ -139,6 +141,7 @@ pub fn unlock_funds<C: Deref<Target = impl Signer> + Clone>(
     destination: &Pubkey,
     label: &Option<String>,
     freeze_guard: GuardType,
+    priority_fee: &u64,
 ) -> Result<Signature> {
     let mut remaining_accounts = Vec::with_capacity(4);
     let (freeze_pda, _) = find_freeze_pda(candy_guard_id, candy_machine_id, destination);
@@ -199,12 +202,12 @@ pub fn unlock_funds<C: Deref<Target = impl Signer> + Clone>(
     };
 
     let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
-    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+    let priority_fee_ix = ComputeBudgetInstruction::set_compute_unit_price(*priority_fee);
 
     let builder = program
         .request()
         .instruction(compute_units)
-        .instruction(priority_fee)
+        .instruction(priority_fee_ix)
         .accounts(RouteAccount {
             candy_guard: *candy_guard_id,
             candy_machine: *candy_machine_id,

@@ -23,6 +23,7 @@ pub struct LaunchArgs {
     pub strict: bool,
     pub skip_collection_prompt: bool,
     pub interrupted: Arc<AtomicBool>,
+    pub priority_fee: u64,
 }
 
 pub async fn process_launch(args: LaunchArgs) -> Result<()> {
@@ -74,6 +75,7 @@ pub async fn process_launch(args: LaunchArgs) -> Result<()> {
         rpc_url: args.rpc_url.clone(),
         cache: args.cache.clone(),
         interrupted: args.interrupted.clone(),
+        priority_fee: args.priority_fee,
     };
 
     process_upload(upload_args).await?;
@@ -87,6 +89,7 @@ pub async fn process_launch(args: LaunchArgs) -> Result<()> {
         cache: args.cache.clone(),
         interrupted: args.interrupted.clone(),
         collection_mint: None,
+        priority_fee: args.priority_fee,
     };
 
     process_deploy(deploy_args).await?;

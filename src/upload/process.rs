@@ -28,6 +28,7 @@ pub struct UploadArgs {
     pub rpc_url: Option<String>,
     pub cache: String,
     pub interrupted: Arc<AtomicBool>,
+    pub priority_fee: u64,
 }
 
 pub struct AssetType {

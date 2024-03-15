@@ -28,6 +28,7 @@ pub struct AirdropArgs {
     pub cache: String,
     pub candy_machine: Option<String>,
     pub airdrop_list: String,
+    pub priority_fee: u64,
 }
 
 pub async fn process_airdrop(args: AirdropArgs) -> Result<()> {
@@ -125,6 +126,7 @@ pub async fn process_airdrop(args: AirdropArgs) -> Result<()> {
                     candy_machine_state,
                     collection_update_authority,
                     target,
+                    args.priority_fee,
                 )
                 .await;
                 pb.inc(1);

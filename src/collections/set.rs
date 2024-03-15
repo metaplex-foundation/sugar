@@ -33,6 +33,7 @@ pub struct SetCollectionArgs {
     pub cache: String,
     pub config: String,
     pub candy_machine: Option<String>,
+    pub priority_fee: u64,
 }
 
 pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
@@ -111,6 +112,7 @@ pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
         &collection_mint_pubkey,
         &collection_metadata_info,
         &collection_edition_info,
+        &args,
     )?;
 
     pb.finish_with_message(format!(
@@ -148,6 +150,7 @@ pub fn process_set_collection(args: SetCollectionArgs) -> Result<()> {
                 new_authority: None,
                 config: args.config,
                 candy_machine: Some(candy_machine_id),
+                priority_fee: args.priority_fee,
             };
 
             process_update(update_args)?;
@@ -164,6 +167,7 @@ pub fn set_collection<C: Deref<Target = impl Signer> + Clone>(
     new_collection_mint_pubkey: &Pubkey,
     new_collection_metadata_info: &PdaInfo<Metadata>,
     new_collection_edition_info: &PdaInfo<MasterEditionV2>,
+    args: &SetCollectionArgs,
 ) -> Result<Signature> {
     let payer = program.payer();
 
@@ -217,7 +221,7 @@ pub fn set_collection<C: Deref<Target = impl Signer> + Clone>(
     let collection_metadata = find_metadata_pda(&collection_mint);
 
     let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
-    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
     let builder = program
         .request()

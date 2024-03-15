@@ -13,6 +13,7 @@ pub struct GuardRemoveArgs {
     pub cache: String,
     pub candy_machine: Option<String>,
     pub candy_guard: Option<String>,
+    pub priority_fee: u64,
 }
 
 pub fn process_guard_remove(args: GuardRemoveArgs) -> Result<()> {
@@ -64,7 +65,7 @@ pub fn process_guard_remove(args: GuardRemoveArgs) -> Result<()> {
     let pb = spinner_with_style();
     pb.set_message("Connecting...");
     let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
-    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
     let tx = program
         .request()

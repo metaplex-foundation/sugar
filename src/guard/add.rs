@@ -18,6 +18,7 @@ pub struct GuardAddArgs {
     pub config: String,
     pub candy_machine: Option<String>,
     pub candy_guard: Option<String>,
+    pub priority_fee: u64,
 }
 
 pub fn process_guard_add(args: GuardAddArgs) -> Result<()> {
@@ -93,7 +94,7 @@ pub fn process_guard_add(args: GuardAddArgs) -> Result<()> {
         data.save(&mut serialized_data)?;
 
         let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
-        let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+        let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
         let tx = program
             .request()
@@ -145,7 +146,7 @@ pub fn process_guard_add(args: GuardAddArgs) -> Result<()> {
         data.save(&mut serialized_data)?;
 
         let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
-        let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+        let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
         // synchronizes the guards config with the on-chain account
         let tx = program
@@ -179,7 +180,7 @@ pub fn process_guard_add(args: GuardAddArgs) -> Result<()> {
     pb.set_message("Connecting...");
 
     let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
-    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
     let tx = program
         .request()

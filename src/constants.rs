@@ -98,4 +98,4 @@ pub const MAX_FREEZE_DAYS: u8 = 31;
 
 pub const COMPUTE_UNITS: u32 = 400_000;
 
-pub const PRIORITY_FEE: u64 = 20_000;
+pub const DEFAULT_PRIORITY_FEE: u64 = 500;

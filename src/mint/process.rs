@@ -40,6 +40,7 @@ pub struct MintArgs {
     pub number: Option<u64>,
     pub receiver: Option<String>,
     pub candy_machine: Option<String>,
+    pub priority_fee: u64,
 }
 
 pub async fn process_mint(args: MintArgs) -> Result<()> {
@@ -122,6 +123,7 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
             Arc::clone(&candy_machine_state),
             collection_update_authority,
             receiver_pubkey,
+            args.priority_fee,
         )
         .await
         {
@@ -160,6 +162,7 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
                     candy_machine_state,
                     collection_update_authority,
                     receiver_pubkey,
+                    args.priority_fee,
                 )
                 .await;
                 pb.inc(1);
@@ -204,6 +207,7 @@ pub async fn mint(
     candy_machine_state: Arc<CandyMachine>,
     collection_update_authority: Pubkey,
     receiver: Pubkey,
+    priority_fee: u64,
 ) -> Result<(Signature, Pubkey)> {
     let client = setup_client(&config)?;
     let program = client.program(CANDY_MACHINE_ID);
@@ -252,12 +256,12 @@ pub async fn mint(
     let master_edition_pda = find_master_edition_pda(&nft_mint.pubkey());
 
     let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
-    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+    let priority_fee_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
 
     let mint_ix = program
         .request()
         .instruction(compute_units)
-        .instruction(priority_fee)
+        .instruction(priority_fee_ix)
         .accounts(nft_accounts::MintV2 {
             candy_machine: candy_machine_id,
             authority_pda,
@@ -299,12 +303,12 @@ pub async fn mint(
 
     // need to increase the number of compute units
     let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
-    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+    let priority_fee_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
 
     let builder = program
         .request()
         .instruction(compute_units)
-        .instruction(priority_fee)
+        .instruction(priority_fee_ix)
         .instruction(mint_ix[0].clone())
         .signer(&nft_mint);
 

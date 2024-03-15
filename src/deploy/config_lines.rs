@@ -108,6 +108,7 @@ pub async fn upload_config_lines(
     cache: &mut Cache,
     config_lines: Vec<Vec<(u32, ConfigLine)>>,
     interrupted: Arc<AtomicBool>,
+    priority_fee: u64,
 ) -> Result<Vec<DeployError>> {
     println!(
         "Sending config line(s) in {} transaction(s): (Ctrl+C to abort)",
@@ -136,9 +137,9 @@ pub async fn upload_config_lines(
 
     for tx in transactions.drain(0..cmp::min(transactions.len(), PARALLEL_LIMIT)) {
         let config = sugar_config.clone();
-        handles.push(tokio::spawn(
-            async move { add_config_lines(config, tx).await },
-        ));
+        handles.push(tokio::spawn(async move {
+            add_config_lines(config, tx, priority_fee).await
+        }));
     }
 
     let mut errors = Vec::new();
@@ -186,9 +187,9 @@ pub async fn upload_config_lines(
 
                 for tx in transactions.drain(0..cmp::min(transactions.len(), PARALLEL_LIMIT / 2)) {
                     let config = sugar_config.clone();
-                    handles.push(tokio::spawn(
-                        async move { add_config_lines(config, tx).await },
-                    ));
+                    handles.push(tokio::spawn(async move {
+                        add_config_lines(config, tx, priority_fee).await
+                    }));
                 }
             }
         }
@@ -216,7 +217,11 @@ pub async fn upload_config_lines(
 }
 
 /// Send the `add_config_lines` instruction to the candy machine program.
-pub async fn add_config_lines(config: Arc<SugarConfig>, tx_info: TxInfo) -> Result<Vec<u32>> {
+pub async fn add_config_lines(
+    config: Arc<SugarConfig>,
+    tx_info: TxInfo,
+    priority_fee: u64,
+) -> Result<Vec<u32>> {
     let client = setup_client(&config)?;
     let program = client.program(CANDY_MACHINE_ID);
 
@@ -234,7 +239,7 @@ pub async fn add_config_lines(config: Arc<SugarConfig>, tx_info: TxInfo) -> Resu
     }
 
     let compute_units = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
-    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(PRIORITY_FEE);
+    let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
 
     let _sig = program
         .request()
