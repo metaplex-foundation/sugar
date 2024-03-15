@@ -300,10 +300,12 @@ pub async fn mint(
     }
 
     // need to increase the number of compute units
+    let compute_ix = ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNITS);
     let priority_fee_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
 
     let builder = program
         .request()
+        .instruction(compute_ix)
         .instruction(priority_fee_ix)
         .instruction(mint_ix[0].clone())
         .signer(&nft_mint);
