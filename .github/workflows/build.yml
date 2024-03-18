@@ -21,6 +21,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    env:
+      MATRIX_OS: ${{ matrix.os }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -51,14 +54,10 @@ jobs:
             binary_extension=".exe"
             binary_path="sugar-windows-latest${binary_extension}"
           elif [[ "${RUNNER_OS}" == "macOS" ]]; then
-            arch=$(uname -m)
-            if [[ "${arch}" == "x86_64" ]]; then
-              binary_path="sugar-macos-intel-latest"
-            elif [[ "${arch}" == "arm64" ]]; then
+            if [[ "${MATRIX_OS}" == "macos-14" ]]; then
               binary_path="sugar-macos-m1-latest"
             else
-              echo "error: unknown macOS architecture: ${arch}"
-              exit 1
+              binary_path="sugar-macos-intel-latest"
             fi
           elif [[ "${RUNNER_OS}" == "Linux" ]]; then
             binary_path="sugar-ubuntu-latest"
