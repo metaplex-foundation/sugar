@@ -53,7 +53,15 @@ jobs:
           elif [[ "${RUNNER_OS}" == "macOS-14" ]]; then
             binary_path="sugar-macos-m1-latest"
           elif [[ "${RUNNER_OS}" == "macOS" ]]; then
-            binary_path="sugar-macos-intel-latest"
+            arch=$(uname -m)
+            if [[ "${arch}" == "x86_64" ]]; then
+              binary_path="sugar-macos-intel-latest"
+            elif [[ "${arch}" == "arm64" ]]; then
+              binary_path="sugar-macos-m1-latest"
+            else
+              echo "error: unknown macOS architecture: ${arch}"
+              exit 1
+            fi
           elif [[ "${RUNNER_OS}" == "Linux" ]]; then
             binary_path="sugar-ubuntu-latest"
           else
