@@ -17,6 +17,7 @@ jobs:
           - windows-latest
           - ubuntu-latest
           - macos-latest
+          - macos-14
 
     runs-on: ${{ matrix.os }}
 
@@ -49,6 +50,8 @@ jobs:
           if [[ "${RUNNER_OS}" == "Windows" ]]; then
             binary_extension=".exe"
             binary_path="sugar-windows-latest${binary_extension}"
+          elif [[ "${RUNNER_OS}" == "macOS-14" ]]; then
+            binary_path="sugar-macos-m1-latest"
           elif [[ "${RUNNER_OS}" == "macOS" ]]; then
             binary_path="sugar-macos-intel-latest"
           elif [[ "${RUNNER_OS}" == "Linux" ]]; then
