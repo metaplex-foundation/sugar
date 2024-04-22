@@ -292,5 +292,8 @@ pub async fn initialize(
         UploadMethod::Sdrive => {
             Box::new(sdrive::SdriveMethod::new(config_data).await?) as Box<dyn Uploader>
         }
+        UploadMethod::Cascade => {
+            Box::new(cascade::CascadeStorageMethod::new(config_data).await?) as Box<dyn Uploader>
+        }
     })
 }

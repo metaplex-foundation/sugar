@@ -76,6 +76,10 @@ pub struct ConfigData {
     // Pinata specific configuration
     pub pinata_config: Option<PinataConfig>,
 
+    // SDRIVE specific configuration
+    #[serde(serialize_with = "to_option_string")]
+    pub cascade_api_key: Option<String>,
+
     /// Hidden setttings
     pub hidden_settings: Option<HiddenSettings>,
 
@@ -228,6 +232,8 @@ pub enum UploadMethod {
     Pinata,
     #[serde(rename = "sdrive")]
     Sdrive,
+    #[serde(rename = "cascade")]
+    Cascade,
 }
 
 impl Display for UploadMethod {

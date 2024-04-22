@@ -53,6 +53,7 @@ fn setup_logging(level: Option<EnvFilter>) -> Result<()> {
     let file = OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .open(log_path)
         .unwrap();
 
