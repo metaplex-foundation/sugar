@@ -47,6 +47,7 @@ pub struct UploadResponse {
 pub struct UploadResult {
     pub result_id: String,
     pub result_status: String,
+    pub registration_ticket_txid: Option<String>,
     pub original_file_ipfs_link: Option<String>,
     pub error: Option<String>,
 }
@@ -228,7 +229,10 @@ impl Uploader for CascadeStorageMethod {
                         let item = cache.items.get_mut(&id).unwrap();
 
                         match data_type {
-                            DataType::Image => item.image_link = uri,
+                            DataType::Image => {
+                                item.cascade_id = Some(response.results[0].result_id.clone());
+                                item.image_link = uri;
+                            }
                             DataType::Metadata => item.metadata_link = uri,
                             DataType::Animation => item.animation_link = Some(uri),
                         }

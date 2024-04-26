@@ -552,11 +552,19 @@ async fn upload_data(
         let content = match data_type {
             // replaces the media link without modifying the original file to avoid
             // changing the hash of the metadata file
-            DataType::Metadata => get_updated_metadata(
-                &file_path,
-                &cache_item.image_link,
-                &cache_item.animation_link,
-            )?,
+            DataType::Metadata => match &cache_item.cascade_id.is_some() {
+                true => get_updated_metadata_with_cascade_id(
+                    &file_path,
+                    &cache_item.image_link,
+                    &cache_item.animation_link,
+                    &cache_item.cascade_id,
+                )?,
+                false => get_updated_metadata(
+                    &file_path,
+                    &cache_item.image_link,
+                    &cache_item.animation_link,
+                )?,
+            },
             _ => file_path.clone(),
         };
 

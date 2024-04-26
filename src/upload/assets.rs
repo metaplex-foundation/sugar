@@ -42,6 +42,7 @@ impl AssetPair {
             on_chain: false,
             animation_hash: self.animation_hash,
             animation_link: None,
+            cascade_id: None,
         }
     }
 }
@@ -352,6 +353,53 @@ pub fn get_updated_metadata(
     }
 
     metadata.image = image_link.to_string();
+
+    if animation_link.is_some() {
+        // only updates the link if we have a new value
+        metadata.animation_url = animation_link.clone();
+    }
+
+    Ok(serde_json::to_string(&metadata).unwrap())
+}
+
+pub fn get_updated_metadata_with_cascade_id(
+    metadata_file: &str,
+    image_link: &str,
+    animation_link: &Option<String>,
+    cascade_id: &Option<String>,
+) -> Result<String> {
+    let mut metadata: Metadata = {
+        let m = OpenOptions::new()
+            .read(true)
+            .open(metadata_file)
+            .map_err(|e| {
+                anyhow!("Failed to read metadata file '{metadata_file}' with error: {e}")
+            })?;
+        serde_json::from_reader(&m)?
+    };
+
+    if metadata.properties.creators.is_some() {
+        println!("The creators field is deprecated in the JSON metadata, it should be set in the config file instead.")
+    }
+
+    for file in &mut metadata.properties.files {
+        if file.uri.eq(&metadata.image) {
+            file.uri = image_link.to_string();
+        }
+        if let Some(ref animation_link) = animation_link {
+            if let Some(ref animation_url) = metadata.animation_url {
+                if file.uri.eq(animation_url) {
+                    file.uri = animation_link.to_string();
+                }
+            }
+        }
+    }
+
+    metadata.image = image_link.to_string();
+
+    if cascade_id.is_some() {
+        metadata.cascade_id = cascade_id.clone();
+    }
 
     if animation_link.is_some() {
         // only updates the link if we have a new value

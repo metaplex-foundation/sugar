@@ -1,8 +1,8 @@
 [View code on GitHub](https://github.com/metaplex-foundation/sugar/src/config/data.rs)
 
-The `sugar` code defines the configuration and data structures for a project that deals with non-fungible tokens (NFTs) and programmable non-fungible tokens (pNFTs). The main structure, `ConfigData`, contains various fields related to the token standard, asset properties, creator information, and storage configurations for different platforms like AWS, NFT.Storage, Shadow Drive, and Pinata.
+The `sugar` code defines the configuration and data structures for a project that deals with non-fungible tokens (NFTs) and programmable non-fungible tokens (pNFTs). The main structure, `ConfigData`, contains various fields related to the token standard, asset properties, creator information, and storage configurations for different platforms like AWS, NFT.Storage, Shadow Drive, Pinata and Cascade.
 
-The `SugarConfig` struct holds the keypair and RPC URL for the Solana network, while `SolanaConfig` contains the JSON RPC URL, keypair path, and commitment level. The `AwsConfig` and `PinataConfig` structs store the respective platform-specific configurations.
+The `SugarConfig` struct holds the keypair and RPC URL for the Solana network, while `SolanaConfig` contains the JSON RPC URL, keypair path, and commitment level. The `AwsConfig` and `PinataConfig` structs store the respective platform-specific configurations. `cascade_api_key` store api key to access Pastel's Cascade Protocol.
 
 The `Creator` struct represents a creator with an address and share percentage. The `Cluster` enum represents different Solana network clusters (Devnet, Mainnet, Localnet, and Unknown). The `TokenStandard` enum distinguishes between NFT and pNFT standards.
 
@@ -16,7 +16,7 @@ These structures and utility functions can be used throughout the project to man
 
 2. **What are the different `UploadMethod` options available and how do they affect the behavior of the code?**
 
-   The `UploadMethod` enum has five variants: `Bundlr`, `AWS`, `NftStorage`, `SHDW`, and `Pinata`. These options represent different storage services or methods for uploading assets. The choice of `UploadMethod` will determine which storage service or method is used when uploading assets in the project.
+   The `UploadMethod` enum has five variants: `Bundlr`, `AWS`, `NftStorage`, `SHDW`, `Pinata` and `Cascade`. These options represent different storage services or methods for uploading assets. The choice of `UploadMethod` will determine which storage service or method is used when uploading assets in the project.
 
 3. **How does the `TokenStandard` enum work and what are its possible values?**
 
