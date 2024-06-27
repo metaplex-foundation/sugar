@@ -309,7 +309,15 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     };
 
     // upload method
-    let upload_options = vec!["Bundlr", "AWS", "NFT Storage", "SHDW", "Pinata", "SDrive"];
+    let upload_options = vec![
+        "Bundlr",
+        "AWS",
+        "NFT Storage",
+        "SHDW",
+        "Pinata",
+        "SDrive",
+        "Cascade",
+    ];
     config_data.upload_method = match Select::with_theme(&theme)
         .with_prompt("What upload method do you want to use?")
         .items(&upload_options)
@@ -323,6 +331,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         3 => UploadMethod::SHDW,
         4 => UploadMethod::Pinata,
         5 => UploadMethod::Sdrive,
+        6 => UploadMethod::Cascade,
         _ => UploadMethod::Bundlr,
     };
 
@@ -424,6 +433,14 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         });
     }
 
+    if config_data.upload_method == UploadMethod::Cascade {
+        config_data.cascade_api_key = Some(
+            Input::with_theme(&theme)
+                .with_prompt("What is the Cascade api key?")
+                .interact()
+                .unwrap(),
+        );
+    }
     // is mutable
 
     config_data.is_mutable = Confirm::with_theme(&theme)
