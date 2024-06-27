@@ -16,7 +16,7 @@ These structures and utility functions can be used throughout the project to man
 
 2. **What are the different `UploadMethod` options available and how do they affect the behavior of the code?**
 
-   The `UploadMethod` enum has five variants: `Bundlr`, `AWS`, `NftStorage`, `SHDW`, `Pinata` and `Cascade`. These options represent different storage services or methods for uploading assets. The choice of `UploadMethod` will determine which storage service or method is used when uploading assets in the project.
+   The `UploadMethod` enum has six variants: `Bundlr`, `AWS`, `NftStorage`, `SHDW`, `Pinata` and `Cascade`. These options represent different storage services or methods for uploading assets. The choice of `UploadMethod` will determine which storage service or method is used when uploading assets in the project.
 
 3. **How does the `TokenStandard` enum work and what are its possible values?**
 

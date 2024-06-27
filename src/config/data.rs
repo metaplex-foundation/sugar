@@ -76,7 +76,7 @@ pub struct ConfigData {
     // Pinata specific configuration
     pub pinata_config: Option<PinataConfig>,
 
-    // SDRIVE specific configuration
+    // Cascade specific configuration
     #[serde(serialize_with = "to_option_string")]
     pub cascade_api_key: Option<String>,
 
