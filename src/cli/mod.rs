@@ -214,6 +214,10 @@ pub enum Commands {
         /// RPC timeout to retrieve the mint list (in seconds).
         #[clap(short, long)]
         timeout: Option<u64>,
+
+        /// Address to transfer the update authority to
+        #[clap(short, long)]
+        new_update_authority: Option<String>,
     },
 
     /// Show the on-chain config of an existing candy machine
