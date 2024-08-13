@@ -3,17 +3,14 @@
 use std::{fmt::Display, time::Duration};
 
 use anchor_client::solana_sdk::compute_budget::ComputeBudgetInstruction;
-use mpl_candy_guard::{
+use mpl_core::Asset;
+use mpl_core_candy_guard::{
     accounts::Route as RouteAccount, guards::FreezeInstruction, instruction::Route,
     instructions::RouteArgs, state::GuardType,
 };
-use mpl_token_metadata::{
-    pda::find_token_record_account,
-    state::{Metadata, ProgrammableConfig, TokenMetadataAccount, TokenRecord},
-};
 
 use super::*;
-use crate::config::TokenStandard;
+use crate::{candy_machine::get_candy_machine_state, utils::get_cm_mint_accounts};
 
 pub struct ThawArgs {
     pub keypair: Option<String>,
@@ -45,11 +42,7 @@ struct ThawNft {
     #[serde(serialize_with = "serialize_pubkey")]
     owner: Pubkey,
     #[serde(serialize_with = "serialize_pubkey")]
-    token_account: Pubkey,
-    #[serde(default)]
-    token_standard: TokenStandard,
-    #[serde(serialize_with = "serialize_option_pubkey")]
-    rule_set: Option<Pubkey>,
+    collection: Pubkey,
 }
 
 fn serialize_pubkey<S>(p: &Pubkey, serializer: S) -> Result<S::Ok, S::Error>
@@ -70,26 +63,26 @@ where
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct JRpcResponse {
-    value: Vec<TokenAccount>,
-}
+// #[derive(Debug, Deserialize)]
+// pub struct JRpcResponse {
+//     value: Vec<TokenAccount>,
+// }
 
-#[derive(Debug, Deserialize)]
-struct TokenAccount {
-    address: String,
-    amount: String,
-}
+// #[derive(Debug, Deserialize)]
+// struct TokenAccount {
+//     address: String,
+//     amount: String,
+// }
 
 // Default timeout for 300 seconds (5 minutes).
 const DEFAULT_TIMEOUT: u64 = 300;
 
 pub async fn process_thaw(args: ThawArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair.clone(), args.rpc_url.clone())?;
-    let client = setup_client(&sugar_config)?;
-    let program = client.program(mpl_candy_guard::ID);
-    let rpc_url = get_rpc_url(args.rpc_url.clone());
-    let rpc_client = RpcClient::new(&rpc_url);
+    let client: Client<std::rc::Rc<Keypair>> = setup_client(&sugar_config)?;
+    let program = client.program(mpl_core_candy_guard::ID)?;
+    // let rpc_url = get_rpc_url(args.rpc_url.clone());
+    // let rpc_client = RpcClient::new(&rpc_url);
 
     // candy guard id specified takes precedence over the one from the cache
     let candy_guard_id = match args.candy_guard {
@@ -175,6 +168,8 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
 
     pb.finish_with_message("Done");
 
+    let candy_machine_state = get_candy_machine_state(&sugar_config, &candy_machine)?;
+
     if !args.all {
         println!(
             "\n{} {}Thawing NFT",
@@ -193,96 +188,59 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
 
         let config = Arc::new(sugar_config);
 
-        let request = RpcRequest::Custom {
-            method: "getTokenLargestAccounts",
-        };
-        let params = json!([nft_mint, { "commitment": "confirmed" }]);
-        let result: JRpcResponse = rpc_client.send(request, params).unwrap();
+        // let request = RpcRequest::Custom {
+        //     method: "getTokenLargestAccounts",
+        // };
+        // let params = json!([nft_mint, { "commitment": "confirmed" }]);
+        // let result: JRpcResponse = rpc_client.send(request, params).unwrap();
 
-        let token_accounts: Vec<TokenAccount> = result
-            .value
-            .into_iter()
-            .filter(|account| account.amount.parse::<u64>().unwrap() == 1)
-            .collect();
+        // let token_accounts: Vec<TokenAccount> = result
+        //     .value
+        //     .into_iter()
+        //     .filter(|account| account.amount.parse::<u64>().unwrap() == 1)
+        //     .collect();
 
-        if token_accounts.len() > 1 {
-            return Err(anyhow!(
-                "Mint account {} had more than one token account with 1 token",
-                nft_mint
-            ));
-        }
+        // if token_accounts.len() > 1 {
+        //     return Err(anyhow!(
+        //         "Mint account {} had more than one token account with 1 token",
+        //         nft_mint
+        //     ));
+        // }
 
-        if token_accounts.is_empty() {
-            return Err(anyhow!(
-                "Mint account {} had zero token accounts with 1 token",
-                nft_mint
-            ));
-        }
-
-        let token_account = Pubkey::from_str(&token_accounts[0].address).unwrap();
+        // if token_accounts.is_empty() {
+        //     return Err(anyhow!(
+        //         "Mint account {} had zero token accounts with 1 token",
+        //         nft_mint
+        //     ));
+        // }
 
         let account = program
             .rpc()
-            .get_account_with_commitment(&token_account, CommitmentConfig::confirmed())
+            .get_account_with_commitment(&nft_mint_pubkey, CommitmentConfig::confirmed())
             .unwrap()
             .value
             .unwrap();
-        let account_data = SplAccount::unpack(&account.data).unwrap();
-        let owner = account_data.owner;
+        let account_data = Asset::deserialize(&account.data).unwrap();
+        let owner = account_data.base.owner;
 
         // Only thaw frozen accounts.
-        let (locked, token_standard, rule_set) = if account_data.is_frozen() {
-            // We need to determine whether we have a NFT or pNFT.
-            let token_record_pubkey = find_token_record_account(&nft_mint_pubkey, &token_account).0;
-            if let Some(token_record) = rpc_client
-                .get_account_with_commitment(&token_record_pubkey, CommitmentConfig::confirmed())
+        let frozen = account_data.plugin_list.freeze_delegate.is_some()
+            && account_data
+                .plugin_list
+                .freeze_delegate
                 .unwrap()
-                .value
-            {
-                let token_record = TokenRecord::safe_deserialize(&token_record.data).unwrap();
+                .freeze_delegate
+                .frozen;
 
-                if token_record.is_locked() {
-                    let metadata_pubkey = find_metadata_pda(&nft_mint_pubkey);
-                    let metadata_account = rpc_client
-                        .get_account_with_commitment(
-                            &metadata_pubkey,
-                            CommitmentConfig::confirmed(),
-                        )
-                        .unwrap()
-                        .value
-                        .unwrap();
-                    let metadata = Metadata::safe_deserialize(&metadata_account.data).unwrap();
-
-                    let rule_set = if let Some(ProgrammableConfig::V1 { rule_set }) =
-                        metadata.programmable_config
-                    {
-                        rule_set
-                    } else {
-                        None
-                    };
-
-                    (true, TokenStandard::ProgrammableNonFungible, rule_set)
-                } else {
-                    (false, TokenStandard::ProgrammableNonFungible, None)
-                }
-            } else {
-                (true, TokenStandard::NonFungible, None)
-            }
-        } else {
-            (false, TokenStandard::NonFungible, None)
-        };
-
-        if !locked {
-            println!("\n NFT is already thawed.");
+        if !frozen {
+            println!("\n Asset is already thawed.");
             return Ok(());
         }
 
         let nft = ThawNft {
             mint: nft_mint_pubkey,
-            token_account,
             owner,
-            token_standard,
-            rule_set,
+            collection: candy_machine_state.collection_mint,
         };
 
         let pb = spinner_with_style();
@@ -319,7 +277,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
     pb.set_message("Searching...");
 
     let solana_cluster: Cluster = get_cluster(program.rpc())?;
-    let rpc_url = get_rpc_url(args.rpc_url);
+    let rpc_url = get_rpc_url(args.rpc_url.clone());
     let client = RpcClient::new_with_timeout(
         &rpc_url,
         Duration::from_secs(if let Some(timeout) = args.timeout {
@@ -353,7 +311,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
                 Cluster::Devnet | Cluster::Localnet | Cluster::Mainnet => {
                     let (creator, _) = find_candy_machine_creator_pda(&candy_machine);
                     let creator = bs58::encode(creator).into_string();
-                    get_cm_creator_mint_accounts(&client, &creator, 0)?
+                    get_cm_mint_accounts(&client, &creator)?
                 }
                 _ => {
                     return Err(anyhow!(
@@ -386,7 +344,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
     pb.set_message("Getting NFT information....");
 
     let semaphore = Arc::new(Semaphore::new(100));
-    let client = Arc::new(client);
+    // let client = Arc::new(client);
 
     let mut tasks = Vec::new();
     let mut thaw_tasks = Vec::new();
@@ -399,97 +357,45 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
 
     for mint in mint_pubkeys {
         let permit = Arc::clone(&semaphore).acquire_owned().await.unwrap();
-        let client = client.clone();
+        // let client = client.clone();
         let pb = pb.clone();
-        let errors = errors.clone();
+        // let errors = errors.clone();
         let thaw_nfts = thaw_nfts.clone();
+        // let rc_keypair = Rc::try_unwrap(program.payer().clone()).unwrap_or_else(|rc| (*rc).clone());
+        let sugar_config = sugar_setup(args.keypair.clone(), args.rpc_url.clone()).unwrap();
+        let client = setup_async_client(&sugar_config).unwrap();
+        let program = client.program(mpl_core_candy_guard::ID).unwrap();
 
         tasks.push(tokio::spawn(async move {
             let _permit = permit;
 
-            let request = RpcRequest::Custom {
-                method: "getTokenLargestAccounts",
-            };
-            let params = json!([mint.to_string(), { "commitment": "confirmed" }]);
-            let result: JRpcResponse = client.send(request, params).unwrap();
-
-            let token_accounts: Vec<TokenAccount> = result
-                .value
-                .into_iter()
-                .filter(|account| account.amount.parse::<u64>().unwrap() == 1)
-                .collect();
-
-            if token_accounts.len() != 1 {
-                errors.lock().unwrap().push(anyhow!(
-                    "Mint account {} had more than one token account with 1 token",
-                    mint
-                ));
-                return;
-            }
-
-            let token_account = Pubkey::from_str(&token_accounts[0].address).unwrap();
-            let account = client
-                .get_account_with_commitment(&token_account, CommitmentConfig::confirmed())
+            let account = program
+                .rpc()
+                .get_account_with_commitment(&mint, CommitmentConfig::confirmed())
                 .unwrap()
                 .value
                 .unwrap();
-            let account_data = SplAccount::unpack(&account.data).unwrap();
-            let owner = account_data.owner;
+            let account_data = Asset::deserialize(&account.data).unwrap();
+            let owner = account_data.base.owner;
 
             // Only thaw frozen accounts.
-            if account_data.is_frozen() {
-                // We need to determine whether we have a NFT or pNFT.
-                let token_record_pubkey = find_token_record_account(&mint, &token_account).0;
-                let (locked, token_standard, rule_set) = if let Some(token_record) = client
-                    .get_account_with_commitment(
-                        &token_record_pubkey,
-                        CommitmentConfig::confirmed(),
-                    )
+            let frozen = account_data.plugin_list.freeze_delegate.is_some()
+                && account_data
+                    .plugin_list
+                    .freeze_delegate
                     .unwrap()
-                    .value
-                {
-                    let token_record = TokenRecord::safe_deserialize(&token_record.data).unwrap();
+                    .freeze_delegate
+                    .frozen;
 
-                    if token_record.is_locked() {
-                        let metadata_pubkey = find_metadata_pda(&mint);
-                        let metadata_account = client
-                            .get_account_with_commitment(
-                                &metadata_pubkey,
-                                CommitmentConfig::confirmed(),
-                            )
-                            .unwrap()
-                            .value
-                            .unwrap();
-                        let metadata = Metadata::safe_deserialize(&metadata_account.data).unwrap();
-
-                        let rule_set = if let Some(ProgrammableConfig::V1 { rule_set }) =
-                            metadata.programmable_config
-                        {
-                            rule_set
-                        } else {
-                            None
-                        };
-
-                        (true, TokenStandard::ProgrammableNonFungible, rule_set)
-                    } else {
-                        (false, TokenStandard::ProgrammableNonFungible, None)
-                    }
-                } else {
-                    (true, TokenStandard::NonFungible, None)
-                };
-
-                if locked {
-                    thaw_nfts.lock().unwrap().push(ThawNft {
-                        mint,
-                        token_account,
-                        owner,
-                        token_standard,
-                        rule_set,
-                    });
-                }
-
-                pb.inc(1);
+            if frozen {
+                thaw_nfts.lock().unwrap().push(ThawNft {
+                    mint,
+                    owner,
+                    collection: candy_machine_state.collection_mint,
+                });
             }
+
+            pb.inc(1);
         }));
     }
 
@@ -602,7 +508,7 @@ fn thaw_nft(
     priority_fee: &u64,
 ) -> Result<Signature> {
     let client = setup_client(&config)?;
-    let program = client.program(mpl_candy_guard::ID);
+    let program = client.program(mpl_core_candy_guard::ID)?;
 
     let mut remaining_accounts = Vec::with_capacity(7);
     let (freeze_pda, _) = find_freeze_pda(candy_guard_id, candy_machine_id, destination);
@@ -617,86 +523,20 @@ fn thaw_nft(
         is_writable: false,
     });
     remaining_accounts.push(AccountMeta {
-        pubkey: nft.owner,
-        is_signer: false,
-        is_writable: false,
-    });
-    remaining_accounts.push(AccountMeta {
-        pubkey: nft.token_account,
+        pubkey: nft.collection,
         is_signer: false,
         is_writable: true,
     });
     remaining_accounts.push(AccountMeta {
-        pubkey: find_master_edition_pda(&nft.mint),
+        pubkey: mpl_core::ID,
         is_signer: false,
         is_writable: false,
     });
     remaining_accounts.push(AccountMeta {
-        pubkey: spl_token::ID,
+        pubkey: system_program::ID,
         is_signer: false,
         is_writable: false,
     });
-    remaining_accounts.push(AccountMeta {
-        pubkey: Pubkey::from_str(METAPLEX_PROGRAM_ID)?,
-        is_signer: false,
-        is_writable: false,
-    });
-
-    // pnft specific
-
-    if matches!(nft.token_standard, TokenStandard::ProgrammableNonFungible) {
-        let freeze_token_account = get_associated_token_address(&freeze_pda, &nft.mint);
-
-        remaining_accounts.push(AccountMeta {
-            pubkey: find_metadata_pda(&nft.mint),
-            is_signer: false,
-            is_writable: true,
-        });
-        remaining_accounts.push(AccountMeta {
-            pubkey: freeze_token_account,
-            is_signer: false,
-            is_writable: true,
-        });
-        remaining_accounts.push(AccountMeta {
-            pubkey: system_program::ID,
-            is_signer: false,
-            is_writable: false,
-        });
-        remaining_accounts.push(AccountMeta {
-            pubkey: sysvar::instructions::ID,
-            is_signer: false,
-            is_writable: false,
-        });
-        remaining_accounts.push(AccountMeta {
-            pubkey: spl_associated_token_account::ID,
-            is_signer: false,
-            is_writable: false,
-        });
-        remaining_accounts.push(AccountMeta {
-            pubkey: find_token_record_account(&nft.mint, &nft.token_account).0,
-            is_signer: false,
-            is_writable: true,
-        });
-        remaining_accounts.push(AccountMeta {
-            pubkey: find_token_record_account(&nft.mint, &freeze_token_account).0,
-            is_signer: false,
-            is_writable: true,
-        });
-        remaining_accounts.push(AccountMeta {
-            pubkey: mpl_token_auth_rules::ID,
-            is_signer: false,
-            is_writable: false,
-        });
-        remaining_accounts.push(AccountMeta {
-            pubkey: if let Some(rule_set) = nft.rule_set {
-                rule_set
-            } else {
-                mpl_token_metadata::ID
-            },
-            is_signer: false,
-            is_writable: false,
-        });
-    }
 
     let priority_fee_ix = ComputeBudgetInstruction::set_compute_unit_price(*priority_fee);
 

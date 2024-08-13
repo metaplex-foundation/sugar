@@ -3,11 +3,11 @@ use std::str::FromStr;
 use anchor_client::solana_sdk::{compute_budget::ComputeBudgetInstruction, pubkey::Pubkey};
 use anyhow::Result;
 use console::style;
-use mpl_candy_guard::{
+use mpl_core_candy_guard::{
     accounts::{Initialize as InitializeAccount, Update as UpdateAccount, Wrap as WrapAccount},
     instruction::{Initialize, Update, Wrap},
 };
-use mpl_candy_machine_core::constants::EMPTY_STR;
+use mpl_core_candy_machine_core::constants::EMPTY_STR;
 
 use crate::{cache::load_cache, candy_machine::*, common::*, config::get_config_data, utils::*};
 
@@ -71,7 +71,7 @@ pub fn process_guard_add(args: GuardAddArgs) -> Result<()> {
     let config_data = get_config_data(&args.config)?;
     let client = setup_client(&sugar_config)?;
     let payer = sugar_config.keypair;
-    let program = client.program(mpl_candy_guard::ID);
+    let program = client.program(mpl_core_candy_guard::ID)?;
 
     let candy_guard = if candy_guard_id.is_empty() {
         println!("\n[2/3] {}Initializing a candy guard", GUARD_EMOJI);
@@ -87,7 +87,7 @@ pub fn process_guard_add(args: GuardAddArgs) -> Result<()> {
         let base = Keypair::new();
         let (candy_guard, _) = Pubkey::find_program_address(
             &[b"candy_guard", base.pubkey().as_ref()],
-            &mpl_candy_guard::ID,
+            &mpl_core_candy_guard::ID,
         );
 
         let mut serialized_data = vec![0; data.size()];

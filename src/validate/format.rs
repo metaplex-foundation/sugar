@@ -25,15 +25,9 @@ pub struct Metadata {
 
 impl Metadata {
     pub fn validate(&mut self) -> Result<(), ValidateParserError> {
-        parser::check_name(&self.name)?;
-        parser::check_url(&self.image)?;
-
         // If users are using the old format, we do validation on those values.
         if let Some(sfbp) = &self.seller_fee_basis_points {
             parser::check_seller_fee_basis_points(*sfbp)?;
-        }
-        if let Some(symbol) = &self.symbol {
-            parser::check_symbol(symbol)?;
         }
 
         if let Some(creators) = &self.properties.creators {
@@ -59,14 +53,6 @@ impl Metadata {
                 .as_ref()
                 .expect("unreachable, should never throw"),
         )?;
-
-        if let Some(animation_url) = &self.animation_url {
-            parser::check_url(animation_url)?;
-        }
-
-        if let Some(external_url) = &self.external_url {
-            parser::check_url(external_url)?;
-        }
 
         Ok(())
     }

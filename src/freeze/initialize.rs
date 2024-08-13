@@ -3,7 +3,7 @@
 use std::ops::Deref;
 
 use anchor_client::solana_sdk::compute_budget::ComputeBudgetInstruction;
-use mpl_candy_guard::{
+use mpl_core_candy_guard::{
     accounts::Route as RouteAccount, guards::FreezeInstruction, instruction::Route,
     instructions::RouteArgs, state::GuardType,
 };
@@ -25,7 +25,7 @@ pub struct InitializeArgs {
 pub fn process_initialize(args: InitializeArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair.clone(), args.rpc_url.clone())?;
     let client = setup_client(&sugar_config)?;
-    let program = client.program(mpl_candy_guard::ID);
+    let program = client.program(mpl_core_candy_guard::ID)?;
 
     // candy guard id specified takes precedence over the one from the cache
     let candy_guard_id = match args.candy_guard {

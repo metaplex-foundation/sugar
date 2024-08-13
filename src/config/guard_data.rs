@@ -13,7 +13,7 @@ pub struct CandyGuardData {
 }
 
 impl CandyGuardData {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::state::CandyGuardData> {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::state::CandyGuardData> {
         let groups = if let Some(groups) = &self.groups {
             let mut group_vec = Vec::with_capacity(groups.len());
 
@@ -26,7 +26,7 @@ impl CandyGuardData {
             None
         };
 
-        Ok(mpl_candy_guard::state::CandyGuardData {
+        Ok(mpl_core_candy_guard::state::CandyGuardData {
             default: self.default.to_guard_format()?,
             groups,
         })
@@ -40,8 +40,8 @@ pub struct Group {
 }
 
 impl Group {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::state::Group> {
-        Ok(mpl_candy_guard::state::Group {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::state::Group> {
+        Ok(mpl_core_candy_guard::state::Group {
             label: self.label.clone(),
             guards: self.guards.to_guard_format()?,
         })
@@ -94,10 +94,16 @@ pub struct GuardSet {
     pub allocation: Option<Allocation>,
     /// Token2022 payment guard (set the price for the mint in spl-token-2022 amount).
     pub token2022_payment: Option<Token2022Payment>,
+    /// Sol fixed fee for launchpads, marketplaces to define custom fees
+    pub sol_fixed_fee: Option<SolFixedFee>,
+    /// NFT mint limit guard (add a limit on the number of mints per NFT).
+    pub nft_mint_limit: Option<NftMintLimit>,
+    /// NFT mint limit guard (add a limit on the number of mints per NFT).
+    pub edition: Option<Edition>,
 }
 
 impl GuardSet {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::GuardSet> {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::GuardSet> {
         // bot tax
         let bot_tax = if let Some(bot_tax) = &self.bot_tax {
             Some(bot_tax.to_guard_format()?)
@@ -225,7 +231,28 @@ impl GuardSet {
             None
         };
 
-        Ok(mpl_candy_guard::guards::GuardSet {
+        // sol fixed fee
+        let sol_fixed_fee = if let Some(sol_fixed_fee) = &self.sol_fixed_fee {
+            Some(sol_fixed_fee.to_guard_format()?)
+        } else {
+            None
+        };
+
+        // nft mint limit
+        let nft_mint_limit = if let Some(nft_mint_limit) = &self.nft_mint_limit {
+            Some(nft_mint_limit.to_guard_format()?)
+        } else {
+            None
+        };
+
+        // edition
+        let edition = if let Some(edition) = &self.edition {
+            Some(edition.to_guard_format()?)
+        } else {
+            None
+        };
+
+        Ok(mpl_core_candy_guard::guards::GuardSet {
             bot_tax,
             sol_payment,
             token_payment,
@@ -247,6 +274,9 @@ impl GuardSet {
             program_gate,
             allocation,
             token2022_payment,
+            sol_fixed_fee,
+            nft_mint_limit,
+            edition,
         })
     }
 }
@@ -261,14 +291,14 @@ pub struct AddressGate {
 }
 
 impl AddressGate {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::AddressGate> {
-        Ok(mpl_candy_guard::guards::AddressGate {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::AddressGate> {
+        Ok(mpl_core_candy_guard::guards::AddressGate {
             address: self.address,
         })
     }
 }
 
-// Alow List guard
+// Allow List guard
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
@@ -277,11 +307,11 @@ pub struct AllowList {
 }
 
 impl AllowList {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::AllowList> {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::AllowList> {
         let root: [u8; 32] = hex::decode(&self.merkle_root)?
             .try_into()
             .map_err(|_| anyhow!("Invalid merkle root value: {}", self.merkle_root))?;
-        Ok(mpl_candy_guard::guards::AllowList { merkle_root: root })
+        Ok(mpl_core_candy_guard::guards::AllowList { merkle_root: root })
     }
 }
 
@@ -296,10 +326,25 @@ pub struct BotTax {
 }
 
 impl BotTax {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::BotTax> {
-        Ok(mpl_candy_guard::guards::BotTax {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::BotTax> {
+        Ok(mpl_core_candy_guard::guards::BotTax {
             lamports: price_as_lamports(self.value),
             last_instruction: self.last_instruction,
+        })
+    }
+}
+
+// Edition guard
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct Edition {
+    pub edition_start_offset: u32,
+}
+
+impl Edition {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::Edition> {
+        Ok(mpl_core_candy_guard::guards::Edition {
+            edition_start_offset: self.edition_start_offset,
         })
     }
 }
@@ -312,10 +357,10 @@ pub struct EndDate {
 }
 
 impl EndDate {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::EndDate> {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::EndDate> {
         let timestamp = self.date.parse::<DateTimeUtc>()?.0.timestamp();
 
-        Ok(mpl_candy_guard::guards::EndDate { date: timestamp })
+        Ok(mpl_core_candy_guard::guards::EndDate { date: timestamp })
     }
 }
 
@@ -332,8 +377,8 @@ pub struct Gatekeeper {
 }
 
 impl Gatekeeper {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::Gatekeeper> {
-        Ok(mpl_candy_guard::guards::Gatekeeper {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::Gatekeeper> {
+        Ok(mpl_core_candy_guard::guards::Gatekeeper {
             gatekeeper_network: self.gatekeeper_network,
             expire_on_use: self.expire_on_use,
         })
@@ -350,8 +395,8 @@ pub struct MintLimit {
 }
 
 impl MintLimit {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::MintLimit> {
-        Ok(mpl_candy_guard::guards::MintLimit {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::MintLimit> {
+        Ok(mpl_core_candy_guard::guards::MintLimit {
             id: self.id,
             limit: self.limit,
         })
@@ -369,8 +414,8 @@ pub struct NftBurn {
 }
 
 impl NftBurn {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::NftBurn> {
-        Ok(mpl_candy_guard::guards::NftBurn {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::NftBurn> {
+        Ok(mpl_core_candy_guard::guards::NftBurn {
             required_collection: self.required_collection,
         })
     }
@@ -387,8 +432,27 @@ pub struct NftGate {
 }
 
 impl NftGate {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::NftGate> {
-        Ok(mpl_candy_guard::guards::NftGate {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::NftGate> {
+        Ok(mpl_core_candy_guard::guards::NftGate {
+            required_collection: self.required_collection,
+        })
+    }
+}
+
+// Nft Mint Limit guard
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct NftMintLimit {
+    pub id: u8,
+    pub limit: u16,
+    pub required_collection: Pubkey,
+}
+
+impl NftMintLimit {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::NftMintLimit> {
+        Ok(mpl_core_candy_guard::guards::NftMintLimit {
+            id: self.id,
+            limit: self.limit,
             required_collection: self.required_collection,
         })
     }
@@ -409,8 +473,8 @@ pub struct NftPayment {
 }
 
 impl NftPayment {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::NftPayment> {
-        Ok(mpl_candy_guard::guards::NftPayment {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::NftPayment> {
+        Ok(mpl_core_candy_guard::guards::NftPayment {
             required_collection: self.required_collection,
             destination: self.destination,
         })
@@ -425,9 +489,26 @@ pub struct RedeemedAmount {
 }
 
 impl RedeemedAmount {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::RedeemedAmount> {
-        Ok(mpl_candy_guard::guards::RedeemedAmount {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::RedeemedAmount> {
+        Ok(mpl_core_candy_guard::guards::RedeemedAmount {
             maximum: self.maximum,
+        })
+    }
+}
+
+// Sol Fixed Fee guard
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct SolFixedFee {
+    pub value: f64,
+    pub destination: Pubkey,
+}
+
+impl SolFixedFee {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::SolFixedFee> {
+        Ok(mpl_core_candy_guard::guards::SolFixedFee {
+            lamports: price_as_lamports(self.value),
+            destination: self.destination,
         })
     }
 }
@@ -444,8 +525,8 @@ pub struct SolPayment {
 }
 
 impl SolPayment {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::SolPayment> {
-        Ok(mpl_candy_guard::guards::SolPayment {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::SolPayment> {
+        Ok(mpl_core_candy_guard::guards::SolPayment {
             lamports: price_as_lamports(self.value),
             destination: self.destination,
         })
@@ -458,9 +539,9 @@ pub struct StartDate {
 }
 
 impl StartDate {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::StartDate> {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::StartDate> {
         let timestamp = self.date.parse::<DateTimeUtc>()?.0.timestamp();
-        Ok(mpl_candy_guard::guards::StartDate { date: timestamp })
+        Ok(mpl_core_candy_guard::guards::StartDate { date: timestamp })
     }
 }
 
@@ -475,8 +556,8 @@ pub struct ThirdPartySigner {
 }
 
 impl ThirdPartySigner {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::ThirdPartySigner> {
-        Ok(mpl_candy_guard::guards::ThirdPartySigner {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::ThirdPartySigner> {
+        Ok(mpl_core_candy_guard::guards::ThirdPartySigner {
             signer_key: self.signer_key,
         })
     }
@@ -494,8 +575,8 @@ pub struct TokenBurn {
 }
 
 impl TokenBurn {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::TokenBurn> {
-        Ok(mpl_candy_guard::guards::TokenBurn {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::TokenBurn> {
+        Ok(mpl_core_candy_guard::guards::TokenBurn {
             amount: self.amount,
             mint: self.mint,
         })
@@ -514,8 +595,8 @@ pub struct TokenGate {
 }
 
 impl TokenGate {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::TokenGate> {
-        Ok(mpl_candy_guard::guards::TokenGate {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::TokenGate> {
+        Ok(mpl_core_candy_guard::guards::TokenGate {
             amount: self.amount,
             mint: self.mint,
         })
@@ -539,8 +620,8 @@ pub struct TokenPayment {
 }
 
 impl TokenPayment {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::TokenPayment> {
-        Ok(mpl_candy_guard::guards::TokenPayment {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::TokenPayment> {
+        Ok(mpl_core_candy_guard::guards::TokenPayment {
             amount: self.amount,
             mint: self.mint,
             destination_ata: self.destination_ata,
@@ -561,8 +642,8 @@ pub struct FreezeSolPayment {
 }
 
 impl FreezeSolPayment {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::FreezeSolPayment> {
-        Ok(mpl_candy_guard::guards::FreezeSolPayment {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::FreezeSolPayment> {
+        Ok(mpl_core_candy_guard::guards::FreezeSolPayment {
             lamports: price_as_lamports(self.value),
             destination: self.destination,
         })
@@ -586,8 +667,8 @@ pub struct FreezeTokenPayment {
 }
 
 impl FreezeTokenPayment {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::FreezeTokenPayment> {
-        Ok(mpl_candy_guard::guards::FreezeTokenPayment {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::FreezeTokenPayment> {
+        Ok(mpl_core_candy_guard::guards::FreezeTokenPayment {
             amount: self.amount,
             mint: self.mint,
             destination_ata: self.destination_ata,
@@ -606,8 +687,8 @@ pub struct ProgramGate {
 }
 
 impl ProgramGate {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::ProgramGate> {
-        Ok(mpl_candy_guard::guards::ProgramGate {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::ProgramGate> {
+        Ok(mpl_core_candy_guard::guards::ProgramGate {
             additional: self.additional.clone(),
         })
     }
@@ -623,8 +704,8 @@ pub struct Allocation {
 }
 
 impl Allocation {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::Allocation> {
-        Ok(mpl_candy_guard::guards::Allocation {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::Allocation> {
+        Ok(mpl_core_candy_guard::guards::Allocation {
             id: self.id,
             limit: self.limit,
         })
@@ -648,8 +729,8 @@ pub struct Token2022Payment {
 }
 
 impl Token2022Payment {
-    pub fn to_guard_format(&self) -> Result<mpl_candy_guard::guards::Token2022Payment> {
-        Ok(mpl_candy_guard::guards::Token2022Payment {
+    pub fn to_guard_format(&self) -> Result<mpl_core_candy_guard::guards::Token2022Payment> {
+        Ok(mpl_core_candy_guard::guards::Token2022Payment {
             amount: self.amount,
             mint: self.mint,
             destination_ata: self.destination_ata,

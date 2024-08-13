@@ -14,7 +14,6 @@ use anchor_client::solana_sdk::{
 };
 use anyhow::Result;
 use console::style;
-use mpl_token_metadata::state::{Metadata, TokenMetadataAccount};
 
 use crate::{
     cache::*,
@@ -26,11 +25,10 @@ use crate::{
         initialize_candy_machine, upload_config_lines,
     },
     hash::hash_and_update,
-    pdas::find_metadata_pda,
     setup::{setup_client, sugar_setup},
     update::{process_update, UpdateArgs},
     utils::*,
-    validate::parser::{check_name, check_seller_fee_basis_points, check_symbol, check_url},
+    validate::parser::check_seller_fee_basis_points,
 };
 
 pub struct DeployArgs {
@@ -66,14 +64,10 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
     for (index, item) in &cache.items.0 {
         if item.name.is_empty() {
             return Err(DeployError::MissingName(index.to_string()).into());
-        } else {
-            check_name(&item.name)?;
         }
 
         if item.metadata_link.is_empty() {
             return Err(DeployError::MissingMetadataLink(index.to_string()).into());
-        } else {
-            check_url(&item.metadata_link)?;
         }
     }
 
@@ -99,7 +93,6 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
             cache_items_sans_collection
         ));
     } else {
-        check_symbol(&config_data.symbol)?;
         check_seller_fee_basis_points(config_data.seller_fee_basis_points)?;
     }
 
@@ -169,20 +162,18 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         spinner.set_message("Creating candy machine...");
 
         let candy_data = create_candy_machine_data(&client, &config_data, &cache)?;
-        let program = client.program(CANDY_MACHINE_ID);
+        let program = client.program(CANDY_MACHINE_ID)?;
 
         // all good, let's create the candy machine
 
-        let collection_metadata = find_metadata_pda(&collection_mint);
-        let data = program.rpc().get_account_data(&collection_metadata)?;
-        let metadata = Metadata::safe_deserialize(data.as_slice())?;
+        let collection = get_base_collection(&collection_mint, &program)?;
 
         let sig = initialize_candy_machine(
             &config_data,
             &candy_keypair,
             candy_data,
             collection_mint,
-            metadata.update_authority,
+            collection.update_authority,
             program,
             &args.priority_fee,
         )?;

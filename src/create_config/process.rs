@@ -12,7 +12,7 @@ use dialoguer::{Confirm, Input, MultiSelect, Select};
 use url::Url;
 
 use crate::{
-    config::{AwsConfig, ConfigData, Creator, HiddenSettings, PinataConfig, UploadMethod},
+    config::{AwsConfig, ConfigData, HiddenSettings, PinataConfig, UploadMethod},
     constants::*,
     upload::list_files,
     utils::get_dialoguer_theme,
@@ -24,7 +24,7 @@ const DEFAULT_METADATA: &str = "0.json";
 
 /// Default value to represent an invalid seller fee basis points.
 const INVALID_SELLER_FEE: u16 = u16::MAX;
-const INVALID_SYMBOL: &str = "abcdefghijklmnopqrstuvwxyz";
+// const INVALID_SYMBOL: &str = "abcdefghijklmnopqrstuvwxyz";
 
 pub struct CreateConfigArgs {
     pub keypair: Option<String>,
@@ -66,14 +66,6 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         }
     };
 
-    let symbol_validator = |input: &String| -> Result<(), String> {
-        if input.len() > 10 {
-            Err(String::from("Symbol must be 10 characters or less."))
-        } else {
-            Ok(())
-        }
-    };
-
     let seller_fee_basis_points_validator = |input: &String| -> Result<(), String> {
         let value = match input.parse::<u16>() {
             Ok(value) => value,
@@ -101,7 +93,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         _ => 0,
     };
 
-    let mut symbol: String = INVALID_SYMBOL.to_string();
+    // let mut symbol: String = INVALID_SYMBOL.to_string();
     let mut seller_fee = INVALID_SELLER_FEE;
 
     if num_files > 0 {
@@ -119,11 +111,6 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         let metadata: Metadata = serde_json::from_reader(m).map_err(|e| {
             anyhow!("Failed to read metadata file '{metadata_file}' with error: {e}")
         })?;
-
-        // Optional in the JSON, so if it doesn't exist, we'll use the default value.
-        if let Some(s) = metadata.symbol {
-            symbol = s;
-        }
 
         // Optional in the JSON, so if it doesn't exist, we'll use the default value.
         if let Some(sfbp) = metadata.seller_fee_basis_points {
@@ -158,31 +145,6 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             .unwrap().parse::<u64>().expect("Failed to parse number into u64 that should have already been validated.")
     };
 
-    // symbol
-
-    config_data.symbol = if num_files > 0
-        && symbol != *INVALID_SYMBOL
-        && Confirm::with_theme(&theme)
-            .with_prompt(format!(
-                "Found {} in your metadata file. Is this value correct?",
-                if symbol.is_empty() {
-                    "no symbol".to_string()
-                } else {
-                    format!("symbol \"{}\"", symbol)
-                },
-            ))
-            .interact()?
-    {
-        symbol
-    } else {
-        Input::with_theme(&theme)
-            .with_prompt("What is the symbol of your collection? Hit [ENTER] for no symbol.")
-            .allow_empty(true)
-            .validate_with(symbol_validator)
-            .interact()
-            .unwrap()
-    };
-
     // seller_fee_basis_points
 
     config_data.seller_fee_basis_points = if num_files > 0 && seller_fee != INVALID_SELLER_FEE && Confirm::with_theme(&theme)
@@ -215,58 +177,58 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     // creators
 
-    let num_creators = Input::with_theme(&theme)
-        .with_prompt("How many creator wallets do you have? (max limit of 4)")
-        .validate_with(number_validator)
-        .validate_with({
-            |input: &String| match input.parse::<u8>().unwrap() {
-                1..=4 => Ok(()),
-                _ => Err("Number of creator wallets must be between 1 and 4, inclusive."),
-            }
-        })
-        .interact()
-        .unwrap()
-        .parse::<u8>()
-        .expect("Failed to parse number into u8 that should have already been validated.");
+    // let num_creators = Input::with_theme(&theme)
+    //     .with_prompt("How many creator wallets do you have? (max limit of 4)")
+    //     .validate_with(number_validator)
+    //     .validate_with({
+    //         |input: &String| match input.parse::<u8>().unwrap() {
+    //             1..=4 => Ok(()),
+    //             _ => Err("Number of creator wallets must be between 1 and 4, inclusive."),
+    //         }
+    //     })
+    //     .interact()
+    //     .unwrap()
+    //     .parse::<u8>()
+    //     .expect("Failed to parse number into u8 that should have already been validated.");
 
-    let mut total_share = 0;
+    // let mut total_share = 0;
 
-    (0..num_creators).for_each(|i| {
-        let address = Pubkey::from_str(
-            &Input::with_theme(&theme)
-                .with_prompt(format!("Enter creator wallet address #{}", i + 1))
-                .validate_with(pubkey_validator)
-                .interact()
-                .unwrap(),
-        )
-            .expect("Failed to parse string into pubkey that should have already been validated.");
+    // (0..num_creators).for_each(|i| {
+    //     let address = Pubkey::from_str(
+    //         &Input::with_theme(&theme)
+    //             .with_prompt(format!("Enter creator wallet address #{}", i + 1))
+    //             .validate_with(pubkey_validator)
+    //             .interact()
+    //             .unwrap(),
+    //     )
+    //         .expect("Failed to parse string into pubkey that should have already been validated.");
 
-        let share = Input::with_theme(&theme)
-            .with_prompt(format!(
-                "Enter royalty percentage share for creator #{} (e.g., 70). Total shares must add to 100.",
-                i + 1
-            ))
-            .validate_with(number_validator)
-            .validate_with({
-                |input: &String| -> Result<(), &str> {
-                    if input.parse::<u8>().unwrap() + total_share > 100 {
-                        Err("Royalty share total has exceeded 100 percent.")
-                    } else if i == num_creators && input.parse::<u8>().unwrap() + total_share != 100 {
-                        Err("Royalty share for all creators must total 100 percent.")
-                    } else {
-                        Ok(())
-                    }
-                }
-            })
-            .interact()
-            .unwrap()
-            .parse::<u8>()
-            .expect("Failed to parse number into u64 that should have already been validated.");
+    //     let share = Input::with_theme(&theme)
+    //         .with_prompt(format!(
+    //             "Enter royalty percentage share for creator #{} (e.g., 70). Total shares must add to 100.",
+    //             i + 1
+    //         ))
+    //         .validate_with(number_validator)
+    //         .validate_with({
+    //             |input: &String| -> Result<(), &str> {
+    //                 if input.parse::<u8>().unwrap() + total_share > 100 {
+    //                     Err("Royalty share total has exceeded 100 percent.")
+    //                 } else if i == num_creators && input.parse::<u8>().unwrap() + total_share != 100 {
+    //                     Err("Royalty share for all creators must total 100 percent.")
+    //                 } else {
+    //                     Ok(())
+    //                 }
+    //             }
+    //         })
+    //         .interact()
+    //         .unwrap()
+    //         .parse::<u8>()
+    //         .expect("Failed to parse number into u64 that should have already been validated.");
 
-        total_share += share;
-        let creator = Creator { address, share };
-        config_data.creators.push(creator);
-    });
+    //     total_share += share;
+    //     let creator = Creator { address, share };
+    //     config_data.creators.push(creator);
+    // });
 
     const HIDDEN_SETTINGS_INDEX: usize = 0;
 
@@ -282,24 +244,10 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     config_data.hidden_settings = if choices.contains(&HIDDEN_SETTINGS_INDEX) {
         let name = Input::with_theme(&theme)
             .with_prompt("What is the prefix name for your hidden settings mints? The mint index will be appended at the end of the name.")
-            .validate_with(|name: &String| {
-                if name.len() > (MAX_NAME_LENGTH - 7) {
-                    Err("Your hidden settings name probably cannot be longer than 25 characters.")
-                } else {
-                    Ok(())
-                }
-            })
             .interact()
             .unwrap();
         let uri = Input::with_theme(&theme)
             .with_prompt("What is URI to be used for each mint?")
-            .validate_with(|uri: &String| {
-                if uri.len() > MAX_URI_LENGTH {
-                    Err("The URI cannot be longer than 200 characters.")
-                } else {
-                    Ok(())
-                }
-            })
             .validate_with(url_validator)
             .interact()
             .unwrap();

@@ -12,11 +12,8 @@ use anchor_client::solana_sdk::{
 use anyhow::Result;
 use console::style;
 use futures::future::select_all;
-use mpl_candy_machine_core::{
+use mpl_core_candy_machine_core::{
     accounts as nft_accounts, instruction as nft_instruction, CandyMachineData, ConfigLine,
-};
-pub use mpl_token_metadata::state::{
-    MAX_CREATOR_LIMIT, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH,
 };
 
 use crate::{
@@ -223,7 +220,7 @@ pub async fn add_config_lines(
     priority_fee: u64,
 ) -> Result<Vec<u32>> {
     let client = setup_client(&config)?;
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
 
     // this will be used to update the cache
     let mut indices: Vec<u32> = Vec::new();

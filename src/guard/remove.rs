@@ -3,7 +3,7 @@ use std::str::FromStr;
 use anchor_client::solana_sdk::{compute_budget::ComputeBudgetInstruction, pubkey::Pubkey};
 use anyhow::Result;
 use console::style;
-use mpl_candy_guard::{accounts::Unwrap as UnwrapAccount, instruction::Unwrap};
+use mpl_core_candy_guard::{accounts::Unwrap as UnwrapAccount, instruction::Unwrap};
 
 use crate::{cache::load_cache, candy_machine::*, common::*, utils::*};
 
@@ -59,7 +59,7 @@ pub fn process_guard_remove(args: GuardRemoveArgs) -> Result<()> {
 
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = setup_client(&sugar_config)?;
-    let program = client.program(mpl_candy_guard::ID);
+    let program = client.program(mpl_core_candy_guard::ID)?;
     let payer = sugar_config.keypair;
 
     let pb = spinner_with_style();

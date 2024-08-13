@@ -1,10 +1,8 @@
 use std::{thread, time::Duration};
 
 use anchor_lang::AccountDeserialize;
-use borsh::BorshDeserialize;
 use console::style;
-use mpl_candy_machine_core::{constants::HIDDEN_SECTION, CandyMachine};
-use mpl_token_metadata::state::Metadata;
+use mpl_core_candy_machine_core::{constants::HIDDEN_SECTION, CandyMachine};
 
 use crate::{
     cache::*,
@@ -12,7 +10,6 @@ use crate::{
     common::*,
     config::Cluster,
     constants::{CANDY_EMOJI, PAPER_EMOJI},
-    pdas::find_metadata_pda,
     utils::*,
     verify::VerifyError,
 };
@@ -69,7 +66,7 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
     };
 
     let client = setup_client(&sugar_config)?;
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
 
     let data = match program.rpc().get_account_data(&candy_machine_pubkey) {
         Ok(account_data) => account_data,
@@ -182,13 +179,11 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
         };
         let collection_item = cache.items.get_mut("-1");
 
-        let collection_metadata = find_metadata_pda(&candy_machine.collection_mint);
-        let data = program.rpc().get_account_data(&collection_metadata)?;
-        let metadata: Metadata = BorshDeserialize::deserialize(&mut data.as_slice())?;
+        // let collection = get_base_collection(&candy_machine.collection_mint, &program)?;
 
-        if metadata.mint.to_string() != collection_mint_cache {
+        if candy_machine.collection_mint.to_string() != collection_mint_cache {
             println!("\nInvalid collection state found");
-            cache.program.collection_mint = metadata.mint.to_string();
+            cache.program.collection_mint = candy_machine.collection_mint.to_string();
             if let Some(collection_item) = collection_item {
                 collection_item.on_chain = false;
             }
@@ -197,7 +192,7 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
             return Err(anyhow!(
                 "Collection mint in cache {} doesn't match on chain collection mint {}!",
                 collection_mint_cache,
-                metadata.mint.to_string()
+                candy_machine.collection_mint.to_string()
             ));
         } else if collection_needs_deploy {
             println!("\nInvalid collection state found - re-run `deploy`.");

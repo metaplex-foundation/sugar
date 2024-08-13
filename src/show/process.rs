@@ -3,11 +3,7 @@ use std::str::FromStr;
 use anchor_client::solana_sdk::pubkey::Pubkey;
 use anyhow::Result;
 use console::style;
-use mpl_candy_machine_core::{
-    constants::{HIDDEN_SECTION, NULL_STRING},
-    AccountVersion,
-};
-use mpl_token_metadata::state::TokenStandard;
+use mpl_core_candy_machine_core::constants::HIDDEN_SECTION;
 use tabled::{
     builder::Builder,
     settings::{object::Segment, Alignment, Modify, Style},
@@ -51,7 +47,7 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
 
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = setup_client(&sugar_config)?;
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
 
     let candy_machine_id = match Pubkey::from_str(&candy_machine_id) {
         Ok(candy_machine_id) => candy_machine_id,
@@ -62,7 +58,7 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
         }
     };
 
-    let (cndy_state, rule_set) = load_candy_machine(&sugar_config, &candy_machine_id)?;
+    let cndy_state = load_candy_machine(&sugar_config, &candy_machine_id)?;
     let cndy_data = cndy_state.data;
 
     pb.finish_and_clear();
@@ -84,57 +80,13 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
         "collection mint",
         cndy_state.collection_mint.to_string(),
     );
-
-    if matches!(cndy_state.version, AccountVersion::V1) {
-        print_with_style("", "account version", "V1");
-        print_with_style("", "token standard", "NonFungible (NFT)");
-        print_with_style("", "rule set", "none");
-    } else {
-        print_with_style("", "account version", "V2");
-        print_with_style(
-            "",
-            "token standard",
-            if cndy_state.token_standard == TokenStandard::NonFungible as u8 {
-                "NonFungible"
-            } else {
-                "ProgrammableNonFungible (pNFT)"
-            },
-        );
-
-        if let Some(rule_set) = rule_set {
-            print_with_style("", "rule set", rule_set.to_string());
-        }
-    }
     print_with_style("", "features", "none");
 
     print_with_style("", "max supply", cndy_data.max_supply.to_string());
     print_with_style("", "items redeemed", cndy_state.items_redeemed.to_string());
     print_with_style("", "items available", cndy_data.items_available.to_string());
 
-    print_with_style("", "symbol", cndy_data.symbol.trim_end_matches(NULL_STRING));
-    print_with_style(
-        "",
-        "seller fee basis points",
-        format!(
-            "{}% ({})",
-            cndy_data.seller_fee_basis_points / 100,
-            cndy_data.seller_fee_basis_points
-        ),
-    );
     print_with_style("", "is mutable", cndy_data.is_mutable.to_string());
-    print_with_style("", "creators", "".to_string());
-
-    let creators = &cndy_data.creators;
-
-    for (index, creator) in creators.iter().enumerate() {
-        let info = format!(
-            "{} ({}%{})",
-            creator.address,
-            creator.percentage_share,
-            if creator.verified { ", verified" } else { "" },
-        );
-        print_with_style(":   ", &(index + 1).to_string(), info);
-    }
 
     // hidden settings
 

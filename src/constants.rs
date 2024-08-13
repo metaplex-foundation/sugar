@@ -1,7 +1,4 @@
 use console::Emoji;
-pub use mpl_token_metadata::state::{
-    MAX_CREATOR_LEN, MAX_CREATOR_LIMIT, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH,
-};
 
 /// Metaplex program id.
 pub const METAPLEX_PROGRAM_ID: &str = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s";
@@ -11,8 +8,6 @@ pub const STRING_LEN_SIZE: usize = 4;
 pub const CONFIG_CHUNK_SIZE: usize = 10;
 
 pub const CONFIG_NAME_OFFSET: usize = STRING_LEN_SIZE;
-
-pub const CONFIG_URI_OFFSET: usize = STRING_LEN_SIZE + CONFIG_NAME_OFFSET + MAX_NAME_LENGTH;
 
 pub const MINT_LAYOUT: u64 = 82;
 

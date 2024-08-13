@@ -19,7 +19,7 @@ pub use anchor_lang::AccountDeserialize;
 pub use anyhow::{anyhow, Result};
 pub use bs58;
 pub use indexmap::IndexMap;
-pub use mpl_candy_machine_core::{
+pub use mpl_core_candy_machine_core::{
     accounts as nft_accounts, instruction as nft_instruction, CandyMachine,
 };
 pub use reqwest::{Client as HttpClient, Response};
@@ -32,5 +32,5 @@ pub use crate::{
     constants::*,
     errors::*,
     parse::path_to_string,
-    setup::{setup_client, sugar_setup},
+    setup::{setup_async_client, setup_client, sugar_setup},
 };

@@ -6,15 +6,14 @@ use std::{
 use anchor_client::solana_sdk::pubkey::Pubkey;
 use anyhow::Result;
 use console::style;
-use mpl_candy_guard::{
+use mpl_core_candy_guard::{
     guards::FreezeEscrow,
     state::{CandyGuardData, DATA_OFFSET},
 };
 use serde::{Deserialize, Serialize, Serializer};
-use solana_client::{rpc_client::RpcClient, rpc_request::RpcRequest};
+use solana_client::rpc_client::RpcClient;
 use solana_program::{instruction::AccountMeta, program_pack::Pack};
 use spl_associated_token_account::get_associated_token_address;
-use spl_token::state::Account as SplAccount;
 use tokio::sync::Semaphore;
 
 use crate::{
@@ -23,9 +22,7 @@ use crate::{
     config::{get_config_data, Cluster, ConfigData, SugarConfig},
     pdas::*,
     setup::get_rpc_url,
-    utils::{
-        get_cluster, get_cm_creator_mint_accounts, progress_bar_with_style, spinner_with_style,
-    },
+    utils::{get_cluster, progress_bar_with_style, spinner_with_style},
 };
 
 mod initialize;
@@ -48,7 +45,7 @@ pub fn find_freeze_pda(
         candy_machine_id.as_ref(),
     ];
 
-    Pubkey::find_program_address(freeze_seeds, &mpl_candy_guard::ID)
+    Pubkey::find_program_address(freeze_seeds, &mpl_core_candy_guard::ID)
 }
 
 pub fn get_destination<C: Deref<Target = impl Signer> + Clone>(

@@ -6,7 +6,7 @@ The `data.rs` file defines the main `ConfigData` structure, along with several o
 
 The `errors.rs` file defines a custom error type called `ConfigError` for handling configuration-related issues. It has seven variants, each representing a specific configuration error, such as `ParseError`, `MissingFileError`, `InvalidPathError`, and `PermissionError`.
 
-The `guard_data.rs` file manages guards in the project, which are conditions that must be met for certain actions to be allowed. It defines the `CandyGuardData` structure, which contains a default `GuardSet` and an optional list of `Group`s, each with its own `GuardSet`. Each guard has its own data structure and a method `to_guard_format()` that converts it to the corresponding format used by the `mpl_candy_guard` library.
+The `guard_data.rs` file manages guards in the project, which are conditions that must be met for certain actions to be allowed. It defines the `CandyGuardData` structure, which contains a default `GuardSet` and an optional list of `Group`s, each with its own `GuardSet`. Each guard has its own data structure and a method `to_guard_format()` that converts it to the corresponding format used by the `mpl_core_candy_guard` library.
 
 The `mod.rs` file imports and re-exports the contents of the `data`, `errors`, `guard_data`, and `parser` submodules, making them available for use in other parts of the project. It also defines three utility functions: `price_as_lamports`, `to_string`, and `to_pubkey`.
 

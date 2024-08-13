@@ -1,11 +1,8 @@
 use clap::{Parser, Subcommand};
 
-use crate::{
-    config::TokenStandard,
-    constants::{
-        DEFAULT_AIRDROP_LIST, DEFAULT_AIRDROP_LIST_HELP, DEFAULT_ASSETS, DEFAULT_CACHE,
-        DEFAULT_CONFIG, DEFAULT_PRIORITY_FEE,
-    },
+use crate::constants::{
+    DEFAULT_AIRDROP_LIST, DEFAULT_AIRDROP_LIST_HELP, DEFAULT_ASSETS, DEFAULT_CACHE, DEFAULT_CONFIG,
+    DEFAULT_PRIORITY_FEE,
 };
 
 #[derive(Parser)]
@@ -238,29 +235,6 @@ pub enum Commands {
         unminted: bool,
     },
 
-    /// Sign one or all NFTs from candy machine
-    Sign {
-        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
-        #[clap(short, long)]
-        keypair: Option<String>,
-
-        /// RPC Url
-        #[clap(short, long)]
-        rpc_url: Option<String>,
-
-        /// Path to the cache file, defaults to "cache.json"
-        #[clap(long, default_value = DEFAULT_CACHE)]
-        cache: String,
-
-        /// Mint id for single NFT to be signed
-        #[clap(short, long)]
-        mint: Option<String>,
-
-        /// Candy machine id.
-        #[clap(long)]
-        candy_machine_id: Option<String>,
-    },
-
     /// Upload assets to storage and creates the cache config
     Upload {
         /// Path to the directory with the assets to upload
@@ -405,36 +379,6 @@ pub enum ConfigSubcommands {
         /// Address of candy machine to update.
         #[clap(long)]
         candy_machine: Option<String>,
-    },
-    /// Set specific candy machine config values
-    Set {
-        /// Path to the keypair file, uses Sol config or defaults to "~/.config/solana/id.json"
-        #[clap(short, long)]
-        keypair: Option<String>,
-
-        /// RPC Url
-        #[clap(short, long)]
-        rpc_url: Option<String>,
-
-        /// Path to the cache file, defaults to "cache.json"
-        #[clap(long, default_value = DEFAULT_CACHE)]
-        cache: String,
-
-        /// Priority fee value
-        #[clap(short, long, default_value_t = DEFAULT_PRIORITY_FEE)]
-        priority_fee: u64,
-
-        /// Token Standard to set.
-        #[clap(short, long)]
-        token_standard: Option<TokenStandard>,
-
-        /// Address of candy machine to update.
-        #[clap(long)]
-        candy_machine: Option<String>,
-
-        /// Address of the rule set to use.
-        #[clap(long)]
-        rule_set: Option<String>,
     },
 }
 

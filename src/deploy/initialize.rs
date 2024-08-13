@@ -7,24 +7,13 @@ use anchor_client::solana_sdk::{
     system_instruction, system_program,
 };
 use anyhow::Result;
-use mpl_candy_machine_core::{
+use mpl_core_candy_machine_core::{
     accounts as nft_accounts, instruction as nft_instruction, CandyMachineData, ConfigLineSettings,
-    Creator as CandyCreator,
-};
-pub use mpl_token_metadata::state::{
-    MAX_CREATOR_LIMIT, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, MAX_URI_LENGTH,
-};
-use mpl_token_metadata::{
-    instruction::MetadataDelegateRole, pda::find_metadata_delegate_record_account,
-    state::TokenStandard,
 };
 use solana_program::native_token::LAMPORTS_PER_SOL;
 
 use crate::{
-    common::*,
-    config::data::*,
-    deploy::errors::*,
-    pdas::{find_candy_machine_creator_pda, find_master_edition_pda, find_metadata_pda},
+    common::*, config::data::*, deploy::errors::*, pdas::find_candy_machine_creator_pda,
     setup::SugarClient,
 };
 
@@ -34,29 +23,26 @@ pub fn create_candy_machine_data(
     config: &ConfigData,
     cache: &Cache,
 ) -> Result<CandyMachineData> {
-    let mut creators: Vec<CandyCreator> = Vec::new();
-    let mut share = 0u32;
+    // let mut creators: Vec<CandyCreator> = Vec::new();
+    // let mut share = 0u32;
 
-    for creator in &config.creators {
-        let c = creator.to_candy_format()?;
-        share += c.percentage_share as u32;
+    // for creator in &config.creators {
+    //     let c = creator.to_candy_format()?;
+    //     share += c.percentage_share as u32;
 
-        creators.push(c);
-    }
+    //     creators.push(c);
+    // }
 
-    if creators.is_empty() || creators.len() > (MAX_CREATOR_LIMIT - 1) {
-        return Err(anyhow!(
-            "The number of creators must be between 1 and {}.",
-            MAX_CREATOR_LIMIT - 1,
-        ));
-    }
+    // if creators.is_empty() {
+    //     return Err(anyhow!("The number of creators must be greater than 1."));
+    // }
 
-    if share != 100 {
-        return Err(anyhow!(
-            "Creator(s) share must add up to 100, current total {}.",
-            share,
-        ));
-    }
+    // if share != 100 {
+    //     return Err(anyhow!(
+    //         "Creator(s) share must add up to 100, current total {}.",
+    //         share,
+    //     ));
+    // }
 
     let config_line_settings = if config.hidden_settings.is_some() {
         None
@@ -119,11 +105,8 @@ pub fn create_candy_machine_data(
 
     let data = CandyMachineData {
         items_available: config.number,
-        symbol: config.symbol.clone(),
-        seller_fee_basis_points: config.seller_fee_basis_points,
         max_supply: config.max_edition_supply.unwrap_or(0),
         is_mutable: config.is_mutable,
-        creators,
         config_line_settings,
         hidden_settings,
     };
@@ -133,7 +116,7 @@ pub fn create_candy_machine_data(
 
 /// Send the `initialize_candy_machine` instruction to the candy machine program.
 pub fn initialize_candy_machine<C: Deref<Target = impl Signer> + Clone>(
-    config_data: &ConfigData,
+    _config_data: &ConfigData,
     candy_account: &Keypair,
     candy_machine_data: CandyMachineData,
     collection_mint: Pubkey,
@@ -168,14 +151,7 @@ pub fn initialize_candy_machine<C: Deref<Target = impl Signer> + Clone>(
 
     let (authority_pda, _) = find_candy_machine_creator_pda(&candy_account.pubkey());
 
-    let collection_metadata = find_metadata_pda(&collection_mint);
-    let collection_master_edition = find_master_edition_pda(&collection_mint);
-    let (collection_delegate_record, _) = find_metadata_delegate_record_account(
-        &collection_mint,
-        MetadataDelegateRole::Collection,
-        &collection_update_authority,
-        &authority_pda,
-    );
+    // let collection = get_base_collection(&collection_mint, &program)?;
 
     let priority_fee_ix = ComputeBudgetInstruction::set_compute_unit_price(*priority_fee);
 
@@ -190,28 +166,19 @@ pub fn initialize_candy_machine<C: Deref<Target = impl Signer> + Clone>(
             &program.id(),
         ))
         .signer(candy_account)
-        .accounts(nft_accounts::InitializeV2 {
+        .accounts(nft_accounts::Initialize {
             candy_machine: candy_account.pubkey(),
-            authority: payer,
             authority_pda,
+            authority: payer,
             payer,
-            collection_metadata,
-            collection_mint,
-            collection_master_edition,
+            collection: collection_mint,
             collection_update_authority,
-            collection_delegate_record,
-            rule_set: config_data.rule_set,
-            token_metadata_program: mpl_token_metadata::ID,
+            mpl_core_program: mpl_core::ID,
             system_program: system_program::id(),
             sysvar_instructions: sysvar::instructions::ID,
-            authorization_rules_program: None,
-            authorization_rules: None,
         })
-        .args(nft_instruction::InitializeV2 {
+        .args(nft_instruction::Initialize {
             data: candy_machine_data,
-            token_standard: <crate::config::data::TokenStandard as std::convert::Into<
-                TokenStandard,
-            >>::into(config_data.token_standard) as u8,
         });
 
     let sig = tx.send()?;
