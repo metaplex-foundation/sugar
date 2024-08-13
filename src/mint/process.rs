@@ -8,20 +8,11 @@ use anchor_client::solana_sdk::{
 };
 use anyhow::Result;
 use console::style;
-use mpl_candy_machine_core::{
-    accounts as nft_accounts, instruction as nft_instruction, AccountVersion, CandyMachine,
-};
-use mpl_token_metadata::{
-    instruction::MetadataDelegateRole,
-    pda::{
-        find_collection_authority_account, find_metadata_delegate_record_account,
-        find_token_record_account,
-    },
-    state::{Metadata, TokenMetadataAccount},
+use mpl_core_candy_machine_core::{
+    accounts as nft_accounts, candy_machine::MintAssetArgs, instruction as nft_instruction,
+    CandyMachine,
 };
 use solana_client::rpc_response::Response;
-use spl_associated_token_account::get_associated_token_address;
-use spl_token::ID as TOKEN_PROGRAM_ID;
 use tokio::sync::Semaphore;
 
 use crate::{
@@ -46,7 +37,7 @@ pub struct MintArgs {
 pub async fn process_mint(args: MintArgs) -> Result<()> {
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = setup_client(&sugar_config)?;
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
 
     // the candy machine id specified takes precedence over the one from the cache
 
@@ -78,9 +69,8 @@ pub async fn process_mint(args: MintArgs) -> Result<()> {
     pb.set_message("Connecting...");
 
     let candy_machine_state = Arc::new(get_candy_machine_state(&sugar_config, &candy_pubkey)?);
-    let (_, collection_metadata) =
-        get_metadata_pda(&candy_machine_state.collection_mint, &program)?;
-    let collection_update_authority = collection_metadata.update_authority;
+    let collection = get_base_collection(&candy_machine_state.collection_mint, &program)?;
+    let collection_update_authority = collection.update_authority;
 
     pb.finish_with_message("Done");
 
@@ -205,12 +195,12 @@ pub async fn mint(
     config: Arc<SugarConfig>,
     candy_machine_id: Pubkey,
     candy_machine_state: Arc<CandyMachine>,
-    collection_update_authority: Pubkey,
+    _collection_update_authority: Pubkey,
     receiver: Pubkey,
     priority_fee: u64,
 ) -> Result<(Signature, Pubkey)> {
     let client = setup_client(&config)?;
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
     let payer = program.payer();
 
     if candy_machine_state.mint_authority != payer {
@@ -220,72 +210,63 @@ pub async fn mint(
     }
 
     let nft_mint = Keypair::new();
-    let metaplex_program_id = Pubkey::from_str(METAPLEX_PROGRAM_ID)?;
-    // derive associated token account
-    let token = get_associated_token_address(&receiver, &nft_mint.pubkey());
 
-    let collection_mint = candy_machine_state.collection_mint;
+    // let collection_mint = candy_machine_state.collection_mint;
 
     let (authority_pda, _) = find_candy_machine_creator_pda(&candy_machine_id);
 
-    let (token_record, collection_delegate_record) =
-        if matches!(candy_machine_state.version, AccountVersion::V1) {
-            (
-                None,
-                find_collection_authority_account(&collection_mint, &authority_pda).0,
-            )
-        } else {
-            (
-                Some(find_token_record_account(&nft_mint.pubkey(), &token).0),
-                find_metadata_delegate_record_account(
-                    &collection_mint,
-                    MetadataDelegateRole::Collection,
-                    &collection_update_authority,
-                    &authority_pda,
-                )
-                .0,
-            )
-        };
+    // let collection = get_base_collection(&collection_mint, &program)?;
 
-    let collection_metadata = find_metadata_pda(&collection_mint);
-
-    let data = program.rpc().get_account_data(&collection_metadata)?;
-    let metadata = Metadata::safe_deserialize(data.as_slice())?;
-
-    let metadata_pda = find_metadata_pda(&nft_mint.pubkey());
-    let master_edition_pda = find_master_edition_pda(&nft_mint.pubkey());
+    // let mint_ix = program
+    //     .request()
+    //     .accounts(nft_accounts::MintV2 {
+    //         candy_machine: candy_machine_id,
+    //         authority_pda,
+    //         payer,
+    //         nft_owner: receiver,
+    //         token: Some(token),
+    //         token_record,
+    //         mint_authority: payer,
+    //         nft_metadata: metadata_pda,
+    //         nft_mint: nft_mint.pubkey(),
+    //         nft_master_edition: master_edition_pda,
+    //         nft_mint_authority: payer,
+    //         collection_mint: candy_machine_state.collection_mint,
+    //         collection_metadata: find_metadata_pda(&candy_machine_state.collection_mint),
+    //         collection_master_edition: find_master_edition_pda(
+    //             &candy_machine_state.collection_mint,
+    //         ),
+    //         collection_delegate_record,
+    //         collection_update_authority: metadata.update_authority,
+    //         token_metadata_program: metaplex_program_id,
+    //         spl_token_program: TOKEN_PROGRAM_ID,
+    //         spl_ata_program: Some(spl_associated_token_account::ID),
+    //         system_program: system_program::id(),
+    //         sysvar_instructions: sysvar::instructions::ID,
+    //         recent_slothashes: sysvar::slot_hashes::ID,
+    //         authorization_rules_program: None,
+    //         authorization_rules: None,
+    //     })
+    //     .args(nft_instruction::MintV2 {});
 
     let mint_ix = program
         .request()
-        .accounts(nft_accounts::MintV2 {
+        .accounts(nft_accounts::MintAsset {
             candy_machine: candy_machine_id,
             authority_pda,
-            payer,
-            nft_owner: receiver,
-            token: Some(token),
-            token_record,
             mint_authority: payer,
-            nft_metadata: metadata_pda,
-            nft_mint: nft_mint.pubkey(),
-            nft_master_edition: master_edition_pda,
-            nft_mint_authority: payer,
-            collection_mint: candy_machine_state.collection_mint,
-            collection_metadata: find_metadata_pda(&candy_machine_state.collection_mint),
-            collection_master_edition: find_master_edition_pda(
-                &candy_machine_state.collection_mint,
-            ),
-            collection_delegate_record,
-            collection_update_authority: metadata.update_authority,
-            token_metadata_program: metaplex_program_id,
-            spl_token_program: TOKEN_PROGRAM_ID,
-            spl_ata_program: Some(spl_associated_token_account::ID),
-            system_program: system_program::id(),
+            payer,
+            asset_owner: receiver,
+            asset: nft_mint.pubkey(),
+            collection: candy_machine_state.collection_mint,
+            mpl_core_program: mpl_core::ID,
+            system_program: system_program::ID,
             sysvar_instructions: sysvar::instructions::ID,
             recent_slothashes: sysvar::slot_hashes::ID,
-            authorization_rules_program: None,
-            authorization_rules: None,
         })
-        .args(nft_instruction::MintV2 {});
+        .args(nft_instruction::MintAsset {
+            args: MintAssetArgs { plugins: vec![] },
+        });
 
     let mut mint_ix = mint_ix.instructions()?;
 
@@ -311,7 +292,7 @@ pub async fn mint(
 
     if let Err(_) | Ok(Response { value: None, .. }) = program
         .rpc()
-        .get_account_with_commitment(&metadata_pda, CommitmentConfig::processed())
+        .get_account_with_commitment(&nft_mint.pubkey(), CommitmentConfig::processed())
     {
         let cluster_param = match get_cluster(program.rpc()).unwrap_or(Cluster::Mainnet) {
             Cluster::Devnet => "?devnet",

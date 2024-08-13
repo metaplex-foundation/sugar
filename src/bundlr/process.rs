@@ -38,7 +38,7 @@ pub async fn process_bundlr(args: BundlrArgs) -> Result<()> {
     let pb = spinner_with_style();
     pb.set_message("Connecting...");
 
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
     let solana_cluster: Cluster = get_cluster(program.rpc())?;
 
     let http_client = reqwest::Client::new();

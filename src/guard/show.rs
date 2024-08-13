@@ -4,8 +4,8 @@ use anchor_client::solana_sdk::pubkey::Pubkey;
 use anyhow::Result;
 use chrono::NaiveDateTime;
 use console::style;
-use mpl_candy_guard::state::{CandyGuard, CandyGuardData, GuardSet, DATA_OFFSET};
-use mpl_candy_machine_core::constants::EMPTY_STR;
+use mpl_core_candy_guard::state::{CandyGuard, CandyGuardData, GuardSet, DATA_OFFSET};
+use mpl_core_candy_machine_core::constants::EMPTY_STR;
 use solana_program::native_token::LAMPORTS_PER_SOL;
 
 use crate::{cache::load_cache, common::*, show::print_with_style, utils::*};
@@ -44,7 +44,7 @@ pub fn process_guard_show(args: GuardShowArgs) -> Result<()> {
 
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = setup_client(&sugar_config)?;
-    let program = client.program(mpl_candy_guard::ID);
+    let program = client.program(mpl_core_candy_guard::ID)?;
 
     let pb = spinner_with_style();
     pb.set_message("Connecting...");

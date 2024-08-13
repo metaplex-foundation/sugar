@@ -355,7 +355,7 @@ pub fn get_updated_metadata(
 
     if animation_link.is_some() {
         // only updates the link if we have a new value
-        metadata.animation_url = animation_link.clone();
+        metadata.animation_url.clone_from(animation_link);
     }
 
     Ok(serde_json::to_string(&metadata).unwrap())

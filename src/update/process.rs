@@ -3,7 +3,7 @@ use std::str::FromStr;
 use anchor_client::solana_sdk::{compute_budget::ComputeBudgetInstruction, pubkey::Pubkey};
 use anyhow::Result;
 use console::style;
-use mpl_candy_machine_core::{
+use mpl_core_candy_machine_core::{
     accounts as nft_accounts, instruction as nft_instruction, CandyMachineData,
 };
 
@@ -74,7 +74,7 @@ pub fn process_update(args: UpdateArgs) -> Result<()> {
         COMPUTER_EMOJI
     );
 
-    let program = client.program(CANDY_MACHINE_ID);
+    let program = client.program(CANDY_MACHINE_ID)?;
     let priority_fee = ComputeBudgetInstruction::set_compute_unit_price(args.priority_fee);
 
     let builder = program
@@ -135,19 +135,9 @@ fn create_candy_machine_data(
 ) -> Result<CandyMachineData> {
     let hidden_settings = config.hidden_settings.as_ref().map(|s| s.to_candy_format());
 
-    let creators = config
-        .creators
-        .clone()
-        .into_iter()
-        .map(|c| c.to_candy_format())
-        .collect::<Result<Vec<mpl_candy_machine_core::Creator>>>()?;
-
     let data = CandyMachineData {
-        symbol: config.symbol.clone(),
-        seller_fee_basis_points: config.seller_fee_basis_points,
         max_supply: 0,
         is_mutable: config.is_mutable,
-        creators,
         hidden_settings,
         config_line_settings: candy_machine.config_line_settings.clone(),
         items_available: config.number,

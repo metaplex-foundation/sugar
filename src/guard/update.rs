@@ -3,7 +3,7 @@ use std::str::FromStr;
 use anchor_client::solana_sdk::{compute_budget::ComputeBudgetInstruction, pubkey::Pubkey};
 use anyhow::Result;
 use console::style;
-use mpl_candy_guard::{accounts::Update as UpdateAccount, instruction::Update};
+use mpl_core_candy_guard::{accounts::Update as UpdateAccount, instruction::Update};
 
 use crate::{cache::load_cache, common::*, config::get_config_data, utils::*};
 
@@ -47,7 +47,7 @@ pub fn process_guard_update(args: GuardUpdateArgs) -> Result<()> {
 
     let sugar_config = sugar_setup(args.keypair, args.rpc_url)?;
     let client = setup_client(&sugar_config)?;
-    let program = client.program(mpl_candy_guard::ID);
+    let program = client.program(mpl_core_candy_guard::ID)?;
     let payer = sugar_config.keypair;
 
     let pb = spinner_with_style();

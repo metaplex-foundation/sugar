@@ -55,7 +55,7 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
 
     // creates/loads the cache
     let mut cache = load_cache(&args.cache, true)?;
-    if asset_pairs.get(&-1).is_none() {
+    if !asset_pairs.contains_key(&-1) {
         cache.items.remove("-1");
     }
 
@@ -123,27 +123,27 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
 
                 if image_changed {
                     // triggers the image upload
-                    item.image_hash = pair.image_hash.clone();
+                    item.image_hash.clone_from(&pair.image_hash);
                     item.image_link = String::new();
                     indices.image.push(*index);
                 } else if !existing_image.is_empty() {
-                    item.image_hash = pair.image_hash.clone();
+                    item.image_hash.clone_from(&pair.image_hash);
                     item.image_link = existing_image;
                 }
 
                 if animation_changed {
                     // triggers the animation upload
-                    item.animation_hash = pair.animation_hash.clone();
+                    item.animation_hash.clone_from(&pair.animation_hash);
                     item.animation_link = None;
                     indices.animation.push(*index);
                 } else if !existing_animation.is_empty() {
-                    item.animation_hash = pair.animation_hash.clone();
+                    item.animation_hash.clone_from(&pair.animation_hash);
                     item.animation_link = Some(existing_animation);
                 }
 
                 if metadata_changed || image_changed || animation_changed {
                     // triggers the metadata upload
-                    item.metadata_hash = pair.metadata_hash.clone();
+                    item.metadata_hash.clone_from(&pair.metadata_hash);
                     item.metadata_link = String::new();
                     item.on_chain = false;
                     // we need to upload metadata only
@@ -157,7 +157,7 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
                 if existing_image.is_empty() {
                     indices.image.push(*index);
                 } else {
-                    item.image_hash = pair.image_hash.clone();
+                    item.image_hash.clone_from(&pair.image_hash);
                     item.image_link = existing_image;
                 }
 
@@ -166,7 +166,7 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
                     if existing_animation.is_empty() {
                         indices.animation.push(*index);
                     } else {
-                        item.animation_hash = pair.animation_hash.clone();
+                        item.animation_hash.clone_from(&pair.animation_hash);
                         item.animation_link = Some(existing_animation);
                     }
                 }
@@ -175,24 +175,12 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
                 cache.items.insert(index.to_string(), item);
             }
         }
-        // sanity check: verifies that both symbol and seller-fee-basis-points are the
-        // same as the ones in the config file
+        // sanity check: verifies that seller-fee-basis-points are the
+        // same as the one in the config file
         let f = File::open(Path::new(&pair.metadata))?;
         match serde_json::from_reader(f) {
             Ok(metadata) => {
                 let metadata: Metadata = metadata;
-                // symbol check, but only if the asset actually has the value
-                if let Some(symbol) = metadata.symbol {
-                    if config_data.symbol.ne(&symbol) {
-                        return Err(UploadError::MismatchValue(
-                            "symbol".to_string(),
-                            pair.metadata.clone(),
-                            config_data.symbol,
-                            symbol,
-                        )
-                        .into());
-                    }
-                }
                 // seller-fee-basis-points check, but only if the asset actually has the value
                 if let Some(seller_fee_basis_points) = metadata.seller_fee_basis_points {
                     if config_data.seller_fee_basis_points != seller_fee_basis_points {

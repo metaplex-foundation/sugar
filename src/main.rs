@@ -34,8 +34,7 @@ use sugar_cli::{
     parse::parse_sugar_errors,
     reveal::{process_reveal, RevealArgs},
     show::{process_show, ShowArgs},
-    sign::{process_sign, SignArgs},
-    update::{process_set_token_stardard, process_update, SetTokenStandardArgs, UpdateArgs},
+    update::{process_update, UpdateArgs},
     upload::{process_upload, UploadArgs},
     validate::{process_validate, ValidateArgs},
     verify::{process_verify, VerifyArgs},
@@ -53,6 +52,7 @@ fn setup_logging(level: Option<EnvFilter>) -> Result<()> {
     let file = OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .open(log_path)
         .unwrap();
 
@@ -200,23 +200,6 @@ async fn run() -> Result<()> {
                 cache,
                 new_authority,
                 candy_machine,
-                priority_fee,
-            })?,
-            ConfigSubcommands::Set {
-                keypair,
-                rpc_url,
-                cache,
-                token_standard,
-                candy_machine,
-                rule_set,
-                priority_fee,
-            } => process_set_token_stardard(SetTokenStandardArgs {
-                keypair,
-                rpc_url,
-                cache,
-                token_standard,
-                candy_machine,
-                rule_set,
                 priority_fee,
             })?,
         },
@@ -543,22 +526,6 @@ async fn run() -> Result<()> {
             authority,
             priority_fee,
         })?,
-        Commands::Sign {
-            keypair,
-            rpc_url,
-            cache,
-            mint,
-            candy_machine_id,
-        } => {
-            process_sign(SignArgs {
-                keypair,
-                rpc_url,
-                cache,
-                mint,
-                candy_machine_id,
-            })
-            .await?
-        }
     }
 
     Ok(())

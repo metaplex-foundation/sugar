@@ -44,7 +44,7 @@ pub struct BundlrMethod {
 impl BundlrMethod {
     pub async fn new(sugar_config: &SugarConfig, _config_data: &ConfigData) -> Result<Self> {
         let client = setup_client(sugar_config)?;
-        let program = client.program(CANDY_MACHINE_ID);
+        let program = client.program(CANDY_MACHINE_ID)?;
         let solana_cluster: Cluster = get_cluster(program.rpc())?;
 
         let bundlr_node = match solana_cluster {
@@ -287,7 +287,7 @@ impl Prepare for BundlrMethod {
 
         let rpc_client = {
             let client = setup_client(sugar_config)?;
-            let program = client.program(CANDY_MACHINE_ID);
+            let program = client.program(CANDY_MACHINE_ID)?;
             program.rpc()
         };
 

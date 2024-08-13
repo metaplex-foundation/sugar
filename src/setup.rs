@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use anchor_client::{
     solana_sdk::{
@@ -14,6 +14,7 @@ use tracing::error;
 use crate::{config::data::SugarConfig, constants::DEFAULT_KEYPATH, parse::*};
 
 pub type SugarClient = Client<Rc<Keypair>>;
+pub type SugarAsyncClient = Client<Arc<Keypair>>;
 
 pub fn setup_client(sugar_config: &SugarConfig) -> Result<SugarClient> {
     let rpc_url = sugar_config.rpc_url.clone();
@@ -22,6 +23,18 @@ pub fn setup_client(sugar_config: &SugarConfig) -> Result<SugarClient> {
 
     let key_bytes = sugar_config.keypair.to_bytes();
     let signer = Rc::new(Keypair::from_bytes(&key_bytes)?);
+
+    let opts = CommitmentConfig::confirmed();
+    Ok(Client::new_with_options(cluster, signer, opts))
+}
+
+pub fn setup_async_client(sugar_config: &SugarConfig) -> Result<SugarAsyncClient> {
+    let rpc_url = sugar_config.rpc_url.clone();
+    let ws_url = rpc_url.replace("http", "ws");
+    let cluster = Cluster::Custom(rpc_url, ws_url);
+
+    let key_bytes = sugar_config.keypair.to_bytes();
+    let signer = Arc::new(Keypair::from_bytes(&key_bytes)?);
 
     let opts = CommitmentConfig::confirmed();
     Ok(Client::new_with_options(cluster, signer, opts))

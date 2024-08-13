@@ -10,7 +10,7 @@ The `process_guard_withdraw` function performs the following steps:
 
 3. Retrieve the candy guard account information: The function connects to the Solana network and retrieves the account information for the candy guard ID.
 
-4. Withdraw funds from the candy guard account: The function creates a transaction to withdraw funds from the candy guard account using the `Withdraw` instruction from the `mpl_candy_guard` crate. The transaction is signed by the payer's keypair and sent to the network.
+4. Withdraw funds from the candy guard account: The function creates a transaction to withdraw funds from the candy guard account using the `Withdraw` instruction from the `mpl_core_candy_guard` crate. The transaction is signed by the payer's keypair and sent to the network.
 
 5. Update the cache: If the candy guard account was closed and its reference was stored in the cache, the function removes the reference from the cache and syncs the cache file.
 
@@ -28,8 +28,10 @@ process_guard_withdraw(args)?;
 ```
 
 This code snippet initializes a `GuardWithdrawArgs` struct with the necessary information and calls the `process_guard_withdraw` function to withdraw funds from the candy guard account.
-## Questions: 
- 1. **Question:** What is the purpose of the `GuardWithdrawArgs` struct and what are its fields used for?
+
+## Questions:
+
+1. **Question:** What is the purpose of the `GuardWithdrawArgs` struct and what are its fields used for?
    **Answer:** The `GuardWithdrawArgs` struct is used to store the arguments required for the `process_guard_withdraw` function. It has fields for keypair, rpc_url, cache, and candy_guard, which store the user's keypair, the RPC URL for the Solana network, the cache file path, and the optional candy guard ID, respectively.
 
 2. **Question:** How does the code handle the case when both `args.candy_guard` and the candy guard ID from the cache are provided?
