@@ -317,6 +317,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         "Pinata",
         "SDrive",
         "Cascade",
+        "Sense"
     ];
     config_data.upload_method = match Select::with_theme(&theme)
         .with_prompt("What upload method do you want to use?")
@@ -332,6 +333,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         4 => UploadMethod::Pinata,
         5 => UploadMethod::Sdrive,
         6 => UploadMethod::Cascade,
+        7 => UploadMethod::Sense,
         _ => UploadMethod::Bundlr,
     };
 
@@ -437,6 +439,16 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         config_data.cascade_api_key = Some(
             Input::with_theme(&theme)
                 .with_prompt("What is the Cascade api key?")
+                .interact()
+                .unwrap(),
+        );
+    }
+    
+
+    if config_data.upload_method == UploadMethod::Sense {
+        config_data.sense_api_key = Some(
+            Input::with_theme(&theme)
+                .with_prompt("What is the Sense api key?")
                 .interact()
                 .unwrap(),
         );

@@ -4,7 +4,7 @@ The code in the `upload` folder is responsible for managing and uploading assets
 
 For example, the `assets.rs` file provides functions to manage assets, calculate their sizes, and update their metadata. The `errors.rs` file defines a custom error type called `UploadError` for handling various errors that may occur during the upload process. The `process.rs` file is responsible for uploading assets to a storage system, while the `uploader.rs` file handles the uploading of assets and defines traits and structs for managing the upload process.
 
-The `methods` subfolder contains code for handling the upload of assets to different storage services and platforms, such as Amazon S3, Bundlr, NFT Storage, Pinata IPFS,  Shadow Drive and Cascade. Each storage method is implemented in a separate file, providing a clean and modular approach to integrating various storage services into the larger project.
+The `methods` subfolder contains code for handling the upload of assets to different storage services and platforms, such as Amazon S3, Bundlr, NFT Storage, Pinata IPFS,  Shadow Drive, Cascade and Sense. Each storage method is implemented in a separate file, providing a clean and modular approach to integrating various storage services into the larger project.
 
 Here's an example of how the code in the `upload` folder might be used in the larger project:
 

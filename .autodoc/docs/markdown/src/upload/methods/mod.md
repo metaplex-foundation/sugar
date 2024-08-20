@@ -43,11 +43,13 @@ This code is part of a larger project and serves as a module that provides vario
 
 6. **cascade** This sub-module provides integration with Cascade protocol. Cascade is a protocol that allows users to store data permanently in a highly redundant, distributed fashion with a single upfront fee.  It contain functions to upload and manage IPFS content and also adds cascade id to the metadata to get TxID of the Action Registration ticket.
 
+7. **sense** This sub-module provides integration with Sense protocol. Sense is a lightweight protocol on the Pastel Network, built to assess the relative rareness of a given NFT against near-duplicate meta-data. It contain functions to upload and manage IPFS content and also adds sense id to the metadata to get TxID of the Action Registration ticket.
+
 By using `pub use` statements, the code re-exports the contents of each sub-module, making their functions and types available to other parts of the project without the need to explicitly import each sub-module.
 ## Questions: 
  1. **What is the purpose of each module in this code?**
 
-   Each module (aws, bundlr, nft_storage, pinata, shdw and cascade) likely represents a different component or service within the Sugar project, but it's not clear from this code snippet alone what each module does specifically.
+   Each module (aws, bundlr, nft_storage, pinata, shdw, cascade and sense) likely represents a different component or service within the Sugar project, but it's not clear from this code snippet alone what each module does specifically.
 
 2. **How are these modules being used in the rest of the project?**
 

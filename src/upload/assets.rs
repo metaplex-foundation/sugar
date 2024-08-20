@@ -43,6 +43,7 @@ impl AssetPair {
             animation_hash: self.animation_hash,
             animation_link: None,
             cascade_id: None,
+            sense_id: None,
         }
     }
 }
@@ -362,11 +363,12 @@ pub fn get_updated_metadata(
     Ok(serde_json::to_string(&metadata).unwrap())
 }
 
-pub fn get_updated_metadata_with_cascade_id(
+pub fn get_updated_metadata_with_cascade_and_sense_id(
     metadata_file: &str,
     image_link: &str,
     animation_link: &Option<String>,
     cascade_id: &Option<String>,
+    sense_id: &Option<String>,
 ) -> Result<String> {
     let mut metadata: Metadata = {
         let m = OpenOptions::new()
@@ -399,6 +401,10 @@ pub fn get_updated_metadata_with_cascade_id(
 
     if cascade_id.is_some() {
         metadata.cascade_id = cascade_id.clone();
+    }
+
+    if sense_id.is_some() {
+        metadata.sense_id = sense_id.clone();
     }
 
     if animation_link.is_some() {

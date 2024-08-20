@@ -80,6 +80,10 @@ pub struct ConfigData {
     #[serde(serialize_with = "to_option_string")]
     pub cascade_api_key: Option<String>,
 
+    // Sense specific configuration
+    #[serde(serialize_with = "to_option_string")]
+    pub sense_api_key: Option<String>,
+
     /// Hidden setttings
     pub hidden_settings: Option<HiddenSettings>,
 
@@ -234,6 +238,8 @@ pub enum UploadMethod {
     Sdrive,
     #[serde(rename = "cascade")]
     Cascade,
+    #[serde(rename = "sense")]
+    Sense,
 }
 
 impl Display for UploadMethod {
