@@ -5,9 +5,10 @@ use anchor_client::{
     Program,
 };
 use anyhow::{anyhow, Result};
+use borsh::BorshDeserialize;
 use mpl_token_metadata::{
     pda::{find_master_edition_account, find_metadata_account},
-    state::{Key, MasterEditionV2, Metadata, TokenMetadataAccount, MAX_MASTER_EDITION_LEN},
+    state::{Key, MasterEditionV2, Metadata, MAX_MASTER_EDITION_LEN},
     utils::try_from_slice_checked,
 };
 
@@ -37,7 +38,7 @@ pub fn get_metadata_pda<C: Deref<Target = impl Signer> + Clone>(
             &metadata_pubkey.to_string()
         )
     })?;
-    let metadata = Metadata::safe_deserialize(metadata_account.data.as_slice());
+    let metadata = Metadata::deserialize(&mut metadata_account.data.as_slice());
     metadata.map(|m| (metadata_pubkey, m)).map_err(|_| {
         anyhow!(
             "Failed to deserialize metadata account: {}",
