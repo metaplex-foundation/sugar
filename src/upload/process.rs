@@ -55,7 +55,7 @@ pub async fn process_upload(args: UploadArgs) -> Result<()> {
 
     // creates/loads the cache
     let mut cache = load_cache(&args.cache, true)?;
-    if asset_pairs.get(&-1).is_none() {
+    if !asset_pairs.contains_key(&-1) {
         cache.items.remove("-1");
     }
 

@@ -3,6 +3,7 @@
 use std::{fmt::Display, time::Duration};
 
 use anchor_client::solana_sdk::compute_budget::ComputeBudgetInstruction;
+use borsh::BorshDeserialize;
 use mpl_candy_guard::{
     accounts::Route as RouteAccount, guards::FreezeInstruction, instruction::Route,
     instructions::RouteArgs, state::GuardType,
@@ -251,7 +252,8 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
                         .unwrap()
                         .value
                         .unwrap();
-                    let metadata = Metadata::safe_deserialize(&metadata_account.data).unwrap();
+                    let metadata =
+                        Metadata::deserialize(&mut metadata_account.data.as_slice()).unwrap();
 
                     let rule_set = if let Some(ProgrammableConfig::V1 { rule_set }) =
                         metadata.programmable_config
@@ -460,7 +462,8 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
                             .unwrap()
                             .value
                             .unwrap();
-                        let metadata = Metadata::safe_deserialize(&metadata_account.data).unwrap();
+                        let metadata =
+                            Metadata::deserialize(&mut metadata_account.data.as_slice()).unwrap();
 
                         let rule_set = if let Some(ProgrammableConfig::V1 { rule_set }) =
                             metadata.programmable_config

@@ -278,14 +278,18 @@ impl FromStr for Cluster {
     }
 }
 
-impl ToString for Cluster {
-    fn to_string(&self) -> String {
-        match self {
-            Cluster::Devnet => "devnet".to_string(),
-            Cluster::Mainnet => "mainnet".to_string(),
-            Cluster::Localnet => "localnet".to_string(),
-            Cluster::Unknown => "unknown".to_string(),
-        }
+impl Display for Cluster {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Cluster::Devnet => "devnet",
+                Cluster::Mainnet => "mainnet",
+                Cluster::Localnet => "localnet",
+                Cluster::Unknown => "unknown",
+            }
+        )
     }
 }
 
