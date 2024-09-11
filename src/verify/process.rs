@@ -206,8 +206,8 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
     }
 
     let cluster = match get_cluster(program.rpc())? {
-        Cluster::Devnet => "devnet",
-        Cluster::Mainnet => "mainnet",
+        Cluster::Devnet => "devnet-alpha",
+        Cluster::Mainnet => "mainnet-alpha",
         Cluster::Localnet => "localnet",
         Cluster::Unknown => "",
     };
@@ -216,7 +216,7 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
         println!("\nVerification successful. You're good to go!");
     } else {
         println!(
-            "\nVerification successful. You're good to go!\n\nSee your candy machine at:\n  -> https://www.solaneyes.com/address/{}?cluster={}",
+            "\nVerification successful. You're good to go!\n\nSee your candy machine at:\n  -> https://www.solana.fm/address/{}?cluster={}",
             cache.program.candy_machine,
             cluster
         );
