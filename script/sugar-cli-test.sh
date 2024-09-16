@@ -43,6 +43,7 @@ function default_settings() {
     ITEMS=10
     MULTIPLE=1
     TOKEN_STANDARD="nft"
+    LIMITED_FILES="n" # creates only one filepair to test hiddenSettings warning
 
     RESET="Y"
     EXT="png"
@@ -122,12 +123,13 @@ echo "5. hidden settings"
 echo "6. animation"
 echo "7. sugar launch"
 echo "8. programmable NFT"
+echo "9. hidden settings with limited upload"
 
 if [ -f "$RESUME_FILE" ]; then
-    echo "9. previous run ($(RED "resume"))"
-    echo -n "$(CYN "Select test template [1-9]") (default 3): "
+    echo "10. previous run ($(RED "resume"))"
+    echo -n "$(CYN "Select test template [1-10]") (default 3): "
 else
-    echo -n "$(CYN "Select test template [1-8]") (default 3): "
+    echo -n "$(CYN "Select test template [1-9]") (default 3): "
 fi
 
 read Template
@@ -168,6 +170,12 @@ case "$Template" in
         TOKEN_STANDARD="pnft"
     ;;
     9)
+        devnet_env
+        max_settings
+        HIDDEN="Y"
+        LIMITED_FILES="Y"
+    ;;
+    10)
         source $RESUME_FILE
         RESUME=1
         RESET="n"
@@ -617,6 +625,13 @@ if [ $RESUME -eq 0 ]; then
         # initialises the assets - this will be multiple copies of the same
         # image/json pair with a new index
         INDEX="image"
+        TEMP_ITEMS=$ITEMS
+        if [ "$LIMITED_FILES" = "Y" ]; then
+            TEMP_ITEMS=$ITEMS
+            ITEMS=1
+            printf "TEMP_ITEMS updated to $TEMP_ITEMS"
+        fi
+
         for ((i = 0; i < $ITEMS; i++)); do
             if [ ! "$TEST_IMAGE" = "Y" ]; then
                 INDEX=$i
@@ -636,6 +651,8 @@ if [ $RESUME -eq 0 ]; then
             fi
             printf "$METADATA" "$NAME" "$NAME" "$MEDIA_NAME" "$ANIMATION_URL" "$MEDIA_NAME" "$MEDIA_TYPE" "$ANIMATION_FILE" "$CATEGORY" > "$ASSETS_DIR/$i.json"
         done
+
+        ITEMS=$TEMP_ITEMS
         rm "$ASSETS_DIR/template_image.$EXT"
         # quietly removes the animation template (it might not exist)
         rm -f "$ASSETS_DIR/template_animation.mp4"
@@ -658,6 +675,12 @@ if [ $RESUME -eq 0 ]; then
         METADATA_HASH=`sha256sum "$ASSETS_DIR/collection.json" | cut -d ' ' -f 1`
         echo "\"-1\":{\"name\":\"[$TIMESTAMP] $NAME\",\"image_hash\":\"$COLLECTION_HASH\",\"image_link\":\"$COLLECTION_PNG\",\"metadata_hash\":\"$METADATA_HASH\",\"metadata_link\":\"$COLLECTION_URL\",\"onChain\":false}," >> $CACHE_FILE
         
+        TEMP_ITEMS=$ITEMS
+        if [ "$LIMITED_FILES" = "Y" ]; then
+            TEMP_ITEMS=$ITEMS
+            ITEMS=1
+            printf "TEMP_ITEMS updated to $TEMP_ITEMS"
+        fi
         for ((i = 0; i < $ITEMS; i++)); do
             if [ "$i" -gt "0" ]; then
                 echo -n "," >> $CACHE_FILE
@@ -673,6 +696,7 @@ if [ $RESUME -eq 0 ]; then
             METADATA_HASH=`sha256sum "$ASSETS_DIR/$i.json" | cut -d ' ' -f 1`
             echo -n "\"$i\":{\"name\":\"$NAME\",\"image_hash\":\"$MEDIA_HASH\",\"image_link\":\"$PNG\",\"metadata_hash\":\"$METADATA_HASH\",\"metadata_link\":\"$METADATA_URL\",\"onChain\":false}" >> $CACHE_FILE
         done
+        ITEMS=$TEMP_ITEMS
 
         echo -n "}}" >> $CACHE_FILE
     fi
