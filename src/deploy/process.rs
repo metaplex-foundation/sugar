@@ -92,17 +92,30 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
 
     let cache_items_sans_collection = (cache.items.len() - collection_in_cache as usize) as u64;
 
-    if num_items != cache_items_sans_collection {
+    if !hidden && num_items != cache_items_sans_collection {
         return Err(anyhow!(
             "Number of items ({}) do not match cache items ({}). 
             Item number in the config should only include asset files, not the collection file.",
             num_items,
             cache_items_sans_collection
         ));
-    } else {
-        check_symbol(&config_data.symbol)?;
-        check_seller_fee_basis_points(config_data.seller_fee_basis_points)?;
+    } else if hidden && num_items != cache_items_sans_collection {
+        println!(
+            "{}",
+            style(format!(
+                "Warning: Number of items ({}) do not match cache items ({}). 
+                {} items are missing. Revealing will not work correctly.",
+                num_items,
+                cache_items_sans_collection,
+                num_items.saturating_sub(cache_items_sans_collection)
+            ))
+            .yellow()
+            .bold()
+        );
     }
+
+    check_symbol(&config_data.symbol)?;
+    check_seller_fee_basis_points(config_data.seller_fee_basis_points)?;
 
     let total_steps = 2 + if candy_machine_address.is_empty() {
         collection_in_cache as u8

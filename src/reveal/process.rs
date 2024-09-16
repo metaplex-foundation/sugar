@@ -71,13 +71,39 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
     let config = get_config_data(&args.config)?;
 
     // If it's not a Hidden Settings mint, return an error.
-    let hidden_settings = if let Some(settings) = config.hidden_settings {
+    let hidden_settings = if let Some(ref settings) = config.hidden_settings {
         settings
     } else {
         return Err(anyhow!("Candy machine is not a Hidden Settings mint."));
     };
 
     let cache = load_cache(&args.cache, false)?;
+
+    // Check if the cache file is incomplete
+    let num_items = config.number;
+    let hidden = config.hidden_settings.is_some();
+    let collection_in_cache = cache.items.get("-1").is_some();
+    let cache_items_sans_collection = (cache.items.len() - collection_in_cache as usize) as u64;
+
+    if hidden && num_items != cache_items_sans_collection {
+        let warning = format!(
+            "+---------------------------------+\n\
+              {} {} ITEMS MISSING IN CACHE FILE! \n\
+             +---------------------------------+",
+            WARNING_EMOJI,
+            num_items.saturating_sub(cache_items_sans_collection)
+        );
+        println!(
+            "\n{}\n{}\n",
+            style(warning).bold().yellow(),
+            style(
+                " Revealing might fail. \
+                It is recommended to run 'sugar upload' again.",
+            )
+            .italic()
+            .yellow()
+        )
+    }
     let sugar_config = sugar_setup(args.keypair, args.rpc_url.clone())?;
     let anchor_client = setup_client(&sugar_config)?;
     let program = anchor_client.program(CANDY_MACHINE_ID);
