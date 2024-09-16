@@ -469,6 +469,7 @@ async fn run() -> Result<()> {
             cache,
             config,
             timeout,
+            new_update_authority,
         } => {
             process_reveal(RevealArgs {
                 keypair,
@@ -476,6 +477,7 @@ async fn run() -> Result<()> {
                 cache,
                 config,
                 timeout,
+                new_update_authority,
             })
             .await?
         }

@@ -32,6 +32,7 @@ pub struct RevealArgs {
     pub cache: String,
     pub config: String,
     pub timeout: Option<u64>,
+    pub new_update_authority: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -41,6 +42,7 @@ pub struct MetadataUpdateValues {
     pub new_uri: String,
     pub new_name: String,
     pub index: String,
+    pub new_update_authority: Option<Pubkey>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -92,6 +94,22 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
             error!("{:?}", error);
             return Err(error);
         }
+    };
+
+    let new_update_authority = if let Some(new_update_authority) = &args.new_update_authority {
+        match Pubkey::from_str(new_update_authority) {
+            Ok(new_update_authority) => Some(new_update_authority),
+            Err(_) => {
+                let error = anyhow!(
+                    "Failed to parse new update authority: {}",
+                    new_update_authority
+                );
+                error!("{:?}", error);
+                return Err(error);
+            }
+        }
+    } else {
+        None
     };
 
     spinner.finish_with_message("Done");
@@ -257,6 +275,15 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
             .ok_or_else(|| anyhow!("No name found for number: {num}"))?
             .name
             .clone();
+        // if new update authority is set, and it isn't equal to the current update authority
+        // then change it along with the rest of the metadata
+        let set_update_authority = new_update_authority.and_then(|new_update_authority| {
+            if new_update_authority != m.update_authority {
+                Some(new_update_authority)
+            } else {
+                None
+            }
+        });
 
         update_values.push(MetadataUpdateValues {
             metadata_pubkey,
@@ -264,6 +291,7 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
             new_uri,
             new_name,
             index: num,
+            new_update_authority: set_update_authority,
         });
     }
     spinner.finish_and_clear();
@@ -372,7 +400,7 @@ async fn update_metadata_value(
             TOKEN_METADATA_PROGRAM_ID,
             value.metadata_pubkey,
             update_authority.pubkey(),
-            None,
+            value.new_update_authority,
             Some(data_v2),
             None,
             None,
