@@ -19,6 +19,10 @@ pub struct Metadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attributes: Option<Vec<Attribute>>,
     pub properties: Property,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cascade_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sense_id: Option<String>,
     #[serde(flatten)]
     pub extra: HashMap<String, Value>,
 }
