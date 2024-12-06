@@ -47,7 +47,7 @@ pub fn process_validate(args: ValidateArgs) -> Result<()> {
                 "\n{}\n{}\n",
                 style(warning).bold().yellow(),
                 style(
-                    "Check https://docs.metaplex.com/developer-tools/sugar/guides/preparing-assets for the collection file requirements \
+                    "Check https://developers.metaplex.com/candy-machine/guides/create-an-nft-collection-on-solana-with-candy-machine#collection-details for the collection file requirements \
                     if you want a collection to be set automatically."
                 )
                 .italic()
