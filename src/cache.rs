@@ -128,6 +128,12 @@ pub struct CacheItem {
     pub animation_hash: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub animation_link: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cascade_id: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sense_id: Option<String>,
 }
 
 impl CacheItem {
