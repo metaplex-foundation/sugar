@@ -234,8 +234,7 @@ impl<T: ParallelUploader> Uploader for T {
                 }
                 (Err(err), _index, remaining) => {
                     errors.push(UploadError::SendDataFailed(format!(
-                        "Upload error: {:?}",
-                        err
+                        "Upload error: {err:?}"
                     )));
                     // ignoring all errors
                     handles = remaining;
@@ -279,12 +278,6 @@ pub async fn initialize(
         UploadMethod::AWS => Box::new(AWSMethod::new(config_data).await?) as Box<dyn Uploader>,
         UploadMethod::Bundlr => {
             Box::new(BundlrMethod::new(sugar_config, config_data).await?) as Box<dyn Uploader>
-        }
-        UploadMethod::NftStorage => {
-            Box::new(NftStorageMethod::new(config_data).await?) as Box<dyn Uploader>
-        }
-        UploadMethod::SHDW => {
-            Box::new(shdw::SHDWMethod::new(sugar_config, config_data).await?) as Box<dyn Uploader>
         }
         UploadMethod::Pinata => {
             Box::new(pinata::PinataMethod::new(config_data).await?) as Box<dyn Uploader>

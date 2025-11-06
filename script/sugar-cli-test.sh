@@ -58,8 +58,6 @@ function default_settings() {
     AWS_PROFILE="null"
     AWS_DIRECTORY="null"
     AWS_DOMAIN="null"
-    NFT_STORAGE_TOKEN="null"
-    SHDW_STORAGE_ACCOUNT="null"
     PINATA_JWT="null"
     PINATA_API_GATEWAY="null"
     PINATA_CONTENT_GATEWAY="null"
@@ -84,8 +82,6 @@ function max_settings() {
     AWS_PROFILE="null"
     AWS_DIRECTORY="null"
     AWS_DOMAIN="null"
-    NFT_STORAGE_TOKEN="null"
-    SHDW_STORAGE_ACCOUNT="null"
     PINATA_JWT="null"
     PINATA_API_GATEWAY="null"
     PINATA_CONTENT_GATEWAY="null"
@@ -225,19 +221,15 @@ if [ -z ${STORAGE+x} ]; then
     CYN "Storage type:"
     echo "1. bundlr (default)"
     echo "2. aws"
-    echo "3. nft_storage"
-    echo "4. shdw"
-    echo "5. pinata"
-    echo "6. sdrive"
-    echo  -n "$(CYN "Select the storage type [1-6]") (default 1): "
+    echo "3. pinata"
+    echo "4. sdrive"
+    echo  -n "$(CYN "Select the storage type [1-4]") (default 1): "
     read Input
     case "$Input" in
         1) STORAGE="bundlr" ;;
         2) STORAGE="aws" ;;
-        3) STORAGE="nft_storage" ;;
-        4) STORAGE="shdw" ;;
-        5) STORAGE="pinata" ;;
-        6) STORAGE="sdrive" ;;
+        3) STORAGE="pinata" ;;
+        4) STORAGE="sdrive" ;;
     esac
 fi
 
@@ -289,26 +281,6 @@ if [ -z ${AWS_DOMAIN+x} ]; then
         if [ ! -z "$Domain" ]; then
              AWS_DOMAIN=$Domain
         fi
-    fi
-fi
-
-# nft.storage
-if [ -z ${NFT_STORAGE_TOKEN+x} ]; then
-    NFT_STORAGE_TOKEN="null"
-
-    if [ "$STORAGE" = "nft_storage" ]; then
-        echo -n $(CYN "Authentication token: ")
-        read NFT_STORAGE_TOKEN
-    fi
-fi
-
-# shadow drive
-if [ -z ${SHDW_STORAGE_ACCOUNT+x} ]; then
-    SHDW_STORAGE_ACCOUNT="null"
-
-    if [ "$STORAGE" = "shdw" ]; then
-        echo -n $(CYN "SHDW storage account: ")
-        read SHDW_STORAGE_ACCOUNT
     fi
 fi
 
@@ -712,12 +684,6 @@ else
     HIDDEN_SETTINGS="null"
 fi
 
-SHDW=null
-
-if [ ! "$SHDW_STORAGE" = "null" ]; then
-    SHDW="\"${SHDW_STORAGE_ACCOUNT}\""
-fi
-
 cat >$CONFIG_FILE <<-EOM
 {
     "tokenStandard": "${TOKEN_STANDARD}",
@@ -740,8 +706,6 @@ cat >$CONFIG_FILE <<-EOM
         "directory": "${AWS_DIRECTORY}",
         "domain": "${AWS_DOMAIN}"
     },
-    "nftStorageAuthToken": "${NFT_STORAGE_TOKEN}",
-    "shdwStorageAccount": $SHDW,
     "pinataConfig": {
         "jwt": "${PINATA_JWT}",
         "apiGateway": "${PINATA_API_GATEWAY}",
@@ -775,8 +739,6 @@ AWS_BUCKET="$AWS_BUCKET"
 AWS_PROFILE="$AWS_PROFILE"
 AWS_DIRECTORY="$AWS_DIRECTORY"
 AWS_DOMAIN="$AWS_DOMAIN"
-NFT_STORAGE_TOKEN="$NFT_STORAGE_TOKEN"
-SHDW_STORAGE_ACCOUNT="$SHDW_STORAGE_ACCOUNT"
 PINATA_JWT="$PINATA_JWT"
 PINATA_API_GATEWAY="$PINATA_API_GATEWAY"
 PINATA_CONTENT_GATEWAY="$PINATA_CONTENT_GATEWAY"
