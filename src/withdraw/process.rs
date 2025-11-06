@@ -144,9 +144,8 @@ pub fn process_withdraw(args: WithdrawArgs) -> Result<()> {
                     let warning = format!(
                         "\n\
                         +-----------------------------------------------------+\n\
-                        | {} WARNING: This will drain ALL your Candy Machines |\n\
-                        +-----------------------------------------------------+",
-                        WARNING_EMOJI
+                        | {WARNING_EMOJI} WARNING: This will drain ALL your Candy Machines |\n\
+                        +-----------------------------------------------------+"
                     );
 
                     println!("{}\n", style(warning).bold().yellow());
@@ -188,7 +187,7 @@ pub fn process_withdraw(args: WithdrawArgs) -> Result<()> {
                     if not_drained > 0 {
                         println!(
                             "{}",
-                            style(format!("Could not drain {} candy machine(s)", not_drained))
+                            style(format!("Could not drain {not_drained} candy machine(s)"))
                                 .red()
                                 .bold()
                                 .dim()

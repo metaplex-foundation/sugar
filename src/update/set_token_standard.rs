@@ -36,7 +36,7 @@ pub fn process_set_token_stardard(args: SetTokenStandardArgs) -> Result<()> {
         ));
     }
 
-    println!("[1/2] {}Loading candy machine", LOOKING_GLASS_EMOJI);
+    println!("[1/2] {LOOKING_GLASS_EMOJI}Loading candy machine");
 
     // the candy machine id specified takes precedence over the one from the cache
 
@@ -81,7 +81,7 @@ pub fn process_set_token_stardard(args: SetTokenStandardArgs) -> Result<()> {
         "rule set"
     };
 
-    println!("\n[2/2] {}Setting {}", WITHDRAW_EMOJI, message);
+    println!("\n[2/2] {WITHDRAW_EMOJI}Setting {message}");
 
     let pb = spinner_with_style();
     pb.set_message("Connecting...");

@@ -22,7 +22,7 @@ pub struct GuardAddArgs {
 }
 
 pub fn process_guard_add(args: GuardAddArgs) -> Result<()> {
-    println!("[1/3] {}Looking up candy machine", LOOKING_GLASS_EMOJI);
+    println!("[1/3] {LOOKING_GLASS_EMOJI}Looking up candy machine");
 
     let pb = spinner_with_style();
     pb.set_message("Connecting...");
@@ -74,7 +74,7 @@ pub fn process_guard_add(args: GuardAddArgs) -> Result<()> {
     let program = client.program(mpl_candy_guard::ID);
 
     let candy_guard = if candy_guard_id.is_empty() {
-        println!("\n[2/3] {}Initializing a candy guard", GUARD_EMOJI);
+        println!("\n[2/3] {GUARD_EMOJI}Initializing a candy guard");
         let pb = spinner_with_style();
         pb.set_message("Initializing...");
 
@@ -117,7 +117,7 @@ pub fn process_guard_add(args: GuardAddArgs) -> Result<()> {
 
         candy_guard
     } else {
-        println!("\n[2/3] {}Loading candy guard", COMPUTER_EMOJI);
+        println!("\n[2/3] {COMPUTER_EMOJI}Loading candy guard");
 
         let candy_guard_id = match Pubkey::from_str(&candy_guard_id) {
             Ok(candy_guard_id) => candy_guard_id,
@@ -170,7 +170,7 @@ pub fn process_guard_add(args: GuardAddArgs) -> Result<()> {
 
     // wraps the candy machine
 
-    println!("\n[3/3] {}Wrapping", WRAP_EMOJI);
+    println!("\n[3/3] {WRAP_EMOJI}Wrapping");
 
     let pb = spinner_with_style();
     pb.set_message("Connecting...");

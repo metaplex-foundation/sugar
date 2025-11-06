@@ -18,7 +18,7 @@ pub struct GuardShowArgs {
 }
 
 pub fn process_guard_show(args: GuardShowArgs) -> Result<()> {
-    println!("[1/1] {}Loading candy guard", LOOKING_GLASS_EMOJI);
+    println!("[1/1] {LOOKING_GLASS_EMOJI}Loading candy guard");
 
     // the candy guard id specified takes precedence over the one from the cache
 
@@ -107,7 +107,7 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     if let Some(bot_tax) = &guard_set.bot_tax {
         print_with_style(&padding, "bot tax", EMPTY_STR.to_string());
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "lamports",
             format!(
                 "{} (◎ {})",
@@ -116,7 +116,7 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
             ),
         );
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "last instruction",
             bot_tax.last_instruction.to_string(),
         );
@@ -128,7 +128,7 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     if let Some(sol_payment) = &guard_set.sol_payment {
         print_with_style(&padding, "sol payment", EMPTY_STR.to_string());
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "lamports",
             format!(
                 "{} (◎ {})",
@@ -137,7 +137,7 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
             ),
         );
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "destination",
             sol_payment.destination.to_string(),
         );
@@ -149,17 +149,17 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     if let Some(token_payment) = &guard_set.token_payment {
         print_with_style(&padding, "token payment", EMPTY_STR.to_string());
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "amount",
             token_payment.amount.to_string(),
         );
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "token mint",
             token_payment.mint.to_string(),
         );
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "destination",
             token_payment.destination_ata.to_string(),
         );
@@ -172,14 +172,14 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
         print_with_style(&padding, "start date", EMPTY_STR.to_string());
         if let Some(date) = NaiveDateTime::from_timestamp_opt(start_date.date, 0) {
             print_with_style(
-                &format!("{}:   ", padding),
+                &format!("{padding}:   "),
                 "date",
                 date.format("%a %B %e %Y %H:%M:%S UTC").to_string(),
             );
         } else {
             // this should not happen, but adding a message so it can be
             // flag to the user
-            print_with_style(&format!("{}:   ", padding), "date", "<parse error>");
+            print_with_style(&format!("{padding}:   "), "date", "<parse error>");
         }
     } else {
         print_with_style(&padding, "start date", "none".to_string());
@@ -189,7 +189,7 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     if let Some(third_party_signer) = &guard_set.third_party_signer {
         print_with_style(&padding, "third party signer", EMPTY_STR.to_string());
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "signer key",
             third_party_signer.signer_key.to_string(),
         );
@@ -201,12 +201,12 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     if let Some(token_gate) = &guard_set.token_gate {
         print_with_style(&padding, "token gate", EMPTY_STR.to_string());
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "amount",
             token_gate.amount.to_string(),
         );
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "mint",
             token_gate.mint.to_string(),
         );
@@ -218,12 +218,12 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     if let Some(gatekeeper) = &guard_set.gatekeeper {
         print_with_style(&padding, "gatekeeper", EMPTY_STR.to_string());
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "gatekeeper network",
             gatekeeper.gatekeeper_network.to_string(),
         );
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "expire_on_use",
             gatekeeper.expire_on_use.to_string(),
         );
@@ -236,14 +236,14 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
         print_with_style(&padding, "end date", EMPTY_STR.to_string());
         if let Some(date) = NaiveDateTime::from_timestamp_opt(end_date.date, 0) {
             print_with_style(
-                &format!("{}:   ", padding),
+                &format!("{padding}:   "),
                 "date",
                 date.format("%a %B %e %Y %H:%M:%S UTC").to_string(),
             );
         } else {
             // this should not happen, but adding a message so it can be
             // flag to the user
-            print_with_style(&format!("{}:   ", padding), "date", "<parse error>");
+            print_with_style(&format!("{padding}:   "), "date", "<parse error>");
         }
     } else {
         print_with_style(&padding, "end date", "none".to_string());
@@ -253,7 +253,7 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     if let Some(allow_list) = &guard_set.allow_list {
         print_with_style(&padding, "allow list", EMPTY_STR.to_string());
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "merkle root",
             hex::encode(allow_list.merkle_root),
         );
@@ -264,9 +264,9 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     // mint limit
     if let Some(mint_limit) = &guard_set.mint_limit {
         print_with_style(&padding, "mint limit", EMPTY_STR.to_string());
-        print_with_style(&format!("{}:   ", padding), "id", mint_limit.id.to_string());
+        print_with_style(&format!("{padding}:   "), "id", mint_limit.id.to_string());
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "amount",
             mint_limit.limit.to_string(),
         );
@@ -278,12 +278,12 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     if let Some(nft_payment) = &guard_set.nft_payment {
         print_with_style(&padding, "nft payment", EMPTY_STR.to_string());
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "required collection",
             nft_payment.required_collection.to_string(),
         );
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "destination",
             nft_payment.destination.to_string(),
         );
@@ -295,7 +295,7 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     if let Some(redeemed_amount) = &guard_set.redeemed_amount {
         print_with_style(&padding, "redeemed amount", EMPTY_STR.to_string());
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "amount",
             redeemed_amount.maximum.to_string(),
         );
@@ -307,7 +307,7 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     if let Some(address_gate) = &guard_set.address_gate {
         print_with_style(&padding, "address gate", EMPTY_STR.to_string());
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "address",
             address_gate.address.to_string(),
         );
@@ -319,7 +319,7 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     if let Some(nft_gate) = &guard_set.nft_gate {
         print_with_style(&padding, "nft gate", EMPTY_STR.to_string());
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "required_collection",
             nft_gate.required_collection.to_string(),
         );
@@ -331,7 +331,7 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     if let Some(nft_burn) = &guard_set.nft_burn {
         print_with_style(&padding, "nft burn", EMPTY_STR.to_string());
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "required_collection",
             nft_burn.required_collection.to_string(),
         );
@@ -343,12 +343,12 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     if let Some(token_burn) = &guard_set.token_burn {
         print_with_style(&padding, "token burn", EMPTY_STR.to_string());
         print_with_style(
-            &format!("{}    ", padding),
+            &format!("{padding}    "),
             "amount",
             token_burn.amount.to_string(),
         );
         print_with_style(
-            &format!("{}    ", padding),
+            &format!("{padding}    "),
             "mint",
             token_burn.mint.to_string(),
         );
@@ -360,7 +360,7 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     if let Some(freeze_sol_payment) = &guard_set.freeze_sol_payment {
         print_with_style(&padding, "freeze sol payment", EMPTY_STR.to_string());
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "lamports",
             format!(
                 "{} (◎ {})",
@@ -369,7 +369,7 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
             ),
         );
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "destination",
             freeze_sol_payment.destination.to_string(),
         );
@@ -381,17 +381,17 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     if let Some(freeze_token_payment) = &guard_set.freeze_token_payment {
         print_with_style(&padding, "freeze token payment", EMPTY_STR.to_string());
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "amount",
             freeze_token_payment.amount.to_string(),
         );
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "token mint",
             freeze_token_payment.mint.to_string(),
         );
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "destination",
             freeze_token_payment.destination_ata.to_string(),
         );
@@ -408,7 +408,7 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
             .enumerate()
             .for_each(|(i, p)| {
                 print_with_style(
-                    &format!("{}:   ", padding),
+                    &format!("{padding}:   "),
                     &(i + 1).to_string(),
                     p.to_string(),
                 );
@@ -420,9 +420,9 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     // allocation
     if let Some(allocation) = &guard_set.allocation {
         print_with_style(&padding, "allocation", EMPTY_STR.to_string());
-        print_with_style(&format!("{}:   ", padding), "id", allocation.id.to_string());
+        print_with_style(&format!("{padding}:   "), "id", allocation.id.to_string());
         print_with_style(
-            &format!("{}:   ", padding),
+            &format!("{padding}:   "),
             "limit",
             allocation.limit.to_string(),
         );
@@ -434,17 +434,17 @@ fn print_guard_set(guard_set: &GuardSet, padding: String) -> Result<()> {
     if let Some(token2022_payment) = &guard_set.token2022_payment {
         print_with_style(&padding, "token2022 payment", EMPTY_STR.to_string());
         print_with_style(
-            &format!("{}    ", padding),
+            &format!("{padding}    "),
             "amount",
             token2022_payment.amount.to_string(),
         );
         print_with_style(
-            &format!("{}    ", padding),
+            &format!("{padding}    "),
             "token mint",
             token2022_payment.mint.to_string(),
         );
         print_with_style(
-            &format!("{}    ", padding),
+            &format!("{padding}    "),
             "destination",
             token2022_payment.destination_ata.to_string(),
         );
