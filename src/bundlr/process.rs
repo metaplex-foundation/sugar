@@ -57,7 +57,7 @@ pub async fn process_bundlr(args: BundlrArgs) -> Result<()> {
     pb.finish_and_clear();
 
     println!("\nFunding address:");
-    println!("  -> pubkey: {}", address);
+    println!("  -> pubkey: {address}");
     println!(
         "  -> lamports: {} (◎ {})",
         balance,

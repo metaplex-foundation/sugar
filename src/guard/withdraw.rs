@@ -17,7 +17,7 @@ pub struct GuardWithdrawArgs {
 }
 
 pub fn process_guard_withdraw(args: GuardWithdrawArgs) -> Result<()> {
-    println!("[1/2] {}Loading candy guard", LOOKING_GLASS_EMOJI);
+    println!("[1/2] {LOOKING_GLASS_EMOJI}Loading candy guard");
 
     // the candy guard id specified takes precedence over the one from the cache
 
@@ -53,7 +53,7 @@ pub fn process_guard_withdraw(args: GuardWithdrawArgs) -> Result<()> {
 
     pb.finish_with_message("Done");
 
-    println!("\n[2/2] {}Retrieving funds", WITHDRAW_EMOJI);
+    println!("\n[2/2] {WITHDRAW_EMOJI}Retrieving funds");
 
     let pb = spinner_with_style();
     pb.set_message("Connecting...");

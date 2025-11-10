@@ -253,7 +253,7 @@ pub fn process_show(args: ShowArgs) -> Result<()> {
             table
                 .with(Style::blank())
                 .with(Modify::new(Segment::all()).with(Alignment::right()));
-            println!("{}", table);
+            println!("{table}");
 
             println!(
                 "\n{}",
@@ -269,9 +269,5 @@ pub fn print_with_style<S>(indent: &str, key: &str, value: S)
 where
     S: core::fmt::Display,
 {
-    println!(
-        " {} {}",
-        style(format!("{}:.. {}:", indent, key)).dim(),
-        value
-    );
+    println!(" {} {}", style(format!("{indent}:.. {key}:")).dim(), value);
 }

@@ -262,8 +262,7 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
     let name_suffix_pattern = patterns.get(2).unwrap_or(&"");
 
     let pattern = regex::Regex::new(&format!(
-        "{}([0-9]+){}",
-        name_prefix_pattern, name_suffix_pattern
+        "{name_prefix_pattern}([0-9]+){name_suffix_pattern}"
     ))
     .expect("Failed to create regex pattern.");
 
@@ -382,14 +381,13 @@ pub async fn process_reveal(args: RevealArgs) -> Result<()> {
 
     if !errors.is_empty() {
         println!(
-            "{}Some reveals failed. See the reveal cache file for details. Re-run the command.",
-            WARNING_EMOJI
+            "{WARNING_EMOJI}Some reveals failed. See the reveal cache file for details. Re-run the command."
         );
         let f = File::create("sugar-reveal-cache.json")
             .map_err(|e| anyhow!("Failed to create sugar reveal cache file: {e}"))?;
         serde_json::to_writer_pretty(f, &errors).unwrap();
     } else {
-        println!("\n{}Reveal complete!", CONFETTI_EMOJI);
+        println!("\n{CONFETTI_EMOJI}Reveal complete!");
     }
 
     Ok(())

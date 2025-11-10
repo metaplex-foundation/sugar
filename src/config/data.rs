@@ -65,14 +65,6 @@ pub struct ConfigData {
     #[serde(serialize_with = "to_option_string")]
     pub sdrive_api_key: Option<String>,
 
-    // NFT.Storage specific configuration
-    #[serde(serialize_with = "to_option_string")]
-    pub nft_storage_auth_token: Option<String>,
-
-    // Shadow Drive specific configuration
-    #[serde(serialize_with = "to_option_string")]
-    pub shdw_storage_account: Option<String>,
-
     // Pinata specific configuration
     pub pinata_config: Option<PinataConfig>,
 
@@ -222,9 +214,6 @@ pub enum UploadMethod {
     Bundlr,
     #[serde(rename = "aws")]
     AWS,
-    NftStorage,
-    #[serde(rename = "shdw")]
-    SHDW,
     Pinata,
     #[serde(rename = "sdrive")]
     Sdrive,
@@ -232,7 +221,7 @@ pub enum UploadMethod {
 
 impl Display for UploadMethod {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -305,7 +294,7 @@ pub enum TokenStandard {
 
 impl Display for TokenStandard {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

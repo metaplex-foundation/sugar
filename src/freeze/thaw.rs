@@ -120,7 +120,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
 
     println!(
         "{} {}Loading freeze escrow information",
-        style(format!("[1/{}]", total_steps)).bold().dim(),
+        style(format!("[1/{total_steps}]")).bold().dim(),
         LOOKING_GLASS_EMOJI
     );
 
@@ -179,7 +179,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
     if !args.all {
         println!(
             "\n{} {}Thawing NFT",
-            style(format!("[2/{}]", total_steps)).bold().dim(),
+            style(format!("[2/{total_steps}]")).bold().dim(),
             MONEY_BAG_EMOJI
         );
 
@@ -312,7 +312,7 @@ pub async fn process_thaw(args: ThawArgs) -> Result<()> {
     // Thaw all frozen NFTs.
     println!(
         "\n{} {}Getting minted NFTs for candy machine {}",
-        style(format!("[2/{}]", total_steps)).bold().dim(),
+        style(format!("[2/{total_steps}]")).bold().dim(),
         LOOKING_GLASS_EMOJI,
         candy_machine_id
     );

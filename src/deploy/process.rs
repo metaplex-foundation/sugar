@@ -139,7 +139,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
 
         println!(
             "\n{} {}Creating collection NFT for candy machine",
-            style(format!("[1/{}]", total_steps)).bold().dim(),
+            style(format!("[1/{total_steps}]")).bold().dim(),
             COLLECTION_EMOJI
         );
 
@@ -174,7 +174,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
 
         println!(
             "{} {}Creating candy machine",
-            style(format!("\n[2/{}]", total_steps)).bold().dim(),
+            style(format!("\n[2/{total_steps}]")).bold().dim(),
             CANDY_EMOJI
         );
         info!("Candy machine address is empty, creating new candy machine...");
@@ -216,7 +216,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
     } else {
         println!(
             "{} {}Loading candy machine",
-            style(format!("[1/{}]", total_steps)).bold().dim(),
+            style(format!("[1/{total_steps}]")).bold().dim(),
             CANDY_EMOJI
         );
 
@@ -235,10 +235,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         };
 
         if get_candy_machine_state(&Arc::clone(&sugar_config), &candy_pubkey).is_err() {
-            println!(
-                "\n{} Candy machine {} not found on-chain",
-                WARNING_EMOJI, candy_machine_address
-            );
+            println!("\n{WARNING_EMOJI} Candy machine {candy_machine_address} not found on-chain");
             println!(
                 "\nThis can happen if you are trying to re-deploy a candy machine from \
                     a previously used cache file. If this is the case, re-run the deploy command \
@@ -266,9 +263,7 @@ pub async fn process_deploy(args: DeployArgs) -> Result<()> {
         };
         println!(
             "\n{} {}Writing config lines",
-            style(format!("[{}/{}]", step_num, total_steps))
-                .bold()
-                .dim(),
+            style(format!("[{step_num}/{total_steps}]")).bold().dim(),
             PAPER_EMOJI
         );
 

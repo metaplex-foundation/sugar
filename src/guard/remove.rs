@@ -17,7 +17,7 @@ pub struct GuardRemoveArgs {
 }
 
 pub fn process_guard_remove(args: GuardRemoveArgs) -> Result<()> {
-    println!("[1/1] {}Unwrapping", UNWRAP_EMOJI);
+    println!("[1/1] {UNWRAP_EMOJI}Unwrapping");
 
     // the candy machine id specified takes precedence over the one from the cache
 

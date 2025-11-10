@@ -41,7 +41,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     let pubkey_validator = |input: &String| -> Result<(), String> {
         if Pubkey::from_str(input).is_err() {
-            Err(format!("Couldn't parse input of '{}' to a pubkey.", input))
+            Err(format!("Couldn't parse input of '{input}' to a pubkey."))
         } else {
             Ok(())
         }
@@ -49,7 +49,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     let number_validator = |input: &String| -> Result<(), String> {
         if input.parse::<u64>().is_err() {
-            Err(format!("Couldn't parse input of '{}' to a number.", input))
+            Err(format!("Couldn't parse input of '{input}' to a number."))
         } else {
             Ok(())
         }
@@ -57,10 +57,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     let url_validator = |input: &String| -> Result<(), String> {
         if Url::parse(input).is_err() {
-            Err(format!(
-                "Couldn't parse input of '{}' to a valid uri.",
-                input
-            ))
+            Err(format!("Couldn't parse input of '{input}' to a valid uri."))
         } else {
             Ok(())
         }
@@ -77,7 +74,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     let seller_fee_basis_points_validator = |input: &String| -> Result<(), String> {
         let value = match input.parse::<u16>() {
             Ok(value) => value,
-            Err(_) => return Err(format!("Couldn't parse input of '{}' to a number.", input)),
+            Err(_) => return Err(format!("Couldn't parse input of '{input}' to a number.")),
         };
         if value > 10_000 {
             Err(String::from(
@@ -106,7 +103,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     if num_files > 0 {
         println!("\nFound metadata file(s) in folder '{}':", args.assets_dir);
-        println!("  -> Loading values from file '{}'", DEFAULT_METADATA);
+        println!("  -> Loading values from file '{DEFAULT_METADATA}'");
 
         // loads the default values from the first metadata file
         let metadata_file = PathBuf::from(&args.assets_dir)
@@ -168,7 +165,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
                 if symbol.is_empty() {
                     "no symbol".to_string()
                 } else {
-                    format!("symbol \"{}\"", symbol)
+                    format!("symbol \"{symbol}\"")
                 },
             ))
             .interact()?
@@ -188,7 +185,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     config_data.seller_fee_basis_points = if num_files > 0 && seller_fee != INVALID_SELLER_FEE && Confirm::with_theme(&theme)
         .with_prompt(
             format!(
-                "Found value {} for seller fee basis points in your metadata file. Is this value correct?", seller_fee,
+                "Found value {seller_fee} for seller fee basis points in your metadata file. Is this value correct?",
             )
         )
         .interact()? {
@@ -309,7 +306,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     };
 
     // upload method
-    let upload_options = vec!["Bundlr", "AWS", "NFT Storage", "SHDW", "Pinata", "SDrive"];
+    let upload_options = vec!["Bundlr", "AWS", "Pinata", "SDrive"];
     config_data.upload_method = match Select::with_theme(&theme)
         .with_prompt("What upload method do you want to use?")
         .items(&upload_options)
@@ -319,10 +316,8 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
     {
         0 => UploadMethod::Bundlr,
         1 => UploadMethod::AWS,
-        2 => UploadMethod::NftStorage,
-        3 => UploadMethod::SHDW,
-        4 => UploadMethod::Pinata,
-        5 => UploadMethod::Sdrive,
+        2 => UploadMethod::Pinata,
+        3 => UploadMethod::Sdrive,
         _ => UploadMethod::Bundlr,
     };
 
@@ -362,29 +357,10 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
         ));
     }
 
-    if config_data.upload_method == UploadMethod::NftStorage {
-        config_data.nft_storage_auth_token = Some(
-            Input::with_theme(&theme)
-                .with_prompt("What is the NFT Storage authentication token?")
-                .interact()
-                .unwrap(),
-        );
-    }
-
     if config_data.upload_method == UploadMethod::Sdrive {
         config_data.sdrive_api_key = Some(
             Input::with_theme(&theme)
                 .with_prompt("What is your Sdrive API key?")
-                .interact()
-                .unwrap(),
-        );
-    }
-
-    if config_data.upload_method == UploadMethod::SHDW {
-        config_data.shdw_storage_account = Some(
-            Input::with_theme(&theme)
-                .with_prompt("What is the SHDW storage address?")
-                .validate_with(pubkey_validator)
                 .interact()
                 .unwrap(),
         );
@@ -446,7 +422,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
 
     if Path::new(&file_path).is_file() {
         save_file = Select::with_theme(&theme)
-            .with_prompt(format!("The file \"{}\" already exists. Do you want to overwrite it with the new config or log the new config to the console?", file_path))
+            .with_prompt(format!("The file \"{file_path}\" already exists. Do you want to overwrite it with the new config or log the new config to the console?"))
             .items(&["Overwrite the file", "Log to console"])
             .default(0)
             .interact()
@@ -465,7 +441,7 @@ pub fn process_create_config(args: CreateConfigArgs) -> Result<()> {
             Ok(f) => {
                 println!(
                     "{}",
-                    style(format!("Saving config to file: \"{}\"\n", file_path))
+                    style(format!("Saving config to file: \"{file_path}\"\n"))
                 );
                 serde_json::to_writer_pretty(f, &config_data)
                     .expect("Unable to convert config to JSON!");

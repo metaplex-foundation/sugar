@@ -94,7 +94,7 @@ jobs:
           args: -- -D warnings
 
       - name: Publish Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: "!startsWith(github.ref, 'refs/tags/')"
         with:
           name: ${{ matrix.os }}

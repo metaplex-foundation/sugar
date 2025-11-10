@@ -96,7 +96,7 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
         let cache_items = &mut cache.items;
         let mut errors = Vec::new();
 
-        println!("Verifying {} config line(s): (Ctrl+C to abort)", num_items);
+        println!("Verifying {num_items} config line(s): (Ctrl+C to abort)");
         let pb = progress_bar_with_style(num_items);
         // sleeps for a about 1 second
         let step: u64 = if num_items > 0 {
@@ -116,13 +116,13 @@ pub fn process_verify(args: VerifyArgs) -> Result<()> {
             let uri_start = name_end;
             let uri_end = uri_start + uri_length;
 
-            let name_error = format!("Failed to decode name for item {}", i);
+            let name_error = format!("Failed to decode name for item {i}");
             let name = String::from_utf8(data[name_start..name_end].to_vec())
                 .expect(&name_error)
                 .trim_matches(char::from(0))
                 .to_string();
 
-            let uri_error = format!("Failed to decode uri for item {}", i);
+            let uri_error = format!("Failed to decode uri for item {i}");
             let uri = String::from_utf8(data[uri_start..uri_end].to_vec())
                 .expect(&uri_error)
                 .trim_matches(char::from(0))
