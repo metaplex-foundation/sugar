@@ -5,8 +5,7 @@ use std::{
 };
 
 use anyhow::Result;
-use console::{style, Style};
-use dialoguer::{theme::ColorfulTheme, Confirm};
+use console::style;
 use glob::glob;
 use rayon::prelude::*;
 
@@ -46,23 +45,15 @@ pub fn process_validate(args: ValidateArgs) -> Result<()> {
                 "\n{}\n{}\n",
                 style(warning).bold().yellow(),
                 style(
-                    "Check https://developers.metaplex.com/candy-machine/guides/create-an-nft-collection-on-solana-with-candy-machine#collection-details for the collection file requirements \
+                    "Since V3 of Candy machine it is required to create a collection.json and asset file in the assets folder.\n\
+                    Check https://developers.metaplex.com/candy-machine/guides/create-an-nft-collection-on-solana-with-candy-machine#collection-details for the collection file requirements \
                     if you want a collection to be set automatically."
                 )
                 .italic()
                 .yellow()
             );
 
-            let theme = ColorfulTheme {
-                success_prefix: style("✔".to_string()).yellow().force_styling(true),
-                values_style: Style::new().yellow(),
-                ..get_dialoguer_theme()
-            };
-
-            if !Confirm::with_theme(&theme).with_prompt("Do you want to continue without automatically setting the candy machine collection?").interact()? {
-                return Err(anyhow!("Operation aborted"));
-            }
-            println!();
+            return Err(anyhow!("Missing collection.json file in assets folder"));
         }
     }
 
